@@ -44,16 +44,6 @@
     "hostname": "runc",
     "mounts": [
         {
-            "destination": "/",
-            "type": "overlay",
-            "source": "overlay",
-            "options": [
-                "lowerdir={lower_dir}",
-                "upperdir={upper_dir}",
-                "workdir={work_dir}"
-            ]
-        },
-        {
             "destination": "/proc",
             "type": "proc",
             "source": "proc"
