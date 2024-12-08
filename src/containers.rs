@@ -13,6 +13,24 @@ use tracing::{debug, error};
 use uuid::Uuid;
 
 #[derive(Error, Debug)]
+pub enum RunConfigError {
+    #[error("Could not serialize arguments to json: {0}")]
+    ArgsNotJson(serde_json::Error),
+    #[error("Could not write file {0} due to {1}")]
+    FileWriteFailed(PathBuf, io::Error),
+}
+
+#[derive(Error, Debug)]
+pub enum ContainerCreateError {
+    #[error("Could not copy image rootfs: {0}")]
+    ImageCopyFailed(io::Error),
+    #[error("Could not apply container config: {0}")]
+    ConfigApplyFailed(RunConfigError),
+    #[error("Could not create temporary directory: {0}")]
+    TempDirFailed(io::Error),
+}
+
+#[derive(Error, Debug)]
 pub enum ContainerDestroyError {
     #[error("Could not execute kill command `{0}`: {1}")]
     KillInvokeFailed(ContainerId, io::Error),
@@ -60,7 +78,7 @@ impl ImageRegistry {
             .collect::<Vec<_>>())
     }
 
-    pub async fn copy_image_rootfs(&self, image: &ImageId, target: &Path) -> Result<(), io::Error> {
+    pub async fn copy_image_rootfs(&self, image: &ImageId, target: &Path) -> io::Result<()> {
         let image_rootfs = self.directory.join(&image.0);
 
         if !image_rootfs.exists() {
@@ -99,32 +117,46 @@ impl ContainerConfig {
         rootfs: &Path,
         workdir: &Path,
         args: &[&str],
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), RunConfigError> {
         let path_config = workdir.join("config.json");
 
         match self {
             ContainerConfig::WritableRootfs => {
                 let config = include_str!("../resources/runc-read-write.json")
                     .replace("{rootfs}", &rootfs.display().to_string())
-                    .replace("{args}", &serde_json::to_string(args)?);
+                    .replace(
+                        "{args}",
+                        &serde_json::to_string(args).map_err(RunConfigError::ArgsNotJson)?,
+                    );
 
-                tokio::fs::write(&path_config, config).await?;
+                tokio::fs::write(&path_config, config)
+                    .await
+                    .map_err(|e| RunConfigError::FileWriteFailed(path_config.to_path_buf(), e))?;
             }
             ContainerConfig::OverlayRootfs => {
                 let path_upper = workdir.join("overlay-upper");
                 let path_work = workdir.join("overlay-work");
 
-                tokio::fs::create_dir(&path_upper).await?;
-                tokio::fs::create_dir(&path_work).await?;
+                tokio::fs::create_dir(&path_upper)
+                    .await
+                    .map_err(|e| RunConfigError::FileWriteFailed(path_upper.to_path_buf(), e))?;
+                tokio::fs::create_dir(&path_work)
+                    .await
+                    .map_err(|e| RunConfigError::FileWriteFailed(path_work.to_path_buf(), e))?;
 
                 let config = include_str!("../resources/runc-overlay.json")
                     .replace("{rootfs}", &rootfs.display().to_string())
-                    .replace("{args}", &serde_json::to_string(args)?)
+                    .replace(
+                        "{args}",
+                        &serde_json::to_string(args).map_err(RunConfigError::ArgsNotJson)?,
+                    )
                     .replace("{lower_dir}", &rootfs.display().to_string())
                     .replace("{upper_dir}", &path_upper.display().to_string())
                     .replace("{work_dir}", &path_work.display().to_string());
 
-                tokio::fs::write(&path_config, config).await?;
+                tokio::fs::write(&path_config, config)
+                    .await
+                    .map_err(|e| RunConfigError::FileWriteFailed(path_config.to_path_buf(), e))?;
             }
         }
 
@@ -139,27 +171,62 @@ pub struct ContainerId(String);
 #[must_use]
 pub struct CreatedContainer {
     workdir: TempDir,
+    rootfs: PathBuf,
     container_id: ContainerId,
+}
+
+impl CreatedContainer {
+    pub fn container_id(&self) -> &ContainerId {
+        &self.container_id
+    }
+
+    pub fn rootfs(&self) -> &Path {
+        &self.rootfs
+    }
 }
 
 pub async fn create_build_container(
     registry: &ImageRegistry,
     image: &ImageId,
     args: &[&str],
-) -> Result<CreatedContainer, Box<dyn Error>> {
-    let workdir = TempDir::new()?;
+) -> Result<CreatedContainer, ContainerCreateError> {
+    let workdir = TempDir::new().map_err(ContainerCreateError::TempDirFailed)?;
     let path_rootfs = workdir.path().join("rootfs");
 
     // We modify the rootfs during the build process (as these changes are replicated into each
     // container), so we need to copy it.
-    registry.copy_image_rootfs(image, &path_rootfs).await?;
+    registry
+        .copy_image_rootfs(image, &path_rootfs)
+        .await
+        .map_err(ContainerCreateError::ImageCopyFailed)?;
 
     ContainerConfig::WritableRootfs
         .apply_to_workdir(&path_rootfs, workdir.path(), args)
-        .await?;
+        .await
+        .map_err(ContainerCreateError::ConfigApplyFailed)?;
 
     Ok(CreatedContainer {
         workdir,
+        rootfs: path_rootfs,
+        container_id: ContainerId(Uuid::new_v4().to_string()),
+    })
+}
+
+pub async fn create_test_container(
+    build_container: &CreatedContainer,
+    args: &[&str],
+) -> Result<CreatedContainer, ContainerCreateError> {
+    let workdir = TempDir::new().map_err(ContainerCreateError::TempDirFailed)?;
+    let rootfs = build_container.rootfs();
+
+    ContainerConfig::OverlayRootfs
+        .apply_to_workdir(rootfs, workdir.path(), args)
+        .await
+        .map_err(ContainerCreateError::ConfigApplyFailed)?;
+
+    Ok(CreatedContainer {
+        workdir,
+        rootfs: rootfs.to_path_buf(),
         container_id: ContainerId(Uuid::new_v4().to_string()),
     })
 }
@@ -221,6 +288,10 @@ impl RunningContainer {
     pub fn process(&mut self) -> &mut tokio::process::Child {
         &mut self.process
     }
+
+    pub fn container(&self) -> &CreatedContainer {
+        &self.container
+    }
 }
 
 impl Drop for RunningContainer {
@@ -261,7 +332,7 @@ async fn kill_container(container_id: &ContainerId) -> Result<(), ContainerDestr
         .arg("--log-format=json")
         .arg("kill")
         .arg(container_id.to_string())
-        // We directly SIGKILL, the container does not have any persistent state anyways
+        // We directly SIGKILL, the container does not have any persistent state anyway
         .arg("KILL")
         .output()
         .await

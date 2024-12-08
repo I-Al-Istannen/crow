@@ -39,8 +39,7 @@
         "noNewPrivileges": true
     },
     "root": {
-        "path": "{rootfs}",
-        "readonly": true
+        "path": "{rootfs}"
     },
     "hostname": "runc",
     "mounts": [
