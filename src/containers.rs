@@ -7,6 +7,7 @@ use std::process::Stdio;
 use std::time::Duration;
 use tempfile::TempDir;
 use thiserror::Error;
+use tokio::io::{AsyncRead, AsyncReadExt};
 use tokio::process::Command;
 use tokio::time;
 use tracing::{debug, error};
@@ -17,25 +18,25 @@ pub enum RunConfigError {
     #[error("Could not serialize arguments to json: {0}")]
     ArgsNotJson(serde_json::Error),
     #[error("Could not write file {0} due to {1}")]
-    FileWriteFailed(PathBuf, io::Error),
+    FileWrite(PathBuf, io::Error),
 }
 
 #[derive(Error, Debug)]
 pub enum ContainerCreateError {
     #[error("Could not copy image rootfs: {0}")]
-    ImageCopyFailed(io::Error),
+    ImageCopy(io::Error),
     #[error("Could not apply container config: {0}")]
-    ConfigApplyFailed(RunConfigError),
+    ConfigApply(RunConfigError),
     #[error("Could not create temporary directory: {0}")]
-    TempDirFailed(io::Error),
+    TempDirCreation(io::Error),
 }
 
 #[derive(Error, Debug)]
 pub enum ContainerDestroyError {
     #[error("Could not execute kill command `{0}`: {1}")]
-    KillInvokeFailed(ContainerId, io::Error),
+    KillInvocation(ContainerId, io::Error),
     #[error("Could not kill container `{0}`: {1:?}")]
-    KillFailed(ContainerId, RuncLogMessage),
+    UnknownKillFailure(ContainerId, RuncLogMessage),
     #[error("Could not parse container kill output `{0}`: {1}. Raw string {2}")]
     KillOutputUnparsable(ContainerId, serde_json::Error, String),
     #[error("Could not delete directory `{0}`: {1}")]
@@ -131,7 +132,7 @@ impl ContainerConfig {
 
                 tokio::fs::write(&path_config, config)
                     .await
-                    .map_err(|e| RunConfigError::FileWriteFailed(path_config.to_path_buf(), e))?;
+                    .map_err(|e| RunConfigError::FileWrite(path_config.to_path_buf(), e))?;
             }
             ContainerConfig::OverlayRootfs => {
                 let path_upper = workdir.join("overlay-upper");
@@ -139,10 +140,10 @@ impl ContainerConfig {
 
                 tokio::fs::create_dir(&path_upper)
                     .await
-                    .map_err(|e| RunConfigError::FileWriteFailed(path_upper.to_path_buf(), e))?;
+                    .map_err(|e| RunConfigError::FileWrite(path_upper.to_path_buf(), e))?;
                 tokio::fs::create_dir(&path_work)
                     .await
-                    .map_err(|e| RunConfigError::FileWriteFailed(path_work.to_path_buf(), e))?;
+                    .map_err(|e| RunConfigError::FileWrite(path_work.to_path_buf(), e))?;
 
                 let config = include_str!("../resources/runc-overlay.json")
                     .replace("{rootfs}", &rootfs.display().to_string())
@@ -156,7 +157,7 @@ impl ContainerConfig {
 
                 tokio::fs::write(&path_config, config)
                     .await
-                    .map_err(|e| RunConfigError::FileWriteFailed(path_config.to_path_buf(), e))?;
+                    .map_err(|e| RunConfigError::FileWrite(path_config.to_path_buf(), e))?;
             }
         }
 
@@ -190,7 +191,7 @@ pub async fn create_build_container(
     image: &ImageId,
     args: &[&str],
 ) -> Result<CreatedContainer, ContainerCreateError> {
-    let workdir = TempDir::new().map_err(ContainerCreateError::TempDirFailed)?;
+    let workdir = TempDir::new().map_err(ContainerCreateError::TempDirCreation)?;
     let path_rootfs = workdir.path().join("rootfs");
 
     // We modify the rootfs during the build process (as these changes are replicated into each
@@ -198,12 +199,12 @@ pub async fn create_build_container(
     registry
         .copy_image_rootfs(image, &path_rootfs)
         .await
-        .map_err(ContainerCreateError::ImageCopyFailed)?;
+        .map_err(ContainerCreateError::ImageCopy)?;
 
     ContainerConfig::WritableRootfs
         .apply_to_workdir(&path_rootfs, workdir.path(), args)
         .await
-        .map_err(ContainerCreateError::ConfigApplyFailed)?;
+        .map_err(ContainerCreateError::ConfigApply)?;
 
     Ok(CreatedContainer {
         workdir,
@@ -216,13 +217,13 @@ pub async fn create_test_container(
     build_container: &CreatedContainer,
     args: &[&str],
 ) -> Result<CreatedContainer, ContainerCreateError> {
-    let workdir = TempDir::new().map_err(ContainerCreateError::TempDirFailed)?;
+    let workdir = TempDir::new().map_err(ContainerCreateError::TempDirCreation)?;
     let rootfs = build_container.rootfs();
 
     ContainerConfig::OverlayRootfs
         .apply_to_workdir(rootfs, workdir.path(), args)
         .await
-        .map_err(ContainerCreateError::ConfigApplyFailed)?;
+        .map_err(ContainerCreateError::ConfigApply)?;
 
     Ok(CreatedContainer {
         workdir,
@@ -236,6 +237,8 @@ pub async fn create_test_container(
 pub struct RunningContainer {
     container: CreatedContainer,
     process: tokio::process::Child,
+    pub stdout: Option<tokio::process::ChildStdout>,
+    pub stderr: Option<tokio::process::ChildStderr>,
     cleaned_up: bool,
 }
 
@@ -285,8 +288,8 @@ impl RunningContainer {
         }
     }
 
-    pub fn process(&mut self) -> &mut tokio::process::Child {
-        &mut self.process
+    pub async fn await_death(&mut self) -> io::Result<std::process::ExitStatus> {
+        self.process.wait().await
     }
 
     pub fn container(&self) -> &CreatedContainer {
@@ -309,7 +312,7 @@ impl Drop for RunningContainer {
 pub async fn run_container(
     container: CreatedContainer,
 ) -> Result<RunningContainer, Box<dyn Error>> {
-    let process = Command::new("runc")
+    let mut process = Command::new("runc")
         .arg("run")
         .arg(container.container_id.to_string())
         .current_dir(container.workdir.path())
@@ -318,9 +321,14 @@ pub async fn run_container(
         .stdin(Stdio::piped())
         .spawn()?;
 
+    let stdout = process.stdout.take();
+    let stderr = process.stderr.take();
+
     Ok(RunningContainer {
         container,
         process,
+        stdout,
+        stderr,
         cleaned_up: false,
     })
 }
@@ -336,7 +344,7 @@ async fn kill_container(container_id: &ContainerId) -> Result<(), ContainerDestr
         .arg("KILL")
         .output()
         .await
-        .map_err(|e| ContainerDestroyError::KillInvokeFailed(container_id.clone(), e))?;
+        .map_err(|e| ContainerDestroyError::KillInvocation(container_id.clone(), e))?;
 
     if res.status.success() {
         debug!(container_id = %container_id, "Container killed");
@@ -355,7 +363,10 @@ async fn kill_container(container_id: &ContainerId) -> Result<(), ContainerDestr
                 debug!(container_id = %container_id, "Container does not exist");
                 Ok(())
             } else {
-                Err(ContainerDestroyError::KillFailed(container_id.clone(), msg))
+                Err(ContainerDestroyError::UnknownKillFailure(
+                    container_id.clone(),
+                    msg,
+                ))
             }
         }
         Err(e) => {
@@ -408,4 +419,11 @@ async fn delete_container_dir(
     }
 
     Ok(())
+}
+
+/// Reads an async read to a single String.
+pub async fn read_to_string(reader: &mut (impl AsyncRead + Unpin)) -> io::Result<String> {
+    let mut output = String::new();
+    reader.read_to_string(&mut output).await?;
+    Ok(output)
 }

@@ -1,5 +1,6 @@
 use crate::containers::{
-    create_build_container, create_test_container, run_container, CreatedContainer, ImageRegistry,
+    create_build_container, create_test_container, read_to_string, run_container, CreatedContainer,
+    ImageRegistry,
 };
 use tokio::io::AsyncBufReadExt;
 use tracing_subscriber::layer::SubscriberExt;
@@ -24,19 +25,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         create_build_container(&registry, &image, &["/bin/sh", "-c", "echo Hello, world!"]).await?;
     let mut build_container = run_container(container).await?;
 
-    let stdout = build_container.process().stdout.take().unwrap();
-    let stderr = build_container.process().stderr.take().unwrap();
+    let stdout = build_container.stdout.take().unwrap();
+    let stderr = build_container.stderr.take().unwrap();
     tokio::spawn(async {
-        let mut stdout_lines = tokio::io::BufReader::new(stdout).lines();
-        while let Some(line) = stdout_lines.next_line().await.unwrap() {
-            println!("stdout: {}", line);
-        }
-        let mut stderr_lines = tokio::io::BufReader::new(stderr).lines();
-        while let Some(line) = stderr_lines.next_line().await.unwrap() {
-            println!("stderr: {}", line);
-        }
+        println!(
+            "stdout: {}",
+            read_to_string(&mut tokio::io::BufReader::new(stdout))
+                .await
+                .unwrap()
+        );
+        println!(
+            "stderr: {}",
+            read_to_string(&mut tokio::io::BufReader::new(stderr))
+                .await
+                .unwrap()
+        );
     });
-    println!("Exit code: {}", build_container.process().wait().await?);
+    println!("Exit code: {}", build_container.await_death().await?);
 
     run_test(build_container.container()).await?;
     run_test(build_container.container()).await?;
@@ -75,7 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn run_test(build_container: &CreatedContainer) -> Result<(), Box<dyn std::error::Error>> {
     let container = create_test_container(
-        &build_container,
+        build_container,
         &[
             "/bin/sh",
             "-c",
@@ -85,8 +90,8 @@ async fn run_test(build_container: &CreatedContainer) -> Result<(), Box<dyn std:
     .await?;
     let mut test_container = run_container(container).await?;
 
-    let stdout = test_container.process().stdout.take().unwrap();
-    let stderr = test_container.process().stderr.take().unwrap();
+    let stdout = test_container.stdout.take().unwrap();
+    let stderr = test_container.stderr.take().unwrap();
     tokio::spawn(async {
         let mut stdout_lines = tokio::io::BufReader::new(stdout).lines();
         while let Some(line) = stdout_lines.next_line().await.unwrap() {
@@ -97,7 +102,7 @@ async fn run_test(build_container: &CreatedContainer) -> Result<(), Box<dyn std:
             println!("stderr: {}", line);
         }
     });
-    println!("Exit code: {}", test_container.process().wait().await?);
+    println!("Exit code: {}", test_container.await_death().await?);
     test_container.destroy().await?;
     Ok(())
 }
