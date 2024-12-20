@@ -1,8 +1,7 @@
-use crate::containers::{create_test_container, run_container, CreatedContainer, ImageRegistry};
+use crate::containers::ImageRegistry;
 use crate::docker::DockerClient;
 use crate::executor::Executor;
 use bollard::Docker;
-use tokio::io::AsyncBufReadExt;
 use tracing::info;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -31,16 +30,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let executor = Executor::new(docker_client, registry);
 
     let res = executor
-        .build_compiler(image, &["/bin/sh", "-c", "echo Hello, world!"])
+        .build_main_container(image, &["/bin/sh", "-c", "echo Hello, world!"])
         .await?;
 
     info!("Compiler build result: {:?}", res);
 
     let build_container = res.container;
 
-    run_test(build_container.container()).await?;
-    run_test(build_container.container()).await?;
-    run_test(build_container.container()).await?;
+    let args = [
+        "/bin/sh",
+        "-c",
+        "echo 'hey' >> /tmp/foo.txt && cat /tmp/foo.txt",
+    ];
+    println!(
+        "{:?}",
+        executor
+            .run_test(build_container.container(), &args)
+            .await?
+    );
+    println!(
+        "{:?}",
+        executor
+            .run_test(build_container.container(), &args)
+            .await?
+    );
+    println!(
+        "{:?}",
+        executor
+            .run_test(build_container.container(), &args)
+            .await?
+    );
 
     build_container.destroy().await?;
 
@@ -70,34 +89,5 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     2. Delete the workdir (mounts must be dead at this point)
     //   4. Return result
 
-    Ok(())
-}
-
-async fn run_test(build_container: &CreatedContainer) -> Result<(), Box<dyn std::error::Error>> {
-    let container = create_test_container(
-        build_container,
-        &[
-            "/bin/sh",
-            "-c",
-            "echo 'hey' >> /tmp/foo.txt && cat /tmp/foo.txt",
-        ],
-    )
-    .await?;
-    let mut test_container = run_container(container).await?;
-
-    let stdout = test_container.stdout.take().unwrap();
-    let stderr = test_container.stderr.take().unwrap();
-    tokio::spawn(async {
-        let mut stdout_lines = tokio::io::BufReader::new(stdout).lines();
-        while let Some(line) = stdout_lines.next_line().await.unwrap() {
-            println!("stdout: {}", line);
-        }
-        let mut stderr_lines = tokio::io::BufReader::new(stderr).lines();
-        while let Some(line) = stderr_lines.next_line().await.unwrap() {
-            println!("stderr: {}", line);
-        }
-    });
-    println!("Exit code: {}", test_container.await_death().await?);
-    test_container.destroy().await?;
     Ok(())
 }

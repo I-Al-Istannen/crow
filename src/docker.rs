@@ -1,23 +1,26 @@
 use bollard::container::Config;
 use bollard::Docker;
 use futures_util::TryStreamExt;
+use snafu::{IntoError, NoneError, ResultExt, Snafu};
 use std::path::Path;
-use thiserror::Error;
 use tokio::io::AsyncWriteExt;
 use tokio::task::spawn_blocking;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Snafu)]
 pub enum DockerError {
-    #[error("Docker communication error: {0}")]
-    Docker(#[from] bollard::errors::Error),
-    #[error("Image not found: {0}")]
-    ImageNotFound(String),
-    #[error("Error creating or writing to export file: {0}")]
-    TarExportIo(std::io::Error),
-    #[error("Error creating or writing to tempfile: {0}")]
-    TempfileIo(std::io::Error),
-    #[error("Error untarring image: {0}")]
-    Untar(tokio::task::JoinError),
+    #[snafu(display("Docker communication error: {message}"))]
+    Docker {
+        source: bollard::errors::Error,
+        message: &'static str,
+    },
+    #[snafu(display("Image `{image}` not found"))]
+    ImageNotFound { image: String },
+    #[snafu(display("Error creating or writing to export file"))]
+    TarExportIo { source: std::io::Error },
+    #[snafu(display("Error creating or writing to tempfile"))]
+    TempfileIo { source: std::io::Error },
+    #[snafu(display("Error untarring image"))]
+    Untar { source: tokio::task::JoinError },
 }
 
 #[derive(Debug)]
@@ -38,17 +41,23 @@ impl DockerClient {
         let image_exists = self
             .docker
             .list_images::<String>(None)
-            .await?
+            .await
+            .context(DockerSnafu {
+                message: "while listing images",
+            })?
             .into_iter()
             .any(|it| it.repo_tags.contains(&image_name.to_string()));
 
         if !image_exists {
-            return Err(DockerError::ImageNotFound(image_name.to_string()));
+            return Err(ImageNotFoundSnafu {
+                image: image_name.to_string(),
+            }
+            .into_error(NoneError));
         }
 
         let mut file = tokio::fs::File::create(target)
             .await
-            .map_err(DockerError::TarExportIo)?;
+            .context(TarExportIoSnafu)?;
 
         let container = self
             .docker
@@ -59,7 +68,10 @@ impl DockerClient {
                     ..Default::default()
                 },
             )
-            .await?;
+            .await
+            .context(DockerSnafu {
+                message: "while creating container",
+            })?;
 
         let mut tarball = self.docker.export_container(&container.id);
 
@@ -68,12 +80,15 @@ impl DockerClient {
             match chunk {
                 Err(e) => {
                     let _ = self.docker.remove_container(&container.id, None).await;
-                    return Err(DockerError::Docker(e));
+                    return Err(DockerSnafu {
+                        message: "while exporting container",
+                    }
+                    .into_error(e));
                 }
                 Ok(Some(chunk)) => {
                     if let Err(e) = file.write_all(&chunk).await {
                         let _ = self.docker.remove_container(&container.id, None).await;
-                        return Err(DockerError::TarExportIo(e));
+                        return Err(TarExportIoSnafu.into_error(e));
                     }
                 }
                 Ok(None) => break,
@@ -90,17 +105,17 @@ impl DockerClient {
         image_name: &str,
         target_folder: impl AsRef<Path>,
     ) -> Result<(), DockerError> {
-        let dir = tempfile::tempdir().map_err(DockerError::TempfileIo)?;
+        let dir = tempfile::tempdir().context(TempfileIoSnafu)?;
         let tarball_path = dir.path().join("image.tar");
         self.export_image_to_tar(image_name, &tarball_path).await?;
 
         let target_folder = target_folder.as_ref().to_path_buf();
         spawn_blocking(move || {
-            tar::Archive::new(std::fs::File::open(tarball_path).map_err(DockerError::TempfileIo)?)
+            tar::Archive::new(std::fs::File::open(tarball_path).context(TempfileIoSnafu)?)
                 .unpack(target_folder)
-                .map_err(DockerError::TempfileIo)
+                .context(TempfileIoSnafu)
         })
         .await
-        .map_err(DockerError::Untar)?
+        .context(UntarSnafu)?
     }
 }

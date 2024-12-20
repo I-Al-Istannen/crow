@@ -1,56 +1,69 @@
 use derive_more::{Display, From};
 use serde::Deserialize;
-use std::error::Error;
+use snafu::{IntoError, NoneError, ResultExt, Snafu};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
 use tempfile::TempDir;
-use thiserror::Error;
 use tokio::io::{AsyncRead, AsyncReadExt};
 use tokio::process::Command;
 use tokio::time;
 use tracing::{debug, error};
 use uuid::Uuid;
 
-#[derive(Error, Debug)]
+#[derive(Snafu, Debug)]
 pub enum RunConfigError {
-    #[error("Could not serialize arguments to json: {0}")]
-    ArgsNotJson(serde_json::Error),
-    #[error("Could not write file {0} due to {1}")]
-    FileWrite(PathBuf, io::Error),
+    #[snafu(display("Could not serialize arguments to json"))]
+    ArgsNotJson { source: serde_json::Error },
+    #[snafu(display("Could not write file {path:?}"))]
+    FileWrite { source: io::Error, path: PathBuf },
 }
 
-#[derive(Error, Debug)]
+#[derive(Snafu, Debug)]
 pub enum ContainerCreateError {
-    #[error("Could not copy image rootfs: {0}")]
-    ImageCopy(io::Error),
-    #[error("Could not apply container config: {0}")]
-    ConfigApply(RunConfigError),
-    #[error("Could not create temporary directory: {0}")]
-    TempDirCreation(io::Error),
+    #[snafu(display("Could not copy image rootfs"))]
+    ImageCopy { source: io::Error },
+    #[snafu(display("Could not apply container config"))]
+    ConfigApply { source: RunConfigError },
+    #[snafu(display("Could not create temporary directory"))]
+    TempDirCreation { source: io::Error },
 }
 
-#[derive(Error, Debug)]
+#[derive(Snafu, Debug)]
 pub enum ContainerDestroyError {
-    #[error("Could not execute kill command `{0}`: {1}")]
-    KillInvocation(ContainerId, io::Error),
-    #[error("Could not kill container `{0}`: {1:?}")]
-    UnknownKillFailure(ContainerId, RuncLogMessage),
-    #[error("Could not parse container kill output `{0}`: {1}. Raw string {2}")]
-    KillOutputUnparsable(ContainerId, serde_json::Error, String),
-    #[error("Could not delete directory `{0}`: {1}")]
-    DirNotDeleted(PathBuf, io::Error),
-    #[error("Multiple errors occurred: {0:?}")]
-    Multiple(Vec<ContainerDestroyError>),
-    #[error("Container `{0}` was leaked and left alive")]
-    LeakedProcess(ContainerId),
+    #[snafu(display("Could not execute kill command `{container_id}`"))]
+    KillInvocation {
+        container_id: ContainerId,
+        source: io::Error,
+    },
+    #[snafu(display("Could not kill container `{container_id}`: {message:?}"))]
+    UnknownKillFailure {
+        container_id: ContainerId,
+        message: RuncLogMessage,
+    },
+    #[snafu(display(
+        "Could not parse container kill output for `{container_id}`: `{raw_output}`"
+    ))]
+    KillOutputUnparsable {
+        container_id: ContainerId,
+        source: serde_json::Error,
+        raw_output: String,
+    },
+    #[snafu(display("Could not delete directory `{path:?}`"))]
+    DirNotDeleted { source: io::Error, path: PathBuf },
+    #[snafu(display("Multiple errors occurred: {errors:?}"))]
+    Multiple { errors: Vec<ContainerDestroyError> },
+    #[snafu(display("Container `{container_id}` was leaked and left alive"))]
+    LeakedProcess { container_id: ContainerId },
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RuncLogMessage {
+    #[allow(unused)]
     pub level: String,
     pub msg: String,
+    #[allow(unused)]
     pub time: String,
 }
 
@@ -127,12 +140,14 @@ impl ContainerConfig {
                     .replace("{rootfs}", &rootfs.display().to_string())
                     .replace(
                         "{args}",
-                        &serde_json::to_string(args).map_err(RunConfigError::ArgsNotJson)?,
+                        &serde_json::to_string(args).context(ArgsNotJsonSnafu)?,
                     );
 
                 tokio::fs::write(&path_config, config)
                     .await
-                    .map_err(|e| RunConfigError::FileWrite(path_config.to_path_buf(), e))?;
+                    .context(FileWriteSnafu {
+                        path: path_config.to_path_buf(),
+                    })?;
             }
             ContainerConfig::OverlayRootfs => {
                 let path_upper = workdir.join("overlay-upper");
@@ -140,16 +155,20 @@ impl ContainerConfig {
 
                 tokio::fs::create_dir(&path_upper)
                     .await
-                    .map_err(|e| RunConfigError::FileWrite(path_upper.to_path_buf(), e))?;
+                    .context(FileWriteSnafu {
+                        path: path_upper.to_path_buf(),
+                    })?;
                 tokio::fs::create_dir(&path_work)
                     .await
-                    .map_err(|e| RunConfigError::FileWrite(path_work.to_path_buf(), e))?;
+                    .context(FileWriteSnafu {
+                        path: path_work.to_path_buf(),
+                    })?;
 
                 let config = include_str!("../resources/runc-overlay.json")
                     .replace("{rootfs}", &rootfs.display().to_string())
                     .replace(
                         "{args}",
-                        &serde_json::to_string(args).map_err(RunConfigError::ArgsNotJson)?,
+                        &serde_json::to_string(args).context(ArgsNotJsonSnafu)?,
                     )
                     .replace("{lower_dir}", &rootfs.display().to_string())
                     .replace("{upper_dir}", &path_upper.display().to_string())
@@ -157,7 +176,9 @@ impl ContainerConfig {
 
                 tokio::fs::write(&path_config, config)
                     .await
-                    .map_err(|e| RunConfigError::FileWrite(path_config.to_path_buf(), e))?;
+                    .context(FileWriteSnafu {
+                        path: path_config.to_path_buf(),
+                    })?;
             }
         }
 
@@ -191,7 +212,7 @@ pub async fn create_build_container(
     image: &ImageId,
     args: &[&str],
 ) -> Result<CreatedContainer, ContainerCreateError> {
-    let workdir = TempDir::new().map_err(ContainerCreateError::TempDirCreation)?;
+    let workdir = TempDir::new().context(TempDirCreationSnafu)?;
     let path_rootfs = workdir.path().join("rootfs");
 
     // We modify the rootfs during the build process (as these changes are replicated into each
@@ -199,12 +220,12 @@ pub async fn create_build_container(
     registry
         .copy_image_rootfs(image, &path_rootfs)
         .await
-        .map_err(ContainerCreateError::ImageCopy)?;
+        .context(ImageCopySnafu)?;
 
     ContainerConfig::WritableRootfs
         .apply_to_workdir(&path_rootfs, workdir.path(), args)
         .await
-        .map_err(ContainerCreateError::ConfigApply)?;
+        .context(ConfigApplySnafu)?;
 
     Ok(CreatedContainer {
         workdir,
@@ -217,13 +238,13 @@ pub async fn create_test_container(
     build_container: &CreatedContainer,
     args: &[&str],
 ) -> Result<CreatedContainer, ContainerCreateError> {
-    let workdir = TempDir::new().map_err(ContainerCreateError::TempDirCreation)?;
+    let workdir = TempDir::new().context(TempDirCreationSnafu)?;
     let rootfs = build_container.rootfs();
 
     ContainerConfig::OverlayRootfs
         .apply_to_workdir(rootfs, workdir.path(), args)
         .await
-        .map_err(ContainerCreateError::ConfigApply)?;
+        .context(ConfigApplySnafu)?;
 
     Ok(CreatedContainer {
         workdir,
@@ -261,9 +282,12 @@ impl StartedContainer {
                 process = ?self.process.id(),
                 "Container was still alive"
             );
-            errors.push(ContainerDestroyError::LeakedProcess(
-                self.container.container_id.clone(),
-            ));
+            errors.push(
+                LeakedProcessSnafu {
+                    container_id: self.container.container_id.clone(),
+                }
+                .into_error(NoneError),
+            );
         }
 
         if let Err(e) =
@@ -280,7 +304,7 @@ impl StartedContainer {
         self.cleaned_up = true;
 
         if !errors.is_empty() && errors.len() > 1 {
-            Err(ContainerDestroyError::Multiple(errors))
+            Err(MultipleSnafu { errors }.into_error(NoneError))
         } else if !errors.is_empty() {
             Err(errors.remove(0))
         } else {
@@ -342,7 +366,9 @@ async fn kill_container(container_id: &ContainerId) -> Result<(), ContainerDestr
         .arg("KILL")
         .output()
         .await
-        .map_err(|e| ContainerDestroyError::KillInvocation(container_id.clone(), e))?;
+        .context(KillInvocationSnafu {
+            container_id: container_id.clone(),
+        })?;
 
     if res.status.success() {
         debug!(container_id = %container_id, "Container killed");
@@ -361,10 +387,11 @@ async fn kill_container(container_id: &ContainerId) -> Result<(), ContainerDestr
                 debug!(container_id = %container_id, "Container does not exist");
                 Ok(())
             } else {
-                Err(ContainerDestroyError::UnknownKillFailure(
-                    container_id.clone(),
-                    msg,
-                ))
+                Err(UnknownKillFailureSnafu {
+                    container_id: container_id.clone(),
+                    message: msg,
+                }
+                .into_error(NoneError))
             }
         }
         Err(e) => {
@@ -374,11 +401,11 @@ async fn kill_container(container_id: &ContainerId) -> Result<(), ContainerDestr
                 error=%e, "Could not parse kill output"
             );
 
-            Err(ContainerDestroyError::KillOutputUnparsable(
-                container_id.clone(),
-                e,
-                String::from_utf8_lossy(&res.stdout).to_string(),
-            ))
+            Err(KillOutputUnparsableSnafu {
+                container_id: container_id.clone(),
+                raw_output: String::from_utf8_lossy(&res.stderr).to_string(),
+            }
+            .into_error(e))
         }
     }
 }
@@ -398,7 +425,9 @@ async fn delete_container_dir(
         .arg(workdir)
         .output()
         .await
-        .map_err(|e| ContainerDestroyError::DirNotDeleted(workdir.to_path_buf(), e))?;
+        .context(DirNotDeletedSnafu {
+            path: workdir.to_path_buf(),
+        })?;
 
     if !output.status.success() {
         debug!(
@@ -407,13 +436,13 @@ async fn delete_container_dir(
             stderr = %String::from_utf8_lossy(&output.stderr),
             "Failed to delete workdir"
         );
-        return Err(ContainerDestroyError::DirNotDeleted(
-            workdir.to_path_buf(),
-            io::Error::new(
-                io::ErrorKind::Other,
-                format!("rm failed: {:?}", output.stderr),
-            ),
-        ));
+        return Err(DirNotDeletedSnafu {
+            path: workdir.to_path_buf(),
+        }
+        .into_error(io::Error::new(
+            io::ErrorKind::Other,
+            format!("rm failed: {:?}", output.stderr),
+        )));
     }
 
     Ok(())
