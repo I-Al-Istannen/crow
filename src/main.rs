@@ -1,15 +1,15 @@
-use crate::containers::{
-    create_build_container, create_test_container, read_to_string, run_container, CreatedContainer,
-    ImageRegistry,
-};
+use crate::containers::{create_test_container, run_container, CreatedContainer, ImageRegistry};
 use crate::docker::DockerClient;
+use crate::executor::Executor;
 use bollard::Docker;
 use tokio::io::AsyncBufReadExt;
+use tracing::info;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 mod containers;
 mod docker;
+mod executor;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -28,28 +28,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Base: Image registry that maps image names to rootfs directories
     let registry = ImageRegistry::new("target/images");
     let image = registry.get_images()?[0].clone();
+    let executor = Executor::new(docker_client, registry);
 
-    let container =
-        create_build_container(&registry, &image, &["/bin/sh", "-c", "echo Hello, world!"]).await?;
-    let mut build_container = run_container(container).await?;
+    let res = executor
+        .build_compiler(image, &["/bin/sh", "-c", "echo Hello, world!"])
+        .await?;
 
-    let stdout = build_container.stdout.take().unwrap();
-    let stderr = build_container.stderr.take().unwrap();
-    tokio::spawn(async {
-        println!(
-            "stdout: {}",
-            read_to_string(&mut tokio::io::BufReader::new(stdout))
-                .await
-                .unwrap()
-        );
-        println!(
-            "stderr: {}",
-            read_to_string(&mut tokio::io::BufReader::new(stderr))
-                .await
-                .unwrap()
-        );
-    });
-    println!("Exit code: {}", build_container.await_death().await?);
+    info!("Compiler build result: {:?}", res);
+
+    let build_container = res.container;
 
     run_test(build_container.container()).await?;
     run_test(build_container.container()).await?;

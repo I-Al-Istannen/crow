@@ -234,7 +234,7 @@ pub async fn create_test_container(
 
 #[derive(Debug)]
 #[must_use]
-pub struct RunningContainer {
+pub struct StartedContainer {
     container: CreatedContainer,
     process: tokio::process::Child,
     pub stdout: Option<tokio::process::ChildStdout>,
@@ -242,7 +242,7 @@ pub struct RunningContainer {
     cleaned_up: bool,
 }
 
-impl RunningContainer {
+impl StartedContainer {
     pub async fn destroy(mut self) -> Result<(), ContainerDestroyError> {
         let mut errors = Vec::new();
         if let Err(e) = kill_container(&self.container.container_id).await {
@@ -297,7 +297,7 @@ impl RunningContainer {
     }
 }
 
-impl Drop for RunningContainer {
+impl Drop for StartedContainer {
     fn drop(&mut self) {
         if !self.cleaned_up {
             error!(
@@ -309,9 +309,7 @@ impl Drop for RunningContainer {
     }
 }
 
-pub async fn run_container(
-    container: CreatedContainer,
-) -> Result<RunningContainer, Box<dyn Error>> {
+pub async fn run_container(container: CreatedContainer) -> Result<StartedContainer, io::Error> {
     let mut process = Command::new("runc")
         .arg("run")
         .arg(container.container_id.to_string())
@@ -324,7 +322,7 @@ pub async fn run_container(
     let stdout = process.stdout.take();
     let stderr = process.stderr.take();
 
-    Ok(RunningContainer {
+    Ok(StartedContainer {
         container,
         process,
         stdout,
