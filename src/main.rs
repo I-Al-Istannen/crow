@@ -2,11 +2,14 @@ use crate::containers::{
     create_build_container, create_test_container, read_to_string, run_container, CreatedContainer,
     ImageRegistry,
 };
+use crate::docker::DockerClient;
+use bollard::Docker;
 use tokio::io::AsyncBufReadExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 mod containers;
+mod docker;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -16,6 +19,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
         )
         .init();
+
+    let docker_client = DockerClient::new(Docker::connect_with_defaults()?);
+    docker_client
+        .export_image_unpacked("alpine:latest", "target/images/alpine-latest")
+        .await?;
 
     // Base: Image registry that maps image names to rootfs directories
     let registry = ImageRegistry::new("target/images");
