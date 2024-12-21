@@ -1,17 +1,19 @@
-use bollard::container::Config;
-use bollard::Docker;
-use futures_util::TryStreamExt;
-use snafu::{IntoError, NoneError, ResultExt, Snafu};
+use snafu::{ensure, IntoError, NoneError, ResultExt, Snafu};
+use std::fs::File;
 use std::path::Path;
-use tokio::io::AsyncWriteExt;
-use tokio::task::spawn_blocking;
+use std::process::Command;
 
 #[derive(Debug, Snafu)]
 pub enum DockerError {
-    #[snafu(display("Docker communication error: {message}"))]
-    Docker {
-        source: bollard::errors::Error,
+    #[snafu(display("Error running Docker command `{message}`"))]
+    DockerCall {
+        source: std::io::Error,
         message: &'static str,
+    },
+    #[snafu(display("Unknown docker response {message}: {response}"))]
+    UnknownDockerResponse {
+        message: &'static str,
+        response: String,
     },
     #[snafu(display("Image `{image}` not found"))]
     ImageNotFound { image: String },
@@ -19,103 +21,99 @@ pub enum DockerError {
     TarExportIo { source: std::io::Error },
     #[snafu(display("Error creating or writing to tempfile"))]
     TempfileIo { source: std::io::Error },
-    #[snafu(display("Error untarring image"))]
-    Untar { source: tokio::task::JoinError },
 }
 
-#[derive(Debug)]
-pub struct DockerClient {
-    docker: Docker,
-}
-
-impl DockerClient {
-    pub fn new(docker: Docker) -> Self {
-        Self { docker }
-    }
-
-    pub async fn export_image_to_tar(
-        &self,
-        image_name: &str,
-        target: &Path,
-    ) -> Result<(), DockerError> {
-        let image_exists = self
-            .docker
-            .list_images::<String>(None)
-            .await
-            .context(DockerSnafu {
-                message: "while listing images",
-            })?
-            .into_iter()
-            .any(|it| it.repo_tags.contains(&image_name.to_string()));
-
-        if !image_exists {
+pub fn export_image_to_tar(image_name: &str, target: &Path) -> Result<(), DockerError> {
+    let output = Command::new("docker")
+        .arg("image")
+        .arg("inspect")
+        .arg(image_name)
+        .output()
+        .context(DockerCallSnafu {
+            message: "verifying image exists",
+        })?;
+    if !output.status.success() {
+        if String::from_utf8_lossy(&output.stdout) == "[]" {
             return Err(ImageNotFoundSnafu {
                 image: image_name.to_string(),
             }
             .into_error(NoneError));
         }
-
-        let mut file = tokio::fs::File::create(target)
-            .await
-            .context(TarExportIoSnafu)?;
-
-        let container = self
-            .docker
-            .create_container::<String, String>(
-                None,
-                Config {
-                    image: Some(image_name.to_string()),
-                    ..Default::default()
-                },
-            )
-            .await
-            .context(DockerSnafu {
-                message: "while creating container",
-            })?;
-
-        let mut tarball = self.docker.export_container(&container.id);
-
-        loop {
-            let chunk = tarball.try_next().await;
-            match chunk {
-                Err(e) => {
-                    let _ = self.docker.remove_container(&container.id, None).await;
-                    return Err(DockerSnafu {
-                        message: "while exporting container",
-                    }
-                    .into_error(e));
-                }
-                Ok(Some(chunk)) => {
-                    if let Err(e) = file.write_all(&chunk).await {
-                        let _ = self.docker.remove_container(&container.id, None).await;
-                        return Err(TarExportIoSnafu.into_error(e));
-                    }
-                }
-                Ok(None) => break,
-            }
+        return Err(UnknownDockerResponseSnafu {
+            message: "while inspecting image",
+            response: String::from_utf8_lossy(&output.stderr).to_string(),
         }
-
-        let _ = self.docker.remove_container(&container.id, None).await;
-
-        Ok(())
+        .into_error(NoneError));
     }
 
-    pub async fn export_image_unpacked(
-        &self,
-        image_name: &str,
-        target_folder: impl AsRef<Path>,
-    ) -> Result<(), DockerError> {
-        let dir = tempfile::tempdir().context(TempfileIoSnafu)?;
-        let tarball_path = dir.path().join("image.tar");
-        self.export_image_to_tar(image_name, &tarball_path).await?;
+    // Touch the file to ensure we can actually write to it
+    File::create(target).context(TarExportIoSnafu)?;
 
-        let target_folder = target_folder.as_ref().to_path_buf();
-        spawn_blocking(move || {
-            tar::Archive::new(std::fs::File::open(tarball_path).context(TempfileIoSnafu)?)
-                .unpack(target_folder)
-                .context(TempfileIoSnafu)
-        })
-        .await
-        .context(UntarSnafu)?
-    }
+    let res = Command::new("docker")
+        .arg("create")
+        .arg("-q")
+        .arg(image_name)
+        .output()
+        .context(DockerCallSnafu {
+            message: "creating container",
+        })?;
+
+    ensure!(
+        res.status.success(),
+        UnknownDockerResponseSnafu {
+            message: "while creating container",
+            response: String::from_utf8_lossy(&res.stderr).to_string(),
+        }
+    );
+
+    let container_id = String::from_utf8_lossy(&res.stdout).trim().to_string();
+
+    let res = Command::new("docker")
+        .arg("export")
+        .arg(&container_id)
+        .arg("-o")
+        .arg(target)
+        .output()
+        .context(DockerCallSnafu {
+            message: "exporting image",
+        })?;
+
+    ensure!(
+        res.status.success(),
+        UnknownDockerResponseSnafu {
+            message: "while exporting container",
+            response: String::from_utf8_lossy(&res.stderr).to_string(),
+        }
+    );
+
+    let res = Command::new("docker")
+        .arg("rm")
+        .arg(&container_id)
+        .output()
+        .context(DockerCallSnafu {
+            message: "deleting container",
+        })?;
+
+    ensure!(
+        res.status.success(),
+        UnknownDockerResponseSnafu {
+            message: "while removing container",
+            response: String::from_utf8_lossy(&res.stderr).to_string(),
+        }
+    );
+
+    Ok(())
+}
+
+pub fn export_image_unpacked(
+    image_name: &str,
+    target_folder: impl AsRef<Path>,
+) -> Result<(), DockerError> {
+    let dir = tempfile::tempdir().context(TempfileIoSnafu)?;
+    let tarball_path = dir.path().join("image.tar");
+    export_image_to_tar(image_name, &tarball_path)?;
+
+    tar::Archive::new(File::open(tarball_path).context(TempfileIoSnafu)?)
+        .unpack(target_folder.as_ref())
+        .context(TarExportIoSnafu)
 }

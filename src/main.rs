@@ -1,7 +1,6 @@
 use crate::containers::ImageRegistry;
-use crate::docker::DockerClient;
+use crate::docker::export_image_unpacked;
 use crate::executor::Executor;
-use bollard::Docker;
 use tracing::info;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -19,15 +18,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .init();
 
-    let docker_client = DockerClient::new(Docker::connect_with_defaults()?);
-    docker_client
-        .export_image_unpacked("alpine:latest", "target/images/alpine-latest")
-        .await?;
+    export_image_unpacked("alpine:latest", "target/images/alpine-latest")?;
 
     // Base: Image registry that maps image names to rootfs directories
     let registry = ImageRegistry::new("target/images");
     let image = registry.get_images()?[0].clone();
-    let executor = Executor::new(docker_client, registry);
+    let executor = Executor::new(registry);
 
     let res = executor
         .build_main_container(image, &["/bin/sh", "-c", "echo Hello, world!"])

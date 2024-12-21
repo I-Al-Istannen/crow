@@ -3,7 +3,6 @@ use crate::containers::{
     ContainerCreateError, ContainerDestroyError, CreatedContainer, ImageId, ImageRegistry,
     StartedContainer,
 };
-use crate::docker::DockerClient;
 use snafu::futures::TryFutureExt;
 use snafu::{ensure, ResultExt, Snafu};
 use std::io;
@@ -50,16 +49,12 @@ pub struct ContainerTestResult {
 }
 
 pub struct Executor {
-    docker: DockerClient,
     image_registry: ImageRegistry,
 }
 
 impl Executor {
-    pub fn new(docker: DockerClient, image_registry: ImageRegistry) -> Self {
-        Self {
-            docker,
-            image_registry,
-        }
+    pub fn new(image_registry: ImageRegistry) -> Self {
+        Self { image_registry }
     }
 
     pub async fn build_main_container(

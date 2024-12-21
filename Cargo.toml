@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bollard = "0.18.1"
 derive_more = { version = "1.0.0", features = ["full"] }
 futures-util = "0.3.31"
 serde = { version = "1.0.215", features = ["derive"] }
