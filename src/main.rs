@@ -1,16 +1,13 @@
-use crate::containers::ImageRegistry;
-use crate::docker::export_image_unpacked;
-use crate::executor::Executor;
+use crate::containers::TaskContainer;
+use crate::docker::ImageId;
 use tracing::info;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 mod containers;
 mod docker;
-mod executor;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
         .with(
@@ -18,46 +15,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .init();
 
-    export_image_unpacked("alpine:latest", "target/images/alpine-latest")?;
+    let container = TaskContainer::new(
+        &ImageId("alpine:latest".to_string()),
+        &["/bin/sh", "-c", "echo Hello, world!"],
+    )?;
 
-    // Base: Image registry that maps image names to rootfs directories
-    let registry = ImageRegistry::new("target/images");
-    let image = registry.get_images()?[0].clone();
-    let executor = Executor::new(registry);
+    let container = container.run()?;
+    let container = container.wait_for_build()?;
 
-    let res = executor
-        .build_main_container(image, &["/bin/sh", "-c", "echo Hello, world!"])
-        .await?;
-
-    info!("Compiler build result: {:?}", res);
-
-    let build_container = res.container;
+    info!("Compiler build result: {:?}", container.data);
 
     let args = [
         "/bin/sh",
         "-c",
         "echo 'hey' >> /tmp/foo.txt && cat /tmp/foo.txt",
     ];
-    println!(
-        "{:?}",
-        executor
-            .run_test(build_container.container(), &args)
-            .await?
-    );
-    println!(
-        "{:?}",
-        executor
-            .run_test(build_container.container(), &args)
-            .await?
-    );
-    println!(
-        "{:?}",
-        executor
-            .run_test(build_container.container(), &args)
-            .await?
-    );
-
-    build_container.destroy().await?;
+    println!("{:?}", container.run_test(&args)?);
+    println!("{:?}", container.run_test(&args)?);
+    println!("{:?}", container.run_test(&args)?);
 
     // Create and run the build container
     //  1. Call a standardized entrypoint

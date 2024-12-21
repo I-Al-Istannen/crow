@@ -1,14 +1,13 @@
+use crate::docker::{export_image_unpacked, DockerError, ImageId};
 use derive_more::{Display, From};
 use serde::Deserialize;
 use snafu::{IntoError, NoneError, ResultExt, Snafu};
-use std::io;
+use std::fs::create_dir;
+use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
-use std::time::Duration;
+use std::process::{Child, ChildStderr, ChildStdout, Command, ExitStatus, Stdio};
+use std::{fs, io, thread};
 use tempfile::TempDir;
-use tokio::io::{AsyncRead, AsyncReadExt};
-use tokio::process::Command;
-use tokio::time;
 use tracing::{debug, error};
 use uuid::Uuid;
 
@@ -23,7 +22,7 @@ pub enum RunConfigError {
 #[derive(Snafu, Debug)]
 pub enum ContainerCreateError {
     #[snafu(display("Could not copy image rootfs"))]
-    ImageCopy { source: io::Error },
+    ImageCopy { source: DockerError },
     #[snafu(display("Could not apply container config"))]
     ConfigApply { source: RunConfigError },
     #[snafu(display("Could not create temporary directory"))]
@@ -52,10 +51,16 @@ pub enum ContainerDestroyError {
     },
     #[snafu(display("Could not delete directory `{path:?}`"))]
     DirNotDeleted { source: io::Error, path: PathBuf },
-    #[snafu(display("Multiple errors occurred: {errors:?}"))]
-    Multiple { errors: Vec<ContainerDestroyError> },
-    #[snafu(display("Container `{container_id}` was leaked and left alive"))]
-    LeakedProcess { container_id: ContainerId },
+}
+
+#[derive(Snafu, Debug)]
+pub enum TestRunError {
+    #[snafu(display("Could not create temporary directory"))]
+    Creation { source: ContainerCreateError },
+    #[snafu(display("Error running container"))]
+    ExecutionStart { source: io::Error },
+    #[snafu(display("Error getting container output"))]
+    Execution { source: io::Error },
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -67,66 +72,13 @@ pub struct RuncLogMessage {
     pub time: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Display)]
-pub struct ImageId(String);
-
-#[derive(Debug)]
-pub struct ImageRegistry {
-    directory: PathBuf,
-}
-
-impl ImageRegistry {
-    pub fn new(directory: impl AsRef<Path>) -> Self {
-        Self {
-            directory: directory.as_ref().to_path_buf(),
-        }
-    }
-
-    pub fn get_images(&self) -> io::Result<Vec<ImageId>> {
-        Ok(std::fs::read_dir(&self.directory)?
-            .collect::<io::Result<Vec<_>>>()?
-            .into_iter()
-            .filter(|e| e.file_type().map(|t| t.is_dir()).unwrap_or(false))
-            .map(|e| e.file_name().to_string_lossy().to_string())
-            .map(ImageId)
-            .collect::<Vec<_>>())
-    }
-
-    pub async fn copy_image_rootfs(&self, image: &ImageId, target: &Path) -> io::Result<()> {
-        let image_rootfs = self.directory.join(&image.0);
-
-        if !image_rootfs.exists() {
-            return Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                format!("Image {} not found", image),
-            ));
-        }
-
-        let output = Command::new("cp")
-            .arg("-r")
-            .arg(image_rootfs)
-            .arg(target)
-            .output()
-            .await?;
-
-        if !output.status.success() {
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!("Failed to copy rootfs: {:?}", output.stderr),
-            ));
-        }
-
-        Ok(())
-    }
-}
-
 pub enum ContainerConfig {
     WritableRootfs,
     OverlayRootfs,
 }
 
 impl ContainerConfig {
-    pub async fn apply_to_workdir(
+    pub fn apply_to_workdir(
         &self,
         rootfs: &Path,
         workdir: &Path,
@@ -143,26 +95,20 @@ impl ContainerConfig {
                         &serde_json::to_string(args).context(ArgsNotJsonSnafu)?,
                     );
 
-                tokio::fs::write(&path_config, config)
-                    .await
-                    .context(FileWriteSnafu {
-                        path: path_config.to_path_buf(),
-                    })?;
+                fs::write(&path_config, config).context(FileWriteSnafu {
+                    path: path_config.to_path_buf(),
+                })?;
             }
             ContainerConfig::OverlayRootfs => {
                 let path_upper = workdir.join("overlay-upper");
                 let path_work = workdir.join("overlay-work");
 
-                tokio::fs::create_dir(&path_upper)
-                    .await
-                    .context(FileWriteSnafu {
-                        path: path_upper.to_path_buf(),
-                    })?;
-                tokio::fs::create_dir(&path_work)
-                    .await
-                    .context(FileWriteSnafu {
-                        path: path_work.to_path_buf(),
-                    })?;
+                create_dir(&path_upper).context(FileWriteSnafu {
+                    path: path_upper.to_path_buf(),
+                })?;
+                create_dir(&path_work).context(FileWriteSnafu {
+                    path: path_work.to_path_buf(),
+                })?;
 
                 let config = include_str!("../resources/runc-overlay.json")
                     .replace("{rootfs}", &rootfs.display().to_string())
@@ -174,11 +120,9 @@ impl ContainerConfig {
                     .replace("{upper_dir}", &path_upper.display().to_string())
                     .replace("{work_dir}", &path_work.display().to_string());
 
-                tokio::fs::write(&path_config, config)
-                    .await
-                    .context(FileWriteSnafu {
-                        path: path_config.to_path_buf(),
-                    })?;
+                fs::write(&path_config, config).context(FileWriteSnafu {
+                    path: path_config.to_path_buf(),
+                })?;
             }
         }
 
@@ -186,176 +130,209 @@ impl ContainerConfig {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct TestRunResult {
+    pub stdout: String,
+    pub stderr: String,
+    pub exit_status: ExitStatus,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, From, Display)]
 pub struct ContainerId(String);
 
+#[derive(Debug, Clone)]
+pub struct Created;
+
+#[derive(Debug)]
+pub struct Started {
+    stdout: ChildStdout,
+    stderr: ChildStderr,
+    process: Child,
+}
+
+#[derive(Debug, Clone)]
+pub struct Built {
+    pub stdout: String,
+    pub stderr: String,
+    pub exit_status: ExitStatus,
+}
+
 #[derive(Debug)]
 #[must_use]
-pub struct CreatedContainer {
-    workdir: TempDir,
+pub struct TaskContainer<T> {
+    workdir: PathBuf,
     rootfs: PathBuf,
     container_id: ContainerId,
+    do_cleanup: bool,
+    pub data: T,
 }
 
-impl CreatedContainer {
-    pub fn container_id(&self) -> &ContainerId {
-        &self.container_id
+impl TaskContainer<()> {
+    pub fn new(
+        image: &ImageId,
+        args: &[&str],
+    ) -> Result<TaskContainer<Created>, ContainerCreateError> {
+        let workdir = TempDir::new().context(TempDirCreationSnafu)?;
+        let path_rootfs = workdir.path().join("rootfs");
+
+        // We modify the rootfs during the build process (as these changes are replicated into each
+        // container), so we need to copy it.
+        export_image_unpacked(image, &path_rootfs).context(ImageCopySnafu)?;
+
+        ContainerConfig::WritableRootfs
+            .apply_to_workdir(&path_rootfs, workdir.path(), args)
+            .context(ConfigApplySnafu)?;
+
+        Ok(TaskContainer {
+            workdir: workdir.into_path(),
+            rootfs: path_rootfs,
+            container_id: ContainerId(Uuid::new_v4().to_string()),
+            do_cleanup: true,
+            data: Created,
+        })
     }
+}
 
-    pub fn rootfs(&self) -> &Path {
-        &self.rootfs
+impl TaskContainer<Created> {
+    pub fn run(mut self) -> io::Result<TaskContainer<Started>> {
+        let mut process = start_container(&self.workdir, &self.container_id)?;
+
+        let stdout = process.stdout.take();
+        let stderr = process.stderr.take();
+
+        // Do not delete us on drop, we still live on in the new task container
+        self.do_cleanup = false;
+
+        Ok(TaskContainer {
+            rootfs: self.rootfs.clone(),
+            workdir: self.workdir.clone(),
+            container_id: self.container_id.clone(),
+            do_cleanup: true,
+            data: Started {
+                stdout: stdout.unwrap(),
+                stderr: stderr.unwrap(),
+                process,
+            },
+        })
     }
 }
 
-pub async fn create_build_container(
-    registry: &ImageRegistry,
-    image: &ImageId,
-    args: &[&str],
-) -> Result<CreatedContainer, ContainerCreateError> {
-    let workdir = TempDir::new().context(TempDirCreationSnafu)?;
-    let path_rootfs = workdir.path().join("rootfs");
+impl TaskContainer<Started> {
+    pub fn wait_for_build(mut self) -> io::Result<TaskContainer<Built>> {
+        let (stdout, stderr, result) = wait_for_container(
+            &mut self.data.stdout,
+            &mut self.data.stderr,
+            &mut self.data.process,
+        )?;
 
-    // We modify the rootfs during the build process (as these changes are replicated into each
-    // container), so we need to copy it.
-    registry
-        .copy_image_rootfs(image, &path_rootfs)
-        .await
-        .context(ImageCopySnafu)?;
+        // Do not delete us on drop, we still live on in the new task container
+        self.do_cleanup = false;
 
-    ContainerConfig::WritableRootfs
-        .apply_to_workdir(&path_rootfs, workdir.path(), args)
-        .await
-        .context(ConfigApplySnafu)?;
-
-    Ok(CreatedContainer {
-        workdir,
-        rootfs: path_rootfs,
-        container_id: ContainerId(Uuid::new_v4().to_string()),
-    })
+        Ok(TaskContainer {
+            rootfs: self.rootfs.clone(),
+            workdir: self.workdir.clone(),
+            container_id: self.container_id.clone(),
+            do_cleanup: true,
+            data: Built {
+                stdout,
+                stderr,
+                exit_status: result,
+            },
+        })
+    }
 }
 
-pub async fn create_test_container(
-    build_container: &CreatedContainer,
-    args: &[&str],
-) -> Result<CreatedContainer, ContainerCreateError> {
-    let workdir = TempDir::new().context(TempDirCreationSnafu)?;
-    let rootfs = build_container.rootfs();
+impl TaskContainer<Built> {
+    pub fn run_test(&self, args: &[&str]) -> Result<TestRunResult, TestRunError> {
+        let workdir = TempDir::new()
+            .context(TempDirCreationSnafu)
+            .context(CreationSnafu)?;
+        let rootfs = &self.rootfs;
 
-    ContainerConfig::OverlayRootfs
-        .apply_to_workdir(rootfs, workdir.path(), args)
-        .await
-        .context(ConfigApplySnafu)?;
+        ContainerConfig::OverlayRootfs
+            .apply_to_workdir(rootfs, workdir.path(), args)
+            .context(ConfigApplySnafu)
+            .context(CreationSnafu)?;
 
-    Ok(CreatedContainer {
-        workdir,
-        rootfs: rootfs.to_path_buf(),
-        container_id: ContainerId(Uuid::new_v4().to_string()),
-    })
+        let container_id = ContainerId(Uuid::new_v4().to_string());
+
+        let mut process =
+            start_container(workdir.path(), &container_id).context(ExecutionStartSnafu)?;
+
+        let (stdout, stderr, result) = wait_for_container(
+            &mut process.stdout.take().unwrap(),
+            &mut process.stderr.take().unwrap(),
+            &mut process,
+        )
+        .context(ExecutionSnafu)?;
+
+        Ok(TestRunResult {
+            stdout,
+            stderr,
+            exit_status: result,
+        })
+    }
 }
 
-#[derive(Debug)]
-#[must_use]
-pub struct StartedContainer {
-    container: CreatedContainer,
-    process: tokio::process::Child,
-    pub stdout: Option<tokio::process::ChildStdout>,
-    pub stderr: Option<tokio::process::ChildStderr>,
-    cleaned_up: bool,
-}
+impl<T> Drop for TaskContainer<T> {
+    fn drop(&mut self) {
+        if !self.do_cleanup {
+            return;
+        }
 
-impl StartedContainer {
-    pub async fn destroy(mut self) -> Result<(), ContainerDestroyError> {
-        let mut errors = Vec::new();
-        if let Err(e) = kill_container(&self.container.container_id).await {
+        if let Err(e) = kill_container(&self.container_id) {
             error!(
                 error = ?e,
-                container = ?self.container,
-                process = ?self.process.id(),
+                container = ?self.container_id,
                 "Failed to kill container"
             );
-            errors.push(e);
         }
-        if let Err(e) = time::timeout(Duration::from_secs(5), self.process.wait()).await {
+        if let Err(e) = delete_container_dir(&self.container_id, &self.workdir) {
             error!(
                 error = ?e,
-                container = ?self.container,
-                process = ?self.process.id(),
-                "Container was still alive"
-            );
-            errors.push(
-                LeakedProcessSnafu {
-                    container_id: self.container.container_id.clone(),
-                }
-                .into_error(NoneError),
-            );
-        }
-
-        if let Err(e) =
-            delete_container_dir(&self.container.container_id, self.container.workdir.path()).await
-        {
-            error!(
-                error = ?e,
-                container = ?self.container,
+                container = ?self.container_id,
                 "Failed to delete container workdir"
             );
-            errors.push(e);
-        }
-
-        self.cleaned_up = true;
-
-        if !errors.is_empty() && errors.len() > 1 {
-            Err(MultipleSnafu { errors }.into_error(NoneError))
-        } else if !errors.is_empty() {
-            Err(errors.remove(0))
-        } else {
-            Ok(())
-        }
-    }
-
-    pub async fn await_death(&mut self) -> io::Result<std::process::ExitStatus> {
-        self.process.wait().await
-    }
-
-    pub fn container(&self) -> &CreatedContainer {
-        &self.container
-    }
-}
-
-impl Drop for StartedContainer {
-    fn drop(&mut self) {
-        if !self.cleaned_up {
-            error!(
-                container = ?self.container,
-                process = ?self.process.id(),
-                "Container was not cleaned up before dropping"
-            );
         }
     }
 }
 
-pub async fn run_container(container: CreatedContainer) -> Result<StartedContainer, io::Error> {
-    let mut process = Command::new("runc")
+fn start_container(workdir: &Path, container_id: &ContainerId) -> io::Result<Child> {
+    Command::new("runc")
         .arg("run")
-        .arg(container.container_id.to_string())
-        .current_dir(container.workdir.path())
+        .arg(container_id.to_string())
+        .current_dir(workdir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .stdin(Stdio::piped())
-        .spawn()?;
-
-    let stdout = process.stdout.take();
-    let stderr = process.stderr.take();
-
-    Ok(StartedContainer {
-        container,
-        process,
-        stdout,
-        stderr,
-        cleaned_up: false,
-    })
+        .spawn()
 }
 
-async fn kill_container(container_id: &ContainerId) -> Result<(), ContainerDestroyError> {
+fn wait_for_container(
+    stdout: &mut ChildStdout,
+    stderr: &mut ChildStderr,
+    process: &mut Child,
+) -> io::Result<(String, String, ExitStatus)> {
+    let (stdout, stderr, result) = thread::scope(|s| {
+        let stdout = s.spawn(|| {
+            let mut string = String::new();
+            let res = stdout.read_to_string(&mut string);
+            res.map(|_| string)
+        });
+        let stderr = s.spawn(|| {
+            let mut string = String::new();
+            let res = stderr.read_to_string(&mut string);
+            res.map(|_| string)
+        });
+        let result = process.wait();
+
+        (stdout.join().unwrap(), stderr.join().unwrap(), result)
+    });
+
+    Ok((stdout?, stderr?, result?))
+}
+
+fn kill_container(container_id: &ContainerId) -> Result<(), ContainerDestroyError> {
     debug!(container_id = %container_id, "Killing container");
 
     let res = Command::new("runc")
@@ -365,7 +342,6 @@ async fn kill_container(container_id: &ContainerId) -> Result<(), ContainerDestr
         // We directly SIGKILL, the container does not have any persistent state anyway
         .arg("KILL")
         .output()
-        .await
         .context(KillInvocationSnafu {
             container_id: container_id.clone(),
         })?;
@@ -410,7 +386,7 @@ async fn kill_container(container_id: &ContainerId) -> Result<(), ContainerDestr
     }
 }
 
-async fn delete_container_dir(
+fn delete_container_dir(
     container_id: &ContainerId,
     workdir: &Path,
 ) -> Result<(), ContainerDestroyError> {
@@ -424,7 +400,6 @@ async fn delete_container_dir(
         .arg("-rf")
         .arg(workdir)
         .output()
-        .await
         .context(DirNotDeletedSnafu {
             path: workdir.to_path_buf(),
         })?;
@@ -446,11 +421,4 @@ async fn delete_container_dir(
     }
 
     Ok(())
-}
-
-/// Reads an async read to a single String.
-pub async fn read_to_string(reader: &mut (impl AsyncRead + Unpin)) -> io::Result<String> {
-    let mut output = String::new();
-    reader.read_to_string(&mut output).await?;
-    Ok(output)
 }

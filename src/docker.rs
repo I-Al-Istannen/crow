@@ -1,3 +1,4 @@
+use derive_more::Display;
 use snafu::{ensure, IntoError, NoneError, ResultExt, Snafu};
 use std::fs::File;
 use std::path::Path;
@@ -16,18 +17,21 @@ pub enum DockerError {
         response: String,
     },
     #[snafu(display("Image `{image}` not found"))]
-    ImageNotFound { image: String },
+    ImageNotFound { image: ImageId },
     #[snafu(display("Error creating or writing to export file"))]
     TarExportIo { source: std::io::Error },
     #[snafu(display("Error creating or writing to tempfile"))]
     TempfileIo { source: std::io::Error },
 }
 
-pub fn export_image_to_tar(image_name: &str, target: &Path) -> Result<(), DockerError> {
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Display)]
+pub struct ImageId(pub String);
+
+pub fn export_image_to_tar(image: &ImageId, target: &Path) -> Result<(), DockerError> {
     let output = Command::new("docker")
         .arg("image")
         .arg("inspect")
-        .arg(image_name)
+        .arg(image.to_string())
         .output()
         .context(DockerCallSnafu {
             message: "verifying image exists",
@@ -35,7 +39,7 @@ pub fn export_image_to_tar(image_name: &str, target: &Path) -> Result<(), Docker
     if !output.status.success() {
         if String::from_utf8_lossy(&output.stdout) == "[]" {
             return Err(ImageNotFoundSnafu {
-                image: image_name.to_string(),
+                image: image.clone(),
             }
             .into_error(NoneError));
         }
@@ -52,7 +56,7 @@ pub fn export_image_to_tar(image_name: &str, target: &Path) -> Result<(), Docker
     let res = Command::new("docker")
         .arg("create")
         .arg("-q")
-        .arg(image_name)
+        .arg(image.to_string())
         .output()
         .context(DockerCallSnafu {
             message: "creating container",
@@ -106,7 +110,7 @@ pub fn export_image_to_tar(image_name: &str, target: &Path) -> Result<(), Docker
 }
 
 pub fn export_image_unpacked(
-    image_name: &str,
+    image_name: &ImageId,
     target_folder: impl AsRef<Path>,
 ) -> Result<(), DockerError> {
     let dir = tempfile::tempdir().context(TempfileIoSnafu)?;
