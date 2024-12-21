@@ -1,7 +1,7 @@
 use crate::docker::{export_image_unpacked, DockerError, ImageId};
 use derive_more::{Display, From};
 use serde::Deserialize;
-use snafu::{IntoError, NoneError, ResultExt, Snafu};
+use snafu::{IntoError, Location, NoneError, ResultExt, Snafu};
 use std::fs::create_dir;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -13,54 +13,108 @@ use uuid::Uuid;
 
 #[derive(Snafu, Debug)]
 pub enum RunConfigError {
-    #[snafu(display("Could not serialize arguments to json"))]
-    ArgsNotJson { source: serde_json::Error },
-    #[snafu(display("Could not write file {path:?}"))]
-    FileWrite { source: io::Error, path: PathBuf },
+    #[snafu(display("Could not serialize arguments to json at {location}"))]
+    ArgsNotJson {
+        source: serde_json::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not write file `{path:?}` at {location}"))]
+    FileWrite {
+        source: io::Error,
+        path: PathBuf,
+        #[snafu(implicit)]
+        location: Location,
+    },
 }
 
 #[derive(Snafu, Debug)]
 pub enum ContainerCreateError {
-    #[snafu(display("Could not copy image rootfs"))]
-    ImageCopy { source: DockerError },
-    #[snafu(display("Could not apply container config"))]
-    ConfigApply { source: RunConfigError },
-    #[snafu(display("Could not create temporary directory"))]
-    TempDirCreation { source: io::Error },
+    #[snafu(display("Could not copy image rootfs at {location}"))]
+    ImageCopy {
+        source: DockerError,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not apply container config at {location}"))]
+    ConfigApply {
+        source: RunConfigError,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not create temporary directory at {location}"))]
+    TempDirCreation {
+        source: io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
 }
 
 #[derive(Snafu, Debug)]
 pub enum ContainerDestroyError {
-    #[snafu(display("Could not execute kill command `{container_id}`"))]
+    #[snafu(display("Could not execute kill command for `{container_id}` at {location}"))]
     KillInvocation {
         container_id: ContainerId,
         source: io::Error,
+        #[snafu(implicit)]
+        location: Location,
     },
-    #[snafu(display("Could not kill container `{container_id}`: {message:?}"))]
+    #[snafu(display(
+        "Could not understand response to killing `{container_id}`: `{message:?}` at {location}"
+    ))]
     UnknownKillFailure {
         container_id: ContainerId,
         message: RuncLogMessage,
+        #[snafu(implicit)]
+        location: Location,
     },
     #[snafu(display(
-        "Could not parse container kill output for `{container_id}`: `{raw_output}`"
+        "Could not parse response to killing `{container_id}`: `{raw_output}` at {location}"
     ))]
     KillOutputUnparsable {
         container_id: ContainerId,
         source: serde_json::Error,
         raw_output: String,
+        #[snafu(implicit)]
+        location: Location,
     },
-    #[snafu(display("Could not delete directory `{path:?}`"))]
-    DirNotDeleted { source: io::Error, path: PathBuf },
+    #[snafu(display("Could not delete directory `{path:?}` at {location}"))]
+    DirNotDeleted {
+        source: io::Error,
+        path: PathBuf,
+        #[snafu(implicit)]
+        location: Location,
+    },
 }
 
 #[derive(Snafu, Debug)]
 pub enum TestRunError {
-    #[snafu(display("Could not create temporary directory"))]
-    Creation { source: ContainerCreateError },
-    #[snafu(display("Error running container"))]
-    ExecutionStart { source: io::Error },
-    #[snafu(display("Error getting container output"))]
-    Execution { source: io::Error },
+    #[snafu(display("Could not create a new temporary directory at {location}"))]
+    Creation {
+        source: ContainerCreateError,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not start the test container at {location}"))]
+    ExecutionStart {
+        source: io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not finish executing test container at {location}"))]
+    Execution {
+        source: io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display(
+        "Underlying build container failed with {exit_status}, can not run tests at {location}"
+    ))]
+    BaseNotBuilt {
+        exit_status: ExitStatus,
+        #[snafu(implicit)]
+        location: Location,
+    },
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -244,6 +298,13 @@ impl TaskContainer<Started> {
 
 impl TaskContainer<Built> {
     pub fn run_test(&self, args: &[&str]) -> Result<TestRunResult, TestRunError> {
+        if !self.data.exit_status.success() {
+            return Err(BaseNotBuiltSnafu {
+                exit_status: self.data.exit_status,
+            }
+            .into_error(NoneError));
+        }
+
         let workdir = TempDir::new()
             .context(TempDirCreationSnafu)
             .context(CreationSnafu)?;

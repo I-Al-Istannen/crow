@@ -1,27 +1,45 @@
 use derive_more::Display;
-use snafu::{ensure, IntoError, NoneError, ResultExt, Snafu};
+use snafu::{ensure, IntoError, Location, NoneError, ResultExt, Snafu};
 use std::fs::File;
 use std::path::Path;
 use std::process::Command;
 
 #[derive(Debug, Snafu)]
 pub enum DockerError {
-    #[snafu(display("Error running Docker command `{message}`"))]
+    #[snafu(display("Docker command failed {message} at {location}"))]
     DockerCall {
         source: std::io::Error,
         message: &'static str,
+        #[snafu(implicit)]
+        location: Location,
     },
-    #[snafu(display("Unknown docker response {message}: {response}"))]
+    #[snafu(display(
+        "Could not understand docker response {message}: `{response}` at {location}"
+    ))]
     UnknownDockerResponse {
         message: &'static str,
         response: String,
+        #[snafu(implicit)]
+        location: Location,
     },
-    #[snafu(display("Image `{image}` not found"))]
-    ImageNotFound { image: ImageId },
-    #[snafu(display("Error creating or writing to export file"))]
-    TarExportIo { source: std::io::Error },
-    #[snafu(display("Error creating or writing to tempfile"))]
-    TempfileIo { source: std::io::Error },
+    #[snafu(display("Could not find docker image `{image}` at {location}"))]
+    ImageNotFound {
+        image: ImageId,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not export tar file at {location}"))]
+    TarExportIo {
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not create/write tempfile at {location}"))]
+    TempfileIo {
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Display)]
@@ -37,7 +55,7 @@ pub fn export_image_to_tar(image: &ImageId, target: &Path) -> Result<(), DockerE
             message: "verifying image exists",
         })?;
     if !output.status.success() {
-        if String::from_utf8_lossy(&output.stdout) == "[]" {
+        if String::from_utf8_lossy(&output.stdout).trim() == "[]" {
             return Err(ImageNotFoundSnafu {
                 image: image.clone(),
             }
@@ -45,7 +63,7 @@ pub fn export_image_to_tar(image: &ImageId, target: &Path) -> Result<(), DockerE
         }
         return Err(UnknownDockerResponseSnafu {
             message: "while inspecting image",
-            response: String::from_utf8_lossy(&output.stderr).to_string(),
+            response: String::from_utf8_lossy(&output.stderr).trim().to_string(),
         }
         .into_error(NoneError));
     }
