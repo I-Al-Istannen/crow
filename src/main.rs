@@ -1,6 +1,7 @@
-use crate::containers::{ContainerCreateError, TaskContainer, TestRunError};
+use crate::containers::{ContainerCreateError, TaskContainer, TestRunError, WaitForContainerError};
 use crate::docker::ImageId;
 use snafu::{Location, Report, ResultExt, Snafu};
+use std::time::Duration;
 use tracing::info;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -20,7 +21,7 @@ pub enum AnyError {
     },
     #[snafu(display("Could not wait for build at {location}"))]
     WaitForBuild {
-        source: std::io::Error,
+        source: WaitForContainerError,
         #[snafu(implicit)]
         location: Location,
     },
@@ -49,18 +50,28 @@ fn main() -> Report<AnyError> {
         .context(CreateSnafu)?;
 
         let container = container.run().context(RunSnafu)?;
-        let container = container.wait_for_build().context(WaitForBuildSnafu)?;
+        let container = container.wait_for_build(None).context(WaitForBuildSnafu)?;
 
         info!("Compiler build result: {:?}", container.data);
 
         let args = [
-            "/bin/sh",
-            "-c",
-            "echo 'hey' >> /tmp/foo.txt && cat /tmp/foo.txt",
+            "/bin/sh", "-c", // "echo 'hey' >> /tmp/foo.txt && cat /tmp/foo.txt",
+            "sleep 5",
         ];
-        println!("{:?}", container.run_test(&args).context(TestRunSnafu)?);
-        println!("{:?}", container.run_test(&args).context(TestRunSnafu)?);
-        println!("{:?}", container.run_test(&args).context(TestRunSnafu)?);
+        println!(
+            "{:?}",
+            container
+                .run_test(&args, Some(Duration::from_secs(3)))
+                .context(TestRunSnafu)
+        );
+        println!(
+            "{:?}",
+            container.run_test(&args, None).context(TestRunSnafu)
+        );
+        println!(
+            "{:?}",
+            container.run_test(&args, None).context(TestRunSnafu)
+        );
 
         Ok(())
 

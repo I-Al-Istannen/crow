@@ -1,14 +1,17 @@
 use crate::docker::{export_image_unpacked, DockerError, ImageId};
 use derive_more::{Display, From};
 use serde::Deserialize;
-use snafu::{IntoError, Location, NoneError, ResultExt, Snafu};
+use snafu::{ensure, IntoError, Location, NoneError, ResultExt, Snafu};
 use std::fs::create_dir;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStderr, ChildStdout, Command, ExitStatus, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 use std::{fs, io, thread};
 use tempfile::TempDir;
-use tracing::{debug, error};
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 #[derive(Snafu, Debug)]
@@ -44,6 +47,24 @@ pub enum ContainerCreateError {
     },
     #[snafu(display("Could not create temporary directory at {location}"))]
     TempDirCreation {
+        source: io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+}
+
+#[derive(Snafu, Debug)]
+pub enum WaitForContainerError {
+    #[snafu(display("Timeout occurred after `{runtime:?}` while waiting at {location}"))]
+    Timeout {
+        runtime: Duration,
+        stdout: String,
+        stderr: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not wait for the running container at {location}"))]
+    WaitContainerIo {
         source: io::Error,
         #[snafu(implicit)]
         location: Location,
@@ -103,7 +124,7 @@ pub enum TestRunError {
     },
     #[snafu(display("Could not finish executing test container at {location}"))]
     Execution {
-        source: io::Error,
+        source: WaitForContainerError,
         #[snafu(implicit)]
         location: Location,
     },
@@ -272,11 +293,16 @@ impl TaskContainer<Created> {
 }
 
 impl TaskContainer<Started> {
-    pub fn wait_for_build(mut self) -> io::Result<TaskContainer<Built>> {
+    pub fn wait_for_build(
+        mut self,
+        timeout: Option<Duration>,
+    ) -> Result<TaskContainer<Built>, WaitForContainerError> {
         let (stdout, stderr, result) = wait_for_container(
+            &self.container_id,
             &mut self.data.stdout,
             &mut self.data.stderr,
             &mut self.data.process,
+            timeout,
         )?;
 
         // Do not delete us on drop, we still live on in the new task container
@@ -297,7 +323,11 @@ impl TaskContainer<Started> {
 }
 
 impl TaskContainer<Built> {
-    pub fn run_test(&self, args: &[&str]) -> Result<TestRunResult, TestRunError> {
+    pub fn run_test(
+        &self,
+        args: &[&str],
+        timeout: Option<Duration>,
+    ) -> Result<TestRunResult, TestRunError> {
         if !self.data.exit_status.success() {
             return Err(BaseNotBuiltSnafu {
                 exit_status: self.data.exit_status,
@@ -321,9 +351,11 @@ impl TaskContainer<Built> {
             start_container(workdir.path(), &container_id).context(ExecutionStartSnafu)?;
 
         let res = wait_for_container(
+            &container_id,
             &mut process.stdout.take().unwrap(),
             &mut process.stderr.take().unwrap(),
             &mut process,
+            timeout,
         );
 
         if let Err(e) = delete_container_dir(&container_id, workdir.path()) {
@@ -379,27 +411,67 @@ fn start_container(workdir: &Path, container_id: &ContainerId) -> io::Result<Chi
 }
 
 fn wait_for_container(
+    container_id: &ContainerId,
     stdout: &mut ChildStdout,
     stderr: &mut ChildStderr,
     process: &mut Child,
-) -> io::Result<(String, String, ExitStatus)> {
-    let (stdout, stderr, result) = thread::scope(|s| {
-        let stdout = s.spawn(|| {
-            let mut string = String::new();
-            let res = stdout.read_to_string(&mut string);
-            res.map(|_| string)
-        });
-        let stderr = s.spawn(|| {
-            let mut string = String::new();
-            let res = stderr.read_to_string(&mut string);
-            res.map(|_| string)
-        });
-        let result = process.wait();
+    timeout: Option<Duration>,
+) -> Result<(String, String, ExitStatus), WaitForContainerError> {
+    let start = Instant::now();
 
-        (stdout.join().unwrap(), stderr.join().unwrap(), result)
+    let (stdout, stderr, result, timeout) = thread::scope(|s| {
+        let stdout = s.spawn(|| read_to_string_ignore_errors(stdout));
+        let stderr = s.spawn(|| read_to_string_ignore_errors(stderr));
+
+        let process_died = Arc::new(AtomicBool::new(false));
+        let process_died_clone = process_died.clone();
+
+        let timeout = match timeout {
+            Some(timeout) => s.spawn(move || {
+                let target = Instant::now() + timeout;
+                while Instant::now() < target || process_died.load(Ordering::Acquire) {
+                    thread::sleep(Duration::from_millis(100));
+                }
+                if process_died.load(Ordering::Acquire) {
+                    Ok(false)
+                } else {
+                    kill_container(container_id).map(|_| true)
+                }
+            }),
+            None => s.spawn(|| Ok(false)),
+        };
+        let result = process.wait();
+        process_died_clone.store(true, Ordering::Release);
+
+        (
+            stdout.join().unwrap(),
+            stderr.join().unwrap(),
+            result,
+            timeout.join().unwrap(),
+        )
     });
 
-    Ok((stdout?, stderr?, result?))
+    let timeout_occurred = match timeout {
+        Ok(timeout) => timeout,
+        Err(e) => {
+            warn!(
+                container_id = %container_id,
+                error = ?e,
+                "Failed to kill container after timeout"
+            );
+            true
+        }
+    };
+    ensure!(
+        !timeout_occurred,
+        TimeoutSnafu {
+            runtime: Instant::now().duration_since(start),
+            stdout,
+            stderr,
+        }
+    );
+
+    Ok((stdout, stderr, result.context(WaitContainerIoSnafu)?))
 }
 
 fn kill_container(container_id: &ContainerId) -> Result<(), ContainerDestroyError> {
@@ -491,4 +563,10 @@ fn delete_container_dir(
     }
 
     Ok(())
+}
+
+fn read_to_string_ignore_errors(reader: &mut impl Read) -> String {
+    let mut buf = Vec::new();
+    let _ = reader.read_to_end(&mut buf);
+    String::from_utf8_lossy(&buf).to_string()
 }
