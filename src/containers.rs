@@ -320,12 +320,21 @@ impl TaskContainer<Built> {
         let mut process =
             start_container(workdir.path(), &container_id).context(ExecutionStartSnafu)?;
 
-        let (stdout, stderr, result) = wait_for_container(
+        let res = wait_for_container(
             &mut process.stdout.take().unwrap(),
             &mut process.stderr.take().unwrap(),
             &mut process,
-        )
-        .context(ExecutionSnafu)?;
+        );
+
+        if let Err(e) = delete_container_dir(&container_id, workdir.path()) {
+            error!(
+                error = ?e,
+                container = ?container_id,
+                "Failed to delete test container workdir"
+            );
+        }
+
+        let (stdout, stderr, result) = res.context(ExecutionSnafu)?;
 
         Ok(TestRunResult {
             stdout,
