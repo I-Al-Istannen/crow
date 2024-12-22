@@ -163,7 +163,7 @@ impl ContainerConfig {
         &self,
         rootfs: &Path,
         workdir: &Path,
-        args: &[&str],
+        args: &[String],
     ) -> Result<(), RunConfigError> {
         let path_config = workdir.join("config.json");
 
@@ -216,6 +216,7 @@ pub struct TestRunResult {
     pub stdout: String,
     pub stderr: String,
     pub exit_status: ExitStatus,
+    pub runtime: Duration,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, From, Display)]
@@ -236,6 +237,7 @@ pub struct Built {
     pub stdout: String,
     pub stderr: String,
     pub exit_status: ExitStatus,
+    pub runtime: Duration,
 }
 
 #[derive(Debug)]
@@ -251,7 +253,7 @@ pub struct TaskContainer<T> {
 impl TaskContainer<()> {
     pub fn new(
         image: &ImageId,
-        args: &[&str],
+        args: &[String],
     ) -> Result<TaskContainer<Created>, ContainerCreateError> {
         let workdir = TempDir::new().context(TempDirCreationSnafu)?;
         let path_rootfs = workdir.path().join("rootfs");
@@ -304,7 +306,7 @@ impl TaskContainer<Started> {
         timeout: Duration,
     ) -> Result<TaskContainer<Built>, WaitForContainerError> {
         info!("Waiting");
-        let (stdout, stderr, result) = wait_for_container(
+        let (stdout, stderr, result, runtime) = wait_for_container(
             &self.container_id,
             &mut self.data.stdout,
             &mut self.data.stderr,
@@ -325,6 +327,7 @@ impl TaskContainer<Started> {
                 stdout,
                 stderr,
                 exit_status: result,
+                runtime,
             },
         })
     }
@@ -333,7 +336,7 @@ impl TaskContainer<Started> {
 impl TaskContainer<Built> {
     pub fn run_test(
         &self,
-        args: &[&str],
+        args: &[String],
         timeout: Duration,
     ) -> Result<TestRunResult, TestRunError> {
         if !self.data.exit_status.success() {
@@ -374,12 +377,13 @@ impl TaskContainer<Built> {
             );
         }
 
-        let (stdout, stderr, result) = res.context(ExecutionSnafu)?;
+        let (stdout, stderr, result, runtime) = res.context(ExecutionSnafu)?;
 
         Ok(TestRunResult {
             stdout,
             stderr,
             exit_status: result,
+            runtime,
         })
     }
 }
@@ -424,7 +428,7 @@ fn wait_for_container(
     stderr: &mut ChildStderr,
     process: &mut Child,
     timeout: Duration,
-) -> Result<(String, String, ExitStatus), WaitForContainerError> {
+) -> Result<(String, String, ExitStatus, Duration), WaitForContainerError> {
     unsafe {
         let flags = libc::fcntl(stdout.as_raw_fd(), libc::F_GETFL, 0);
         libc::fcntl(stdout.as_raw_fd(), libc::F_SETFL, flags | libc::O_NONBLOCK);
@@ -475,7 +479,7 @@ fn wait_for_container(
     let stderr = String::from_utf8_lossy(&stderr_buf).to_string();
 
     match exit_status {
-        Ok(status) => Ok((stdout, stderr, status)),
+        Ok(status) => Ok((stdout, stderr, status, Instant::now().duration_since(start))),
         Err(_) => Err(TimeoutSnafu {
             runtime: Instant::now().duration_since(start),
             stdout,

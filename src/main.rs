@@ -8,6 +8,8 @@ use tracing_subscriber::util::SubscriberInitExt;
 
 mod containers;
 mod docker;
+mod executor;
+mod types;
 
 #[derive(Debug, Snafu)]
 pub enum AnyError {
@@ -45,7 +47,11 @@ fn main() -> Report<AnyError> {
 
         let container = TaskContainer::new(
             &ImageId("alpine:latest".to_string()),
-            &["/bin/sh", "-c", "echo Hello, world!"],
+            &[
+                "/bin/sh".to_string(),
+                "-c".to_string(),
+                "echo Hello, world!".to_string(),
+            ],
         )
         .context(CreateSnafu)?;
 
@@ -57,8 +63,9 @@ fn main() -> Report<AnyError> {
         info!("Compiler build result: {:?}", container.data);
 
         let args = [
-            "/bin/sh", "-c", // "echo 'hey' >> /tmp/foo.txt && cat /tmp/foo.txt",
-            "sleep 5",
+            "/bin/sh".to_string(),
+            "-c".to_string(),
+            "echo 'hey' >> /tmp/foo.txt && cat /tmp/foo.txt".to_string(),
         ];
         println!(
             "{:?}",
