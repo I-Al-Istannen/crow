@@ -7,10 +7,12 @@ use std::io::Read;
 use std::os::fd::AsRawFd;
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStderr, ChildStdout, Command, ExitStatus, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::{fs, io, thread};
 use tempfile::TempDir;
-use tracing::{debug, error, info};
+use tracing::{debug, error, warn};
 use uuid::Uuid;
 
 #[derive(Snafu, Debug)]
@@ -62,6 +64,14 @@ pub enum WaitForContainerError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display("Was asked and aborted run after {runtime:?} at {location}"))]
+    Aborted {
+        runtime: Duration,
+        stdout: String,
+        stderr: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
     #[snafu(display("Could not wait for the running container at {location}"))]
     WaitContainerIo {
         source: io::Error,
@@ -70,6 +80,13 @@ pub enum WaitForContainerError {
     },
     #[snafu(display("Could not kill container `{container_id}` at {location}"))]
     WaitContainerKillFailed {
+        container_id: ContainerId,
+        source: ContainerDestroyError,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Killed container `{container_id}` as waiting failed at {location}"))]
+    WaitContainerWaitFailed {
         container_id: ContainerId,
         source: io::Error,
         #[snafu(implicit)]
@@ -304,8 +321,10 @@ impl TaskContainer<Started> {
     pub fn wait_for_build(
         mut self,
         timeout: Duration,
+        aborted: Arc<AtomicBool>,
     ) -> Result<TaskContainer<Built>, WaitForContainerError> {
         let (stdout, stderr, result, runtime) = wait_for_container(
+            aborted,
             &self.container_id,
             &mut self.data.stdout,
             &mut self.data.stderr,
@@ -336,6 +355,7 @@ impl TaskContainer<Built> {
         &self,
         args: &[String],
         timeout: Duration,
+        aborted: Arc<AtomicBool>,
     ) -> Result<TestRunResult, TestRunError> {
         if !self.data.exit_status.success() {
             return Err(BaseNotBuiltSnafu {
@@ -360,6 +380,7 @@ impl TaskContainer<Built> {
             start_container(workdir.path(), &container_id).context(ExecutionStartSnafu)?;
 
         let res = wait_for_container(
+            aborted,
             &container_id,
             &mut process.stdout.take().unwrap(),
             &mut process.stderr.take().unwrap(),
@@ -421,6 +442,7 @@ fn start_container(workdir: &Path, container_id: &ContainerId) -> io::Result<Chi
 }
 
 fn wait_for_container(
+    aborted: Arc<AtomicBool>,
     container_id: &ContainerId,
     stdout: &mut ChildStdout,
     stderr: &mut ChildStderr,
@@ -449,16 +471,45 @@ fn wait_for_container(
             stderr_buf.extend_from_slice(&tmpbuf[..count]);
         }
 
+        if aborted.load(Ordering::Relaxed) {
+            if let Err(e) = kill_container(container_id) {
+                error!(
+                    container_id = %container_id,
+                    error = ?e,
+                    "Failed to kill container after abort"
+                );
+                return Err(WaitContainerKillFailedSnafu {
+                    container_id: container_id.clone(),
+                }
+                .into_error(e));
+            }
+            return Err(AbortedSnafu {
+                runtime: Instant::now().duration_since(start),
+                stdout: String::from_utf8_lossy(&stdout_buf).to_string(),
+                stderr: String::from_utf8_lossy(&stderr_buf).to_string(),
+            }
+            .into_error(NoneError));
+        }
+
         match process.try_wait() {
             Err(e) => {
+                warn!(
+                    container_id = %container_id,
+                    error = ?e,
+                    "Error while waiting for container"
+                );
                 if let Err(e) = kill_container(container_id) {
                     error!(
                         container_id = %container_id,
                         error = ?e,
                         "Failed to kill container after wait error"
                     );
+                    return Err(WaitContainerKillFailedSnafu {
+                        container_id: container_id.clone(),
+                    }
+                    .into_error(e));
                 }
-                return Err(WaitContainerKillFailedSnafu {
+                return Err(WaitContainerWaitFailedSnafu {
                     container_id: container_id.clone(),
                 }
                 .into_error(e));

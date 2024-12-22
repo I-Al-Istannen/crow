@@ -1,11 +1,10 @@
 use crate::containers::{ContainerCreateError, TaskContainer, TestRunError, WaitForContainerError};
 use crate::docker::ImageId;
-use shared::{
-    CompilerTask, FinishedCompilerTask, FinishedExecution, FinishedTest, InternalError,
-};
 use rayon::ThreadPool;
+use shared::{CompilerTask, FinishedCompilerTask, FinishedExecution, FinishedTest, InternalError};
 use snafu::{Location, Report, ResultExt, Snafu};
-use std::sync::mpsc;
+use std::sync::atomic::AtomicBool;
+use std::sync::{mpsc, Arc};
 use tracing::error;
 
 #[derive(Debug, Snafu)]
@@ -30,23 +29,29 @@ pub enum TaskRunError {
     },
 }
 
-pub fn execute_task(task: CompilerTask, pool: &ThreadPool) -> FinishedCompilerTask {
-    let task_id = task.run_id.clone();
-    match execute_task_impl(task, pool) {
+pub struct ExecutingTask<'a> {
+    pub inner: CompilerTask,
+    pub pool: &'a ThreadPool,
+    pub aborted: Arc<AtomicBool>,
+}
+
+pub fn execute_task(task: ExecutingTask) -> FinishedCompilerTask {
+    let task_id = task.inner.run_id.clone();
+    match execute_task_impl(task) {
         Ok(res) => res,
         Err(e) => finished_task_from_task_run_error(task_id, e),
     }
 }
 
-fn execute_task_impl(
-    task: CompilerTask,
-    pool: &ThreadPool,
-) -> Result<FinishedCompilerTask, TaskRunError> {
+fn execute_task_impl(task: ExecutingTask) -> Result<FinishedCompilerTask, TaskRunError> {
+    let pool = task.pool;
+    let aborted = task.aborted;
+    let task = task.inner;
     let container = TaskContainer::new(&ImageId(task.image), &task.build_command)
         .context(ContainerCreateSnafu)?;
     let container = container.run().context(ContainerRunSnafu)?;
     let container = container
-        .wait_for_build(task.build_timeout)
+        .wait_for_build(task.build_timeout, aborted.clone())
         .context(WaitForBuildSnafu)?;
 
     let test_results = pool.scope(|s| {
@@ -55,8 +60,9 @@ fn execute_task_impl(
         for test in task.tests {
             let tx = tx.clone();
             let container = &container;
+            let aborted = aborted.clone();
             s.spawn(move |_| {
-                let res = container.run_test(&test.run_command, test.timeout);
+                let res = container.run_test(&test.run_command, test.timeout, aborted);
                 let res = tx.send((test.test_id.clone(), res));
                 if let Err(e) = res {
                     error!(

@@ -1,13 +1,15 @@
 use crate::containers::{ContainerCreateError, TestRunError, WaitForContainerError};
-use crate::executor::execute_task;
+use crate::executor::{execute_task, ExecutingTask};
 use clap::builder::styling::AnsiColor;
 use clap::builder::Styles;
 use clap::Parser;
 use rayon::ThreadPoolBuilder;
-use shared::{CompilerTask, CompilerTest};
-use snafu::{Location, Report, Snafu};
-use std::time::Duration;
-use tracing::info;
+use shared::CompilerTask;
+use snafu::{Location, Report, ResultExt, Snafu};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use tracing::{info, warn};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -37,6 +39,12 @@ pub enum AnyError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display("Could not build thread pool at {location}"))]
+    ThreadPoolBuild {
+        source: rayon::ThreadPoolBuildError,
+        #[snafu(implicit)]
+        location: Location,
+    },
 }
 
 const CLAP_STYLE: Styles = Styles::styled()
@@ -63,33 +71,56 @@ fn main() -> Report<AnyError> {
             )
             .init();
 
-        let test = CompilerTest {
-            test_id: "test".to_string(),
-            timeout: Duration::from_secs(3),
-            run_command: vec![
-                "/bin/sh".to_string(),
-                "-c".to_string(),
-                "echo 'hey' >> /tmp/foo.txt && cat /tmp/foo.txt".to_string(),
-            ],
-        };
-        let tests = vec![test.clone(), test.clone(), test.clone()];
+        let args = Args::parse();
 
-        let res = execute_task(
-            CompilerTask {
-                run_id: "test".to_string(),
-                image: "alpine:latest".to_string(),
-                build_command: vec![
-                    "/bin/sh".to_string(),
-                    "-c".to_string(),
-                    "echo Hello, world!".to_string(),
-                ],
-                build_timeout: Duration::from_secs(200000),
-                tests,
-            },
-            &ThreadPoolBuilder::new().build().unwrap(),
-        );
+        let thread_pool = ThreadPoolBuilder::new()
+            .build()
+            .context(ThreadPoolBuildSnafu)?;
 
-        info!("Result: {:#?}", res);
+        let mut current_backoff = Duration::from_secs(1);
+        let stop_requested = Arc::new(AtomicBool::new(false));
+
+        register_termination_handler(&stop_requested);
+
+        while !stop_requested.load(Ordering::Relaxed) {
+            let response = match reqwest::blocking::get(&args.endpoint) {
+                Err(e) => {
+                    warn!(
+                        error = ?Report::from_error(e),
+                        endpoint = ?args.endpoint,
+                        next_retry = ?current_backoff,
+                        "Failed to poll endpoint"
+                    );
+                    backoff(&mut current_backoff, &stop_requested);
+                    continue;
+                }
+                Ok(response) => response,
+            };
+            let task = match response.json::<CompilerTask>() {
+                Err(e) => {
+                    warn!(
+                        error = ?Report::from_error(e),
+                        endpoint = ?args.endpoint,
+                        next_retry = ?current_backoff,
+                        "Failed to parse task"
+                    );
+                    backoff(&mut current_backoff, &stop_requested);
+                    continue;
+                }
+                Ok(task) => task,
+            };
+            let run_id = task.run_id.clone();
+            info!(id = run_id, "Received task");
+            let task = ExecutingTask {
+                inner: task,
+                pool: &thread_pool,
+                aborted: stop_requested.clone(),
+            };
+            let res = execute_task(task);
+            info!(id = run_id, res = ?res, "Task finished");
+        }
+
+        info!("Goodbye!");
 
         Ok(())
 
@@ -119,4 +150,29 @@ fn main() -> Report<AnyError> {
         //     2. Delete the workdir (mounts must be dead at this point)
         //   4. Return result
     })
+}
+
+fn register_termination_handler(stop_requested: &Arc<AtomicBool>) {
+    let stop_requested_clone = stop_requested.clone();
+    let ctrlc_result = ctrlc::set_handler(move || {
+        stop_requested_clone.store(true, Ordering::Relaxed);
+    });
+
+    if let Err(e) = ctrlc_result {
+        warn!(
+            error = ?e,
+            "Could not register termination handler, program behaviour on SIGINT/SIGTERM is undefined"
+        );
+    }
+}
+
+fn backoff(current_backoff: &mut Duration, stop_requested: &Arc<AtomicBool>) {
+    // We need to be responsive to stop requests (CTRL+C), so we can't just sleep for
+    // the full duration
+    let target = Instant::now() + *current_backoff;
+    while Instant::now() < target && !stop_requested.load(Ordering::Relaxed) {
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    *current_backoff *= 2;
+    *current_backoff = (*current_backoff).min(Duration::from_secs(60));
 }

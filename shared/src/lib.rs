@@ -1,6 +1,7 @@
 use std::time::Duration;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompilerTask {
     pub run_id: String,
     pub image: String,
@@ -9,7 +10,7 @@ pub struct CompilerTask {
     pub tests: Vec<CompilerTest>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompilerTest {
     pub test_id: String,
     pub timeout: Duration,
@@ -17,7 +18,7 @@ pub struct CompilerTest {
     // TODO: Files?
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FinishedExecution {
     pub stdout: String,
     pub stderr: String,
@@ -26,19 +27,19 @@ pub struct FinishedExecution {
     pub timeout: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InternalError {
     pub message: String,
     pub id: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FinishedTest {
     pub test_id: String,
     pub output: Result<FinishedExecution, InternalError>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum FinishedCompilerTask {
     BuildFailed {
         build_output: Result<FinishedExecution, InternalError>,
