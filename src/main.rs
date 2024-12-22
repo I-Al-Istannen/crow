@@ -1,6 +1,9 @@
 use crate::containers::{ContainerCreateError, TestRunError, WaitForContainerError};
 use crate::executor::execute_task;
 use crate::types::{CompilerTask, CompilerTest};
+use clap::builder::styling::AnsiColor;
+use clap::builder::Styles;
+use clap::Parser;
 use rayon::ThreadPoolBuilder;
 use snafu::{Location, Report, Snafu};
 use std::time::Duration;
@@ -35,6 +38,20 @@ pub enum AnyError {
         #[snafu(implicit)]
         location: Location,
     },
+}
+
+const CLAP_STYLE: Styles = Styles::styled()
+    .header(AnsiColor::Red.on_default().bold())
+    .usage(AnsiColor::Red.on_default().bold())
+    .literal(AnsiColor::Blue.on_default().bold())
+    .placeholder(AnsiColor::Green.on_default());
+
+/// Executor of compiler tasks, crow of judgement.
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None, styles = CLAP_STYLE)]
+struct Args {
+    /// Endpoint to poll for work updates
+    endpoint: String,
 }
 
 fn main() -> Report<AnyError> {
