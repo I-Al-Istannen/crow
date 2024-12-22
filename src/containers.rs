@@ -305,7 +305,6 @@ impl TaskContainer<Started> {
         mut self,
         timeout: Duration,
     ) -> Result<TaskContainer<Built>, WaitForContainerError> {
-        info!("Waiting");
         let (stdout, stderr, result, runtime) = wait_for_container(
             &self.container_id,
             &mut self.data.stdout,
@@ -313,7 +312,6 @@ impl TaskContainer<Started> {
             &mut self.data.process,
             timeout,
         )?;
-        info!("Done waiting");
 
         // Do not delete us on drop, we still live on in the new task container
         self.do_cleanup = false;

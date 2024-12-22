@@ -13,7 +13,7 @@ pub struct CompilerTask {
 pub struct CompilerTest {
     pub test_id: String,
     pub timeout: Duration,
-    pub arguments: Vec<String>,
+    pub run_command: Vec<String>,
     // TODO: Files?
 }
 

@@ -1,6 +1,8 @@
-use crate::containers::{ContainerCreateError, TaskContainer, TestRunError, WaitForContainerError};
-use crate::docker::ImageId;
-use snafu::{Location, Report, ResultExt, Snafu};
+use crate::containers::{ContainerCreateError, TestRunError, WaitForContainerError};
+use crate::executor::execute_task;
+use crate::types::{CompilerTask, CompilerTest};
+use rayon::ThreadPoolBuilder;
+use snafu::{Location, Report, Snafu};
 use std::time::Duration;
 use tracing::info;
 use tracing_subscriber::layer::SubscriberExt;
@@ -45,46 +47,33 @@ fn main() -> Report<AnyError> {
             )
             .init();
 
-        let container = TaskContainer::new(
-            &ImageId("alpine:latest".to_string()),
-            &[
+        let test = CompilerTest {
+            test_id: "test".to_string(),
+            timeout: Duration::from_secs(3),
+            run_command: vec![
                 "/bin/sh".to_string(),
                 "-c".to_string(),
-                "echo Hello, world!".to_string(),
+                "echo 'hey' >> /tmp/foo.txt && cat /tmp/foo.txt".to_string(),
             ],
-        )
-        .context(CreateSnafu)?;
+        };
+        let tests = vec![test.clone(), test.clone(), test.clone()];
 
-        let container = container.run().context(RunSnafu)?;
-        let container = container
-            .wait_for_build(Duration::from_secs(200000))
-            .context(WaitForBuildSnafu)?;
+        let res = execute_task(
+            CompilerTask {
+                run_id: "test".to_string(),
+                image: "alpine:latest".to_string(),
+                build_command: vec![
+                    "/bin/sh".to_string(),
+                    "-c".to_string(),
+                    "echo Hello, world!".to_string(),
+                ],
+                build_timeout: Duration::from_secs(200000),
+                tests,
+            },
+            &ThreadPoolBuilder::new().build().unwrap(),
+        );
 
-        info!("Compiler build result: {:?}", container.data);
-
-        let args = [
-            "/bin/sh".to_string(),
-            "-c".to_string(),
-            "echo 'hey' >> /tmp/foo.txt && cat /tmp/foo.txt".to_string(),
-        ];
-        println!(
-            "{:?}",
-            container
-                .run_test(&args, Duration::from_secs(3))
-                .context(TestRunSnafu)
-        );
-        println!(
-            "{:?}",
-            container
-                .run_test(&args, Duration::from_secs(200000))
-                .context(TestRunSnafu)
-        );
-        println!(
-            "{:?}",
-            container
-                .run_test(&args, Duration::from_secs(200000))
-                .context(TestRunSnafu)
-        );
+        info!("Result: {:#?}", res);
 
         Ok(())
 

@@ -4,7 +4,7 @@ use crate::types::{
     CompilerTask, FinishedCompilerTask, FinishedExecution, FinishedTest, InternalError,
 };
 use rayon::ThreadPool;
-use snafu::{Location, ResultExt, Snafu};
+use snafu::{Location, Report, ResultExt, Snafu};
 use std::sync::mpsc;
 use tracing::error;
 
@@ -56,7 +56,7 @@ fn execute_task_impl(
             let tx = tx.clone();
             let container = &container;
             s.spawn(move |_| {
-                let res = container.run_test(&test.arguments, test.timeout);
+                let res = container.run_test(&test.run_command, test.timeout);
                 let res = tx.send((test.test_id.clone(), res));
                 if let Err(e) = res {
                     error!(
@@ -67,6 +67,10 @@ fn execute_task_impl(
                 }
             });
         }
+
+        // Drop the original tx so that the receiver is collected when all threads are done
+        drop(tx);
+
         let mut results = Vec::new();
         while let Ok(val) = rx.recv() {
             results.push(val);
@@ -127,15 +131,16 @@ fn finished_task_from_task_run_error(task_id: String, e: TaskRunError) -> Finish
     }
 
     // We have *some* internal error
+    let report = Report::from_error(e);
     error!(
-        error = ?e,
+        error = ?report,
         task_id = task_id.as_str(),
         "Internal error while building task"
     );
 
     FinishedCompilerTask::BuildFailed {
         build_output: Err(InternalError {
-            message: "Internal error while running task".to_string(),
+            message: format!("Internal error while building task:\n{}", report),
             id: task_id,
         }),
     }
@@ -167,15 +172,16 @@ fn result_from_test_run_error(
     }
 
     // We have *some* internal error
+    let report = Report::from_error(e);
     error!(
-        error = ?e,
+        error = ?report,
         test_id = test_id.as_str(),
         task_id = task_id.as_str(),
         "Internal error while running test"
     );
 
     Err(InternalError {
-        message: "Internal error while running test".to_string(),
+        message: format!("Internal error while running test:\n{}", report),
         id: test_id,
     })
 }
