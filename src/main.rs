@@ -50,7 +50,9 @@ fn main() -> Report<AnyError> {
         .context(CreateSnafu)?;
 
         let container = container.run().context(RunSnafu)?;
-        let container = container.wait_for_build(None).context(WaitForBuildSnafu)?;
+        let container = container
+            .wait_for_build(Duration::from_secs(200000))
+            .context(WaitForBuildSnafu)?;
 
         info!("Compiler build result: {:?}", container.data);
 
@@ -61,16 +63,20 @@ fn main() -> Report<AnyError> {
         println!(
             "{:?}",
             container
-                .run_test(&args, Some(Duration::from_secs(3)))
+                .run_test(&args, Duration::from_secs(3))
                 .context(TestRunSnafu)
         );
         println!(
             "{:?}",
-            container.run_test(&args, None).context(TestRunSnafu)
+            container
+                .run_test(&args, Duration::from_secs(200000))
+                .context(TestRunSnafu)
         );
         println!(
             "{:?}",
-            container.run_test(&args, None).context(TestRunSnafu)
+            container
+                .run_test(&args, Duration::from_secs(200000))
+                .context(TestRunSnafu)
         );
 
         Ok(())
