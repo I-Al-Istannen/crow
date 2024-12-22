@@ -1,10 +1,10 @@
 use crate::containers::{ContainerCreateError, TestRunError, WaitForContainerError};
 use crate::executor::execute_task;
-use crate::types::{CompilerTask, CompilerTest};
 use clap::builder::styling::AnsiColor;
 use clap::builder::Styles;
 use clap::Parser;
 use rayon::ThreadPoolBuilder;
+use shared::{CompilerTask, CompilerTest};
 use snafu::{Location, Report, Snafu};
 use std::time::Duration;
 use tracing::info;
@@ -14,7 +14,6 @@ use tracing_subscriber::util::SubscriberInitExt;
 mod containers;
 mod docker;
 mod executor;
-mod types;
 
 #[derive(Debug, Snafu)]
 pub enum AnyError {

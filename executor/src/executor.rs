@@ -1,6 +1,6 @@
 use crate::containers::{ContainerCreateError, TaskContainer, TestRunError, WaitForContainerError};
 use crate::docker::ImageId;
-use crate::types::{
+use shared::{
     CompilerTask, FinishedCompilerTask, FinishedExecution, FinishedTest, InternalError,
 };
 use rayon::ThreadPool;
