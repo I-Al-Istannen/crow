@@ -416,7 +416,7 @@ fn start_container(workdir: &Path, container_id: &ContainerId) -> io::Result<Chi
         .current_dir(workdir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .stdin(Stdio::piped())
+        .stdin(Stdio::null())
         .spawn()
 }
 
