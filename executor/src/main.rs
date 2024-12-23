@@ -127,32 +127,6 @@ fn main() -> Report<AnyError> {
         info!("Goodbye!");
 
         Ok(())
-
-        // Create and run the build container
-        //  1. Call a standardized entrypoint
-        //    1. Stream the log output directly to a higher layer (might take a while to build).
-        //       maybe even force colors or emulate a PTY in the build inside the container.
-        //    2. stdout/stderr are both recorded and passed through
-        //    3. size limits on output?
-        //  2. Capture results (stdout, stderr, exit code, time)
-        //  3. Commit rootfs somehow (previously created overlayfs? Or copy the original rootfs and use
-        //     the resulting, modified FS as new rootfs?)
-
-        // Create a test container
-        //   1. Create a working dir
-        //   2. Create the overlayfs mount (or let runc do it)
-        //   3. Render the runc config
-        // Run the test container
-        //   1. Build the test case program and execute it (standardized entrypoint)
-        //   2. Wait for death
-        //     1. Stream the log output directly to a higher layer? Or buffer with size limit and return
-        //        at the end?
-        //     2. Capture results (stdout, stderr, exit code, time)
-        //     3. Kill container after timeout
-        //   3. On container death
-        //     1. Unmount all mounts (none if runc did it)
-        //     2. Delete the workdir (mounts must be dead at this point)
-        //   4. Return result
     })
 }
 

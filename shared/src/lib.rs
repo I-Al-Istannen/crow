@@ -1,5 +1,5 @@
-use std::time::Duration;
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompilerTask {
@@ -24,7 +24,13 @@ pub struct FinishedExecution {
     pub stderr: String,
     pub runtime: Duration,
     pub exit_status: Option<i32>,
-    pub timeout: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AbortedExecution {
+    pub stdout: String,
+    pub stderr: String,
+    pub runtime: Duration,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,15 +40,23 @@ pub struct InternalError {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ExecutionOutput {
+    Finished(FinishedExecution),
+    Timeout(FinishedExecution),
+    Error(InternalError),
+    Aborted(AbortedExecution),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FinishedTest {
     pub test_id: String,
-    pub output: Result<FinishedExecution, InternalError>,
+    pub output: ExecutionOutput,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum FinishedCompilerTask {
     BuildFailed {
-        build_output: Result<FinishedExecution, InternalError>,
+        build_output: ExecutionOutput,
     },
     RanTests {
         build_output: FinishedExecution,

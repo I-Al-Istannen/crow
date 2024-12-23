@@ -1,7 +1,10 @@
 use crate::containers::{ContainerCreateError, TaskContainer, TestRunError, WaitForContainerError};
 use crate::docker::ImageId;
 use rayon::ThreadPool;
-use shared::{CompilerTask, FinishedCompilerTask, FinishedExecution, FinishedTest, InternalError};
+use shared::{
+    AbortedExecution, CompilerTask, ExecutionOutput, FinishedCompilerTask, FinishedExecution,
+    FinishedTest, InternalError,
+};
 use snafu::{Location, Report, ResultExt, Snafu};
 use std::sync::atomic::AtomicBool;
 use std::sync::{mpsc, Arc};
@@ -39,7 +42,7 @@ pub fn execute_task(task: ExecutingTask) -> FinishedCompilerTask {
     let task_id = task.inner.run_id.clone();
     match execute_task_impl(task) {
         Ok(res) => res,
-        Err(e) => finished_task_from_task_run_error(task_id, e),
+        Err(e) => task_run_error_to_task(task_id, e),
     }
 }
 
@@ -88,14 +91,13 @@ fn execute_task_impl(task: ExecutingTask) -> Result<FinishedCompilerTask, TaskRu
     let mut finished_tests = Vec::new();
     for (test_id, res) in test_results {
         let output = match res {
-            Ok(res) => Ok(FinishedExecution {
+            Ok(res) => ExecutionOutput::Finished(FinishedExecution {
                 stdout: res.stdout,
                 stderr: res.stderr,
                 runtime: res.runtime,
                 exit_status: None,
-                timeout: false,
             }),
-            Err(e) => result_from_test_run_error(task_id.clone(), test_id.clone(), e),
+            Err(e) => test_run_error_to_output(task_id.clone(), test_id.clone(), e),
         };
 
         finished_tests.push(FinishedTest { test_id, output });
@@ -107,33 +109,16 @@ fn execute_task_impl(task: ExecutingTask) -> Result<FinishedCompilerTask, TaskRu
             stderr: container.data.stderr.clone(),
             runtime: container.data.runtime,
             exit_status: None,
-            timeout: false,
         },
         tests: finished_tests,
     })
 }
 
-fn finished_task_from_task_run_error(task_id: String, e: TaskRunError) -> FinishedCompilerTask {
-    if let TaskRunError::WaitForBuild {
-        source:
-            WaitForContainerError::Timeout {
-                runtime,
-                stdout,
-                stderr,
-                ..
-            },
-        ..
-    } = &e
-    {
-        return FinishedCompilerTask::BuildFailed {
-            build_output: Ok(FinishedExecution {
-                stdout: stdout.clone(),
-                stderr: stderr.clone(),
-                runtime: *runtime,
-                exit_status: None,
-                timeout: true,
-            }),
-        };
+fn task_run_error_to_task(task_id: String, e: TaskRunError) -> FinishedCompilerTask {
+    if let TaskRunError::WaitForBuild { source, .. } = &e {
+        if let Some(build_output) = execution_output_from_wait_error(source) {
+            return FinishedCompilerTask::BuildFailed { build_output };
+        }
     }
 
     // We have *some* internal error
@@ -145,36 +130,18 @@ fn finished_task_from_task_run_error(task_id: String, e: TaskRunError) -> Finish
     );
 
     FinishedCompilerTask::BuildFailed {
-        build_output: Err(InternalError {
+        build_output: ExecutionOutput::Error(InternalError {
             message: format!("Internal error while building task:\n{}", report),
             id: task_id,
         }),
     }
 }
 
-fn result_from_test_run_error(
-    task_id: String,
-    test_id: String,
-    e: TestRunError,
-) -> Result<FinishedExecution, InternalError> {
-    if let TestRunError::Execution {
-        source:
-            WaitForContainerError::Timeout {
-                runtime,
-                stdout,
-                stderr,
-                ..
-            },
-        ..
-    } = &e
-    {
-        return Ok(FinishedExecution {
-            stdout: stdout.clone(),
-            stderr: stderr.clone(),
-            runtime: *runtime,
-            exit_status: None,
-            timeout: true,
-        });
+fn test_run_error_to_output(task_id: String, test_id: String, e: TestRunError) -> ExecutionOutput {
+    if let TestRunError::Execution { source, .. } = &e {
+        if let Some(res) = execution_output_from_wait_error(source) {
+            return res;
+        }
     }
 
     // We have *some* internal error
@@ -186,8 +153,40 @@ fn result_from_test_run_error(
         "Internal error while running test"
     );
 
-    Err(InternalError {
+    ExecutionOutput::Error(InternalError {
         message: format!("Internal error while running test:\n{}", report),
         id: test_id,
     })
+}
+
+fn execution_output_from_wait_error(error: &WaitForContainerError) -> Option<ExecutionOutput> {
+    if let WaitForContainerError::Timeout {
+        runtime,
+        stdout,
+        stderr,
+        ..
+    } = error
+    {
+        return Some(ExecutionOutput::Timeout(FinishedExecution {
+            stdout: stdout.clone(),
+            stderr: stderr.clone(),
+            runtime: *runtime,
+            exit_status: None,
+        }));
+    }
+    if let WaitForContainerError::Aborted {
+        runtime,
+        stdout,
+        stderr,
+        ..
+    } = error
+    {
+        return Some(ExecutionOutput::Aborted(AbortedExecution {
+            stdout: stdout.clone(),
+            stderr: stderr.clone(),
+            runtime: *runtime,
+        }));
+    }
+
+    None
 }
