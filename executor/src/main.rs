@@ -113,15 +113,15 @@ fn main() -> Report<AnyError> {
                 }
                 Ok(task) => task,
             };
-            let run_id = task.run_id.clone();
-            info!(id = run_id, "Received task");
+            let task_id = task.task_id.clone();
+            info!(id = task_id, "Received task");
             let task = ExecutingTask {
                 inner: task,
                 pool: &thread_pool,
                 aborted: stop_requested.clone(),
             };
             let res = execute_task(task);
-            info!(id = run_id, res = ?res, "Task finished");
+            info!(id = task_id, res = ?res, "Task finished");
         }
 
         info!("Goodbye!");

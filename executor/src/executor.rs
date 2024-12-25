@@ -39,7 +39,7 @@ pub struct ExecutingTask<'a> {
 }
 
 pub fn execute_task(task: ExecutingTask) -> FinishedCompilerTask {
-    let task_id = task.inner.run_id.clone();
+    let task_id = task.inner.task_id.clone();
     match execute_task_impl(task) {
         Ok(res) => res,
         Err(e) => task_run_error_to_task(task_id, e),
@@ -87,7 +87,7 @@ fn execute_task_impl(task: ExecutingTask) -> Result<FinishedCompilerTask, TaskRu
         results
     });
 
-    let task_id = task.run_id.clone();
+    let task_id = task.task_id.clone();
     let mut finished_tests = Vec::new();
     for (test_id, res) in test_results {
         let output = match res {

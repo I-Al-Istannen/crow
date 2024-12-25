@@ -3,7 +3,7 @@ use std::time::Duration;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompilerTask {
-    pub run_id: String,
+    pub task_id: String,
     pub image: String,
     pub build_command: Vec<String>,
     pub build_timeout: Duration,
