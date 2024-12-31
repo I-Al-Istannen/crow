@@ -1,0 +1,22 @@
+[package]
+name = "backend-web"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { version = "0.7.9", features = ["macros"] }
+clap = { version = "4.5.23", features = ["derive"] }
+derive_more = { version = "1.0.0", features = ["full"] }
+jsonwebtoken = "9.3.0"
+rand = "0.8.5"
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.134"
+snafu = { version = "0.8.5", features = ["std"] }
+sqlx = { version = "0.8.2", features = ["runtime-tokio", "sqlite"] }
+tokio = { version = "1.42.0", features = ["full"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json"] }
+toml = "0.8.19"
+axum-prometheus = "0.7.0"
+tower-http = { version = "0.6.2", features = ["cors", "trace"] }
+axum-extra = { version = "0.9.6", features = ["typed-header"] }
