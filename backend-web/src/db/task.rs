@@ -1,10 +1,12 @@
 use crate::error::WebError;
 use crate::types::{ExecutionExitStatus, TaskId};
 use shared::{
-    AbortedExecution, ExecutionOutput, FinishedCompilerTask, FinishedExecution, InternalError,
+    AbortedExecution, ExecutionOutput, FinishedCompilerTask, FinishedExecution, FinishedTest,
+    InternalError,
 };
 use sqlx::{query, Acquire, Sqlite, SqliteConnection};
-use std::time::Duration;
+use std::ops::Add;
+use std::time::{Duration, SystemTime};
 
 pub async fn add_finished_task(
     con: impl Acquire<'_, Database = Sqlite>,
@@ -53,7 +55,17 @@ pub async fn add_finished_task(
 
             for test in tests {
                 let test_exec_id = uuid::Uuid::new_v4().to_string();
+
                 record_execution_output(&mut con, &test_exec_id, &test.output).await?;
+
+                query!(
+                    "INSERT INTO TestResults (task_id, test_id, execution_id) VALUES (?, ?, ?)",
+                    task_id,
+                    test.test_id,
+                    test_exec_id
+                )
+                .execute(&mut *con)
+                .await?;
             }
         }
     }
@@ -61,6 +73,130 @@ pub async fn add_finished_task(
     con.commit().await?;
 
     Ok(())
+}
+
+pub async fn get_task(
+    con: impl Acquire<'_, Database = Sqlite>,
+    task_id: &TaskId,
+) -> Result<FinishedCompilerTask, WebError> {
+    let mut con = con.begin().await?;
+
+    let task = query!(
+        r#"
+        SELECT
+            task_id as "task_id!: TaskId",
+            start_time as "start_time!: u64",
+            execution_id as "execution_id!: String"
+        FROM Tasks
+        WHERE task_id = ?
+        "#,
+        task_id
+    )
+    .fetch_optional(&mut *con)
+    .await?;
+
+    let Some(task) = task else {
+        return Err(WebError::NotFound);
+    };
+
+    let build_output = get_execution(&mut con, &task.execution_id).await?;
+    let start = SystemTime::UNIX_EPOCH.add(Duration::from_millis(task.start_time));
+
+    if !build_output.produced_results() {
+        return Ok(FinishedCompilerTask::BuildFailed {
+            start,
+            build_output,
+        });
+    }
+
+    let tests = query!(
+        r#"
+        SELECT
+            test_id,
+            ExecutionResults.execution_id as "execution_id!",
+            stdout,
+            stderr,
+            error,
+            result,
+            duration_ms,
+            exit_code
+        FROM TestResults
+        JOIN ExecutionResults ON TestResults.execution_id = ExecutionResults.execution_id
+        WHERE task_id = ?"#,
+        task_id
+    )
+    .fetch_all(&mut *con)
+    .await?;
+
+    let mut finished_tests = Vec::new();
+    for test in tests {
+        let test_id = test.test_id;
+        let output = get_execution(&mut con, &test.execution_id).await?;
+        finished_tests.push(FinishedTest { test_id, output })
+    }
+
+    Ok(FinishedCompilerTask::RanTests {
+        start,
+        build_output: build_output.into_finished_execution().unwrap(),
+        tests: finished_tests,
+    })
+}
+
+pub async fn get_task_ids(con: &mut SqliteConnection) -> Result<Vec<TaskId>, WebError> {
+    Ok(query!(r#"SELECT task_id as "task_id!: TaskId" FROM Tasks"#)
+        .map(|it| it.task_id)
+        .fetch_all(con)
+        .await?)
+}
+
+async fn get_execution(
+    con: &mut SqliteConnection,
+    execution_id: &str,
+) -> Result<ExecutionOutput, WebError> {
+    let execution = query!(
+        r#"
+        SELECT 
+            execution_id,
+            stdout,
+            stderr,
+            error,
+            result as "result!: ExecutionExitStatus",
+            duration_ms as "duration_ms!: u64",
+            exit_code as "exit_code?: i32"
+        FROM ExecutionResults
+        WHERE execution_id = ?"#,
+        execution_id
+    )
+    .fetch_optional(con)
+    .await?;
+
+    let Some(execution) = execution else {
+        return Err(WebError::NotFound);
+    };
+
+    Ok(match execution.result {
+        ExecutionExitStatus::Aborted => ExecutionOutput::Aborted(AbortedExecution {
+            stdout: execution.stdout,
+            stderr: execution.stderr,
+            runtime: Duration::from_millis(execution.duration_ms),
+        }),
+        ExecutionExitStatus::Error => ExecutionOutput::Error(InternalError {
+            message: execution.error.unwrap_or("N/A".to_string()),
+            runtime: Duration::from_millis(execution.duration_ms),
+        }),
+        ExecutionExitStatus::Finished => ExecutionOutput::Finished(FinishedExecution {
+            stdout: execution.stdout,
+            stderr: execution.stderr,
+            runtime: Duration::from_millis(execution.duration_ms),
+            exit_status: execution.exit_code,
+        }),
+        ExecutionExitStatus::Timeout => ExecutionOutput::Timeout(FinishedExecution {
+            stdout: execution.stdout,
+            stderr: execution.stderr,
+            runtime: Duration::from_millis(execution.duration_ms),
+            exit_status: execution.exit_code,
+        }),
+    })
 }
 
 async fn record_execution_output(
@@ -122,8 +258,8 @@ async fn record_internal_error(
             (?, ?, ?, ?, ?, ?, ?)
         ",
         execution_id,
-        None::<&str>,
-        None::<&str>,
+        "",
+        "",
         e.message,
         ExecutionExitStatus::Error,
         runtime,

@@ -38,6 +38,21 @@ pub async fn get_queued_tasks(
     Ok(Json(state.db.get_queued_tasks().await?))
 }
 
+pub async fn get_task(
+    State(state): State<AppState>,
+    _claims: Claims,
+    Path(task_id): Path<TaskId>,
+) -> Result<Json<FinishedCompilerTask>, WebError> {
+    Ok(Json(state.db.get_task(&task_id).await?))
+}
+
+pub async fn list_task_ids(
+    State(state): State<AppState>,
+    _claims: Claims,
+) -> Result<Json<Vec<TaskId>>, WebError> {
+    Ok(Json(state.db.get_task_ids().await?))
+}
+
 pub async fn get_work(
     State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,

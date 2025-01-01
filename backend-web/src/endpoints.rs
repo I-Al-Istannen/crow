@@ -12,8 +12,10 @@ use serde::Serialize;
 use std::error::Error;
 
 pub use self::execution::get_queued_tasks;
+pub use self::execution::get_task;
 pub use self::execution::get_work;
 pub use self::execution::get_work_tar;
+pub use self::execution::list_task_ids;
 pub use self::execution::request_revision;
 pub use self::execution::runner_done;
 pub use self::repo::get_repo;

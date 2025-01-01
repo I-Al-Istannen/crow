@@ -134,6 +134,16 @@ impl Database {
         Ok(())
     }
 
+    pub async fn get_task(&self, task_id: &TaskId) -> Result<FinishedCompilerTask, WebError> {
+        let pool = self.read_lock().await;
+        task::get_task(&*pool, task_id).await
+    }
+
+    pub async fn get_task_ids(&self) -> Result<Vec<TaskId>, WebError> {
+        let pool = self.read_lock().await;
+        task::get_task_ids(&mut *pool.acquire().await?).await
+    }
+
     pub async fn add_test(&self, test: Test) -> Result<Test, WebError> {
         let pool = self.write_lock().await;
         test::add_test(&mut *pool.acquire().await?, test).await

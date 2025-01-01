@@ -2,8 +2,8 @@ use crate::auth::{Claims, Keys};
 use crate::config::Config;
 use crate::db::{Database, UserForAuth};
 use crate::endpoints::{
-    get_queued_tasks, get_repo, get_work, get_work_tar, list_tests, list_users, login,
-    request_revision, runner_done, set_team_repo, set_test, show_me_myself,
+    get_queued_tasks, get_repo, get_task, get_work, get_work_tar, list_task_ids, list_tests,
+    list_users, login, request_revision, runner_done, set_team_repo, set_test, show_me_myself,
 };
 use crate::error::WebError;
 use crate::types::{AppState, User, UserRole};
@@ -17,8 +17,13 @@ use axum_prometheus::{GenericMetricLayer, Handle, PrometheusMetricLayerBuilder};
 use clap::builder::styling::AnsiColor;
 use clap::builder::Styles;
 use clap::Parser;
+use shared::{
+    AbortedExecution, ExecutionOutput, FinishedCompilerTask, FinishedExecution, FinishedTest,
+    InternalError,
+};
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::time::{Duration, SystemTime};
 use std::{env, fs};
 use tokio::select;
 use tokio::signal::unix::{signal, SignalKind};
@@ -97,6 +102,57 @@ async fn main() {
         .await
         .unwrap();
     }
+    if db.get_task_ids().await.unwrap().is_empty() {
+        db.add_finished_task(
+            &"foobar".to_string().into(),
+            &FinishedCompilerTask::RanTests {
+                start: SystemTime::now(),
+                build_output: FinishedExecution {
+                    stdout: "stdout!".to_string(),
+                    stderr: "stderr!".to_string(),
+                    runtime: Duration::from_secs(42),
+                    exit_status: Some(0),
+                },
+                tests: vec![
+                    FinishedTest {
+                        test_id: "test1".to_string(),
+                        output: ExecutionOutput::Error(InternalError {
+                            message: "error".to_string(),
+                            runtime: Duration::from_secs(42),
+                        }),
+                    },
+                    FinishedTest {
+                        test_id: "test2".to_string(),
+                        output: ExecutionOutput::Aborted(AbortedExecution {
+                            stdout: "stdout".to_string(),
+                            stderr: "stderr".to_string(),
+                            runtime: Duration::from_secs(42),
+                        }),
+                    },
+                    FinishedTest {
+                        test_id: "test3".to_string(),
+                        output: ExecutionOutput::Timeout(FinishedExecution {
+                            stdout: "stdout!".to_string(),
+                            stderr: "stderr!".to_string(),
+                            runtime: Duration::from_secs(42),
+                            exit_status: None,
+                        }),
+                    },
+                    FinishedTest {
+                        test_id: "test4".to_string(),
+                        output: ExecutionOutput::Finished(FinishedExecution {
+                            stdout: "stdout!".to_string(),
+                            stderr: "stderr!".to_string(),
+                            runtime: Duration::from_secs(42),
+                            exit_status: Some(0),
+                        }),
+                    },
+                ],
+            },
+        )
+        .await
+        .unwrap();
+    }
 
     db.sync_teams(&config.teams).await.unwrap();
 
@@ -142,6 +198,8 @@ async fn main_server(
         .route("/queue/rev/:revision", put(request_revision))
         .route("/repo/:team_id", get(get_repo))
         .route("/repo/:team_id", put(set_team_repo))
+        .route("/tasks", get(list_task_ids))
+        .route("/tasks/:task_id", get(get_task))
         .route("/tests", get(list_tests))
         .route("/tests/:test_id", put(set_test))
         .route("/users", get(list_users).layer(require_admin))

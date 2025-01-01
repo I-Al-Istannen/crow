@@ -47,6 +47,23 @@ pub enum ExecutionOutput {
     Timeout(FinishedExecution),
 }
 
+impl ExecutionOutput {
+    pub fn produced_results(&self) -> bool {
+        matches!(
+            self,
+            ExecutionOutput::Finished(_) | ExecutionOutput::Timeout(_)
+        )
+    }
+
+    pub fn into_finished_execution(self) -> Option<FinishedExecution> {
+        match self {
+            ExecutionOutput::Finished(finished) => Some(finished),
+            ExecutionOutput::Timeout(finished) => Some(finished),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FinishedTest {
     pub test_id: String,
