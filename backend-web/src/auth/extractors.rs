@@ -23,14 +23,23 @@ impl FromRequestParts<AppState> for Claims {
 
     async fn from_request_parts(
         parts: &mut Parts,
-        _state: &AppState,
+        state: &AppState,
     ) -> Result<Self, Self::Rejection> {
         let TypedHeader(Authorization(bearer)) = parts
             .extract::<TypedHeader<Authorization<Bearer>>>()
             .await
             .map_err(|_| WebError::InvalidCredentials)?;
 
-        Ok(validate_jwt(bearer.token(), &_state.jwt_keys)?)
+        let mut claims = validate_jwt(bearer.token(), &state.jwt_keys)?;
+
+        // Update claims from DB to instantly process role changes (yes, this kind of
+        // defeats normal stateless JWT flows)
+        let Some(user) = state.db.get_user_for_login(&claims.sub).await? else {
+            return Err(WebError::InvalidCredentials);
+        };
+        claims.role = user.role;
+
+        Ok(claims)
     }
 }
 
