@@ -8,6 +8,8 @@ pub struct CompilerTask {
     pub task_id: String,
     pub image: String,
     pub build_command: Vec<String>,
+    #[serde(serialize_with = "serialize_duration")]
+    #[serde(deserialize_with = "deserialize_duration")]
     pub build_timeout: Duration,
     pub tests: Vec<CompilerTest>,
 }
@@ -16,9 +18,12 @@ pub struct CompilerTask {
 #[serde(rename_all = "camelCase")]
 pub struct CompilerTest {
     pub test_id: String,
+    #[serde(serialize_with = "serialize_duration")]
+    #[serde(deserialize_with = "deserialize_duration")]
     pub timeout: Duration,
     pub run_command: Vec<String>,
-    pub expected_output: String, // TODO: Files?
+    pub expected_output: String,
+    // TODO: Files?
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,6 +31,8 @@ pub struct CompilerTest {
 pub struct FinishedExecution {
     pub stdout: String,
     pub stderr: String,
+    #[serde(serialize_with = "serialize_duration")]
+    #[serde(deserialize_with = "deserialize_duration")]
     pub runtime: Duration,
     pub exit_status: Option<i32>,
 }
@@ -35,6 +42,8 @@ pub struct FinishedExecution {
 pub struct AbortedExecution {
     pub stdout: String,
     pub stderr: String,
+    #[serde(serialize_with = "serialize_duration")]
+    #[serde(deserialize_with = "deserialize_duration")]
     pub runtime: Duration,
 }
 
@@ -42,6 +51,8 @@ pub struct AbortedExecution {
 #[serde(rename_all = "camelCase")]
 pub struct InternalError {
     pub message: String,
+    #[serde(serialize_with = "serialize_duration")]
+    #[serde(deserialize_with = "deserialize_duration")]
     pub runtime: Duration,
 }
 
@@ -82,10 +93,14 @@ pub struct FinishedTest {
 #[serde(rename_all = "camelCase")]
 pub enum FinishedCompilerTask {
     BuildFailed {
+        #[serde(serialize_with = "serialize_system_time")]
+        #[serde(deserialize_with = "deserialize_system_time")]
         start: SystemTime,
         build_output: ExecutionOutput,
     },
     RanTests {
+        #[serde(serialize_with = "serialize_system_time")]
+        #[serde(deserialize_with = "deserialize_system_time")]
         start: SystemTime,
         build_output: FinishedExecution,
         tests: Vec<FinishedTest>,
@@ -133,4 +148,37 @@ pub struct RunnerWorkResponse {
 #[serde(rename_all = "camelCase")]
 pub struct RunnerRegisterResponse {
     pub reset: bool,
+}
+
+fn serialize_system_time<S>(time: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    let duration = time
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("Time went backwards");
+    serializer.serialize_u64(duration.as_millis() as u64)
+}
+
+fn deserialize_system_time<'de, D>(deserializer: D) -> Result<SystemTime, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let millis = u64::deserialize(deserializer)?;
+    Ok(SystemTime::UNIX_EPOCH + Duration::from_millis(millis))
+}
+
+fn serialize_duration<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_u64(duration.as_millis() as u64)
+}
+
+fn deserialize_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let millis = u64::deserialize(deserializer)?;
+    Ok(Duration::from_micros(millis))
 }
