@@ -51,7 +51,7 @@ pub async fn login(
     let user = auth_user.user;
     let token = auth::create_jwt(user.id.clone(), &state.jwt_keys, auth_user.role)?;
 
-    info!("Logged in user '{}'", user.id);
+    info!(user = %user.id, "Logged in user");
 
     Ok(Json(LoginResponse { user, token }))
 }
