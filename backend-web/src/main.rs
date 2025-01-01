@@ -3,8 +3,8 @@ use crate::config::Config;
 use crate::db::{Database, UserForAuth};
 use crate::endpoints::{
     get_queued_tasks, get_repo, get_task, get_work, get_work_tar, list_task_ids, list_tests,
-    list_users, login, request_revision, runner_done, runner_ping, set_team_repo, set_test,
-    show_me_myself,
+    list_users, login, request_revision, runner_done, runner_register, runner_update,
+    set_team_repo, set_test, show_me_myself,
 };
 use crate::error::WebError;
 use crate::storage::LocalRepos;
@@ -196,9 +196,10 @@ async fn main_server(
 
     let app = Router::new()
         .route("/executor/done", post(runner_done))
-        .route("/executor/ping", post(runner_ping))
+        .route("/executor/register", post(runner_register))
         .route("/executor/request-tar", get(get_work_tar))
         .route("/executor/request-work", post(get_work))
+        .route("/executor/update", post(runner_update))
         .route("/login", post(login))
         .route("/queue", get(get_queued_tasks))
         .route("/queue/rev/:revision", put(request_revision))

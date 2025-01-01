@@ -104,12 +104,20 @@ pub struct RunnerInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub enum RunnerUpdate {
+    StartedBuild,
+    FinishedBuild(FinishedExecution),
+    StartedTest(String),
+    FinishedTest(FinishedTest),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RunnerWorkResponse {
     pub task: Option<CompilerTask>,
     pub reset: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct RunnerPingResponse {
+pub struct RunnerRegisterResponse {
     pub reset: bool,
 }

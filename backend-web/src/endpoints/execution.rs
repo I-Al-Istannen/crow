@@ -10,8 +10,8 @@ use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
 use serde_json::json;
 use shared::{
-    CompilerTask, CompilerTest, FinishedCompilerTask, RunnerInfo, RunnerPingResponse,
-    RunnerWorkResponse,
+    CompilerTask, CompilerTest, FinishedCompilerTask, RunnerId, RunnerInfo, RunnerRegisterResponse,
+    RunnerUpdate, RunnerWorkResponse,
 };
 use snafu::Report;
 use tokio_util::io::ReaderStream;
@@ -63,11 +63,11 @@ pub async fn list_task_ids(
     Ok(Json(state.db.get_task_ids().await?))
 }
 
-pub async fn runner_ping(
+pub async fn runner_register(
     State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
     Json(runner): Json<RunnerInfo>,
-) -> Result<Json<RunnerPingResponse>, WebError> {
+) -> Result<Json<RunnerRegisterResponse>, WebError> {
     if state.execution_config.runner_token != auth.password() {
         return Err(WebError::InvalidCredentials);
     }
@@ -81,10 +81,26 @@ pub async fn runner_ping(
 
     if task != current_task {
         info!(runner = %runner.id, task = ?task, "Runner task changed, resetting it");
-        return Ok(Json(RunnerPingResponse { reset: true }));
+        return Ok(Json(RunnerRegisterResponse { reset: true }));
     }
 
-    Ok(Json(RunnerPingResponse { reset: false }))
+    Ok(Json(RunnerRegisterResponse { reset: false }))
+}
+
+pub async fn runner_update(
+    State(state): State<AppState>,
+    TypedHeader(auth): TypedHeader<Authorization<Basic>>,
+    Json(update): Json<RunnerUpdate>,
+) -> Result<(), WebError> {
+    if state.execution_config.runner_token != auth.password() {
+        return Err(WebError::InvalidCredentials);
+    }
+    let runner_id: RunnerId = auth.username().to_string().into();
+
+    // TODO: Handle update
+    info!(runner = %runner_id, update = ?update, "Runner update");
+
+    Ok(())
 }
 
 pub async fn get_work(

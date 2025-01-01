@@ -10,10 +10,12 @@ use clap::Parser;
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use reqwest::blocking::{Client, ClientBuilder};
 use reqwest::StatusCode;
-use shared::{RunnerInfo, RunnerWorkResponse};
+use shared::{RunnerInfo, RunnerUpdate, RunnerWorkResponse};
 use snafu::{Location, Report, ResultExt, Snafu};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::Receiver;
 use std::sync::Arc;
+use std::thread;
 use std::time::{Duration, Instant};
 use tracing::{info, warn};
 use tracing_subscriber::layer::SubscriberExt;
@@ -65,6 +67,7 @@ pub enum AnyError {
     },
 }
 
+// noinspection DuplicatedCode
 const CLAP_STYLE: Styles = Styles::styled()
     .header(AnsiColor::Red.on_default().bold())
     .usage(AnsiColor::Red.on_default().bold())
@@ -89,7 +92,20 @@ struct Endpoints {
     work: String,
     tar: String,
     done: String,
-    ping: String,
+    register: String,
+    update: String,
+}
+
+impl Endpoints {
+    pub fn new(base: &str) -> Self {
+        Self {
+            work: format!("{}/executor/request-work", base),
+            tar: format!("{}/executor/request-tar", base),
+            done: format!("{}/executor/done", base),
+            register: format!("{}/executor/register", base),
+            update: format!("{}/executor/update", base),
+        }
+    }
 }
 
 fn main() -> Report<AnyError> {
@@ -103,12 +119,7 @@ fn main() -> Report<AnyError> {
             .init();
 
         let args = Args::parse();
-        let endpoints = Endpoints {
-            work: format!("{}/executor/request-work", args.endpoint),
-            tar: format!("{}/executor/request-tar", args.endpoint),
-            done: format!("{}/executor/done", args.endpoint),
-            ping: format!("{}/executor/ping", args.endpoint),
-        };
+        let endpoints = Endpoints::new(&args.endpoint);
 
         let thread_pool = ThreadPoolBuilder::new()
             .build()
@@ -162,7 +173,7 @@ fn iteration(
         current_task: None,
     };
     client
-        .post(&endpoints.ping)
+        .post(&endpoints.register)
         .basic_auth(&args.id, Some(&args.token))
         .json(&runner_info)
         .send()
@@ -218,11 +229,7 @@ fn iteration(
     let task_id = task.task_id.clone();
 
     info!(id = task_id, "Received task");
-    let task = ExecutingTask {
-        inner: task,
-        pool: thread_pool,
-        aborted: shutdown_requested.clone(),
-    };
+    let (tx, rx) = std::sync::mpsc::channel();
     let source_tar = tempfile::NamedTempFile::new().context(TempFileSnafu)?;
     client
         .get(&endpoints.tar)
@@ -231,6 +238,14 @@ fn iteration(
         .context(ReqwestSnafu)?
         .copy_to(&mut source_tar.as_file())
         .context(ReqwestSnafu)?;
+
+    let task = ExecutingTask {
+        inner: task,
+        pool: thread_pool,
+        aborted: shutdown_requested.clone(),
+        message_channel: tx,
+    };
+    start_update_listener(args, endpoints, rx);
     let res = execute_task(task, source_tar.into_temp_path());
 
     info!(id = task_id, res = ?res, "Task finished");
@@ -242,6 +257,26 @@ fn iteration(
         .context(ReqwestSnafu)?;
 
     Ok(())
+}
+
+fn start_update_listener(args: &Args, endpoints: &Endpoints, rx: Receiver<RunnerUpdate>) {
+    let id = args.id.clone();
+    let token = args.token.clone();
+    let update_endpoint = endpoints.update.clone();
+
+    // This is a daemon thread, so we do not care about the stop flag
+    thread::spawn(move || {
+        let client = Client::new();
+        while let Ok(event) = rx.recv() {
+            client
+                .post(&update_endpoint)
+                .json(&event)
+                .basic_auth(&id, Some(&token))
+                .send()
+                .context(ReqwestSnafu)
+                .ok();
+        }
+    });
 }
 
 fn register_termination_handler(stop_requested: &Arc<AtomicBool>) {

@@ -5,7 +5,7 @@ use crate::docker::ImageId;
 use rayon::ThreadPool;
 use shared::{
     AbortedExecution, CompilerTask, ExecutionOutput, FinishedCompilerTask, FinishedExecution,
-    FinishedTest, InternalError,
+    FinishedTest, InternalError, RunnerUpdate,
 };
 use snafu::{Location, Report, ResultExt, Snafu};
 use std::sync::atomic::AtomicBool;
@@ -46,6 +46,7 @@ pub struct ExecutingTask<'a> {
     pub inner: CompilerTask,
     pub pool: &'a ThreadPool,
     pub aborted: Arc<AtomicBool>,
+    pub message_channel: mpsc::Sender<RunnerUpdate>,
 }
 
 pub fn execute_task(task: ExecutingTask, source_tar: TempPath) -> FinishedCompilerTask {
@@ -68,6 +69,7 @@ fn execute_task_impl(
 
     let pool = task.pool;
     let aborted = task.aborted;
+    let message_channel = task.message_channel;
     let task = task.inner;
     let container = TaskContainer::new(&ImageId(task.image), &task.build_command)
         .context(ContainerCreateSnafu)?;
@@ -77,9 +79,17 @@ fn execute_task_impl(
         .context(IntegrateSourceSnafu)?;
 
     let container = container.run().context(ContainerRunSnafu)?;
+    let _ = message_channel.send(RunnerUpdate::StartedBuild);
     let container = container
         .wait_for_build(task.build_timeout, aborted.clone())
         .context(WaitForBuildSnafu)?;
+    let build_output = FinishedExecution {
+        stdout: container.data.stdout.clone(),
+        stderr: container.data.stderr.clone(),
+        runtime: container.data.runtime,
+        exit_status: None,
+    };
+    let _ = message_channel.send(RunnerUpdate::FinishedBuild(build_output.clone()));
 
     let test_results = pool.scope(|s| {
         let (tx, rx) = mpsc::channel();
@@ -88,7 +98,9 @@ fn execute_task_impl(
             let tx = tx.clone();
             let container = &container;
             let aborted = aborted.clone();
+            let message_channel = message_channel.clone();
             s.spawn(move |_| {
+                let _ = message_channel.send(RunnerUpdate::StartedTest(test.test_id.clone()));
                 let res = container.run_test(&test.run_command, test.timeout, aborted);
                 let res = tx.send((test.test_id.clone(), res));
                 if let Err(e) = res {
@@ -105,39 +117,32 @@ fn execute_task_impl(
         drop(tx);
 
         let mut results = Vec::new();
-        while let Ok(val) = rx.recv() {
-            results.push(val);
+        while let Ok((test_id, res)) = rx.recv() {
+            let output = match res {
+                Ok(res) => ExecutionOutput::Finished(FinishedExecution {
+                    stdout: res.stdout,
+                    stderr: res.stderr,
+                    runtime: res.runtime,
+                    exit_status: None,
+                }),
+                Err(e) => test_run_error_to_output(
+                    start_monotonic,
+                    task.task_id.clone(),
+                    test_id.clone(),
+                    e,
+                ),
+            };
+            let finished_test = FinishedTest { test_id, output };
+            results.push(finished_test.clone());
+            let _ = message_channel.send(RunnerUpdate::FinishedTest(finished_test));
         }
         results
     });
 
-    let task_id = task.task_id.clone();
-    let mut finished_tests = Vec::new();
-    for (test_id, res) in test_results {
-        let output = match res {
-            Ok(res) => ExecutionOutput::Finished(FinishedExecution {
-                stdout: res.stdout,
-                stderr: res.stderr,
-                runtime: res.runtime,
-                exit_status: None,
-            }),
-            Err(e) => {
-                test_run_error_to_output(start_monotonic, task_id.clone(), test_id.clone(), e)
-            }
-        };
-
-        finished_tests.push(FinishedTest { test_id, output });
-    }
-
     Ok(FinishedCompilerTask::RanTests {
         start,
-        build_output: FinishedExecution {
-            stdout: container.data.stdout.clone(),
-            stderr: container.data.stderr.clone(),
-            runtime: container.data.runtime,
-            exit_status: None,
-        },
-        tests: finished_tests,
+        build_output,
+        tests: test_results,
     })
 }
 
