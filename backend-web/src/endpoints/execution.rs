@@ -1,16 +1,19 @@
 use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::WebError;
-use crate::types::{AppState, TaskId, WorkItem};
+use crate::types::{AppState, RunnerInfo, TaskId, WorkItem};
 use axum::body::Body;
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
-use axum_extra::headers::authorization::Bearer;
+use axum_extra::headers::authorization::Basic;
 use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
+use serde::Serialize;
 use serde_json::json;
 use shared::{CompilerTask, CompilerTest, FinishedCompilerTask};
+use snafu::Report;
 use tokio_util::io::ReaderStream;
+use tracing::{info, warn};
 use uuid::Uuid;
 
 pub async fn request_revision(
@@ -33,7 +36,6 @@ pub async fn request_revision(
         revision,
     };
     state.db.queue_task(task.clone()).await?;
-    state.executor.lock().unwrap().add_task(task);
 
     Ok(Json(json!({ "task_id": task_id })).into_response())
 }
@@ -59,15 +61,66 @@ pub async fn list_task_ids(
     Ok(Json(state.db.get_task_ids().await?))
 }
 
-pub async fn get_work(
+pub async fn runner_ping(
     State(state): State<AppState>,
-    TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-) -> Result<Json<CompilerTask>, WebError> {
-    if state.execution_config.runner_token != auth.token() {
+    TypedHeader(auth): TypedHeader<Authorization<Basic>>,
+    Json(runner): Json<RunnerInfo>,
+) -> Result<Json<RunnerPingResponse>, WebError> {
+    if state.execution_config.runner_token != auth.password() {
+        return Err(WebError::InvalidCredentials);
+    }
+    let runner_id = auth.username().to_string();
+    if runner.id.to_string() != runner_id {
         return Err(WebError::InvalidCredentials);
     }
 
-    let Some(task) = state.executor.lock().unwrap().pop_task() else {
+    let task = state.executor.lock().unwrap().update_runner(&runner);
+
+    if task != runner.current_task {
+        info!(runner = %runner.id, task = ?task, "Runner task changed, resetting it");
+        return Ok(Json(RunnerPingResponse { reset: true }));
+    }
+
+    Ok(Json(RunnerPingResponse { reset: false }))
+}
+
+pub async fn get_work(
+    State(state): State<AppState>,
+    TypedHeader(auth): TypedHeader<Authorization<Basic>>,
+    Json(runner): Json<RunnerInfo>,
+) -> Result<Json<RunnerWorkResponse>, WebError> {
+    if state.execution_config.runner_token != auth.password() {
+        return Err(WebError::InvalidCredentials);
+    }
+    if runner.id.to_string() != auth.username() {
+        return Err(WebError::InvalidCredentials);
+    }
+    if let Some(task) = runner.current_task {
+        warn!(runner = %runner.id, task = %task, "Runner already has a task, resetting it");
+        return Ok(Json(RunnerWorkResponse {
+            task: None,
+            reset: true,
+        }));
+    }
+
+    let queue = state.db.get_queued_tasks().await?;
+
+    let task = match state.executor.lock().unwrap().assign_work(&runner, &queue) {
+        Err(e) => {
+            warn!(
+                error = %Report::from_error(e),
+                runner = %runner.id,
+                "Error assigning work to runner, resetting it"
+            );
+            return Ok(Json(RunnerWorkResponse {
+                task: None,
+                reset: true,
+            }));
+        }
+        Ok(task) => task,
+    };
+
+    let Some(task) = task else {
         return Err(WebError::NotFound);
     };
 
@@ -93,15 +146,17 @@ pub async fn get_work(
         tests,
     };
 
-    Ok(Json(task))
+    Ok(Json(RunnerWorkResponse {
+        task: Some(task),
+        reset: false,
+    }))
 }
 
 pub async fn get_work_tar(
     State(state): State<AppState>,
-    TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-    Path(task_id): Path<TaskId>,
+    TypedHeader(auth): TypedHeader<Authorization<Basic>>,
 ) -> Result<Response, WebError> {
-    if state.execution_config.runner_token != auth.token() {
+    if state.execution_config.runner_token != auth.password() {
         return Err(WebError::InvalidCredentials);
     }
 
@@ -109,12 +164,12 @@ pub async fn get_work_tar(
         .executor
         .lock()
         .unwrap()
-        .get_running_task(&task_id)
+        .get_current_task(&auth.username().to_string().into())
         .ok_or(WebError::NotFound)?;
 
     let repo = state.db.get_repo(&task.team).await?;
 
-    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    let temp_file = tempfile::NamedTempFile::with_suffix(".tar.gz").unwrap();
     state
         .local_repos
         .export_repo(&repo, temp_file.path(), &task.revision)
@@ -132,16 +187,31 @@ pub async fn get_work_tar(
 
 pub async fn runner_done(
     State(state): State<AppState>,
-    TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
+    TypedHeader(auth): TypedHeader<Authorization<Basic>>,
     Path(task_id): Path<TaskId>,
     Json(task): Json<FinishedCompilerTask>,
 ) -> Result<(), WebError> {
-    if state.execution_config.runner_token != auth.token() {
+    if state.execution_config.runner_token != auth.password() {
         return Err(WebError::InvalidCredentials);
     }
 
     state.db.add_finished_task(&task_id, &task).await?;
-    state.executor.lock().unwrap().finish_task(&task_id, &task);
+    state
+        .executor
+        .lock()
+        .unwrap()
+        .finish_task(&auth.username().to_string().into());
 
     Ok(())
+}
+
+#[derive(Debug, Serialize)]
+pub struct RunnerWorkResponse {
+    pub task: Option<CompilerTask>,
+    pub reset: bool,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RunnerPingResponse {
+    pub reset: bool,
 }

@@ -12,14 +12,14 @@ use tracing::warn;
 
 #[derive(Debug, Snafu)]
 pub enum GitError {
-    #[snafu(display("Failed to clone repository for `{team}`"))]
+    #[snafu(display("Failed to clone repository for `{team}` at {location}"))]
     NotCloned {
         source: std::io::Error,
         team: TeamId,
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("Failed to checkout revision `{revision}` for `{team}`"))]
+    #[snafu(display("Failed to checkout revision `{revision}` for `{team}` at {location}"))]
     NotCheckedOut {
         source: std::io::Error,
         team: TeamId,
@@ -27,7 +27,9 @@ pub enum GitError {
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("Failed to update submodules at revision `{revision}` for `{team}`"))]
+    #[snafu(display(
+        "Failed to update submodules at revision `{revision}` for `{team}` at {location}"
+    ))]
     SubmodulesNotUpdated {
         source: std::io::Error,
         team: TeamId,
@@ -35,7 +37,9 @@ pub enum GitError {
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("Failed to clean repository at revision `{revision}` for `{team}`"))]
+    #[snafu(display(
+        "Failed to clean repository at revision `{revision}` for `{team}` at {location}"
+    ))]
     NotCleaned {
         source: std::io::Error,
         team: TeamId,
@@ -43,7 +47,7 @@ pub enum GitError {
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("Failed to create temporary directory"))]
+    #[snafu(display("Failed to create temporary directory at {location}"))]
     TempDirCreation {
         source: std::io::Error,
         team: TeamId,
@@ -51,7 +55,9 @@ pub enum GitError {
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("Failed to tar repository at revision `{revision}` for `{team}`"))]
+    #[snafu(display(
+        "Failed to tar repository at revision `{revision}` for `{team}` at {location}"
+    ))]
     NotTared {
         source: std::io::Error,
         team: TeamId,
@@ -59,7 +65,7 @@ pub enum GitError {
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("Failed to update repository at `{path:?}` for `{team}`"))]
+    #[snafu(display("Failed to update repository at `{path:?}` for `{team}` at {location}"))]
     NotUpdated {
         source: std::io::Error,
         team: TeamId,
@@ -67,14 +73,14 @@ pub enum GitError {
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("Failed to send update request to updater for `{team}`"))]
+    #[snafu(display("Failed to send update request to updater for `{team}` at {location}"))]
     UpdaterSend {
         source: mpsc::error::SendError<RepoUpdateRequest>,
         team: TeamId,
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("Failed to wait for update result for `{team}`"))]
+    #[snafu(display("Failed to wait for update result for `{team}` at {location}"))]
     UpdaterWait {
         source: sync::oneshot::error::RecvError,
         team: TeamId,
@@ -157,7 +163,7 @@ impl LocalRepos {
             Command::new("git")
                 .arg("checkout")
                 .arg(revision)
-                .current_dir(target)
+                .current_dir(tempdir.path())
                 .output()
                 .await,
         )
@@ -173,7 +179,7 @@ impl LocalRepos {
                 .arg("--force")
                 .arg("--init")
                 .arg("--recursive")
-                .current_dir(target)
+                .current_dir(tempdir.path())
                 .output()
                 .await,
         )
@@ -187,7 +193,7 @@ impl LocalRepos {
                 .arg("clean")
                 .arg("-fdx")
                 .arg(revision)
-                .current_dir(target)
+                .current_dir(tempdir.path())
                 .output()
                 .await,
         )

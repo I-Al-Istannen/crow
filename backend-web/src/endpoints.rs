@@ -18,6 +18,7 @@ pub use self::execution::get_work_tar;
 pub use self::execution::list_task_ids;
 pub use self::execution::request_revision;
 pub use self::execution::runner_done;
+pub use self::execution::runner_ping;
 pub use self::repo::get_repo;
 pub use self::team::set_team_repo;
 pub use self::test::list_tests;
@@ -38,7 +39,6 @@ impl<T: Serialize> IntoResponse for Json<T> {
     }
 }
 
-// We implement `From<JsonRejection> for ApiError`
 impl From<JsonRejection> for WebError {
     fn from(rejection: JsonRejection) -> Self {
         let msg = match rejection {

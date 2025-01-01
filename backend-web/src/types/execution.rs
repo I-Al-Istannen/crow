@@ -3,35 +3,100 @@ use crate::types::TeamId;
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
 use shared::{FinishedCompilerTask, FinishedTest};
-use std::collections::HashMap;
+use snafu::{ensure, Location, Snafu};
+use std::collections::{HashMap, HashSet};
+use std::time::Instant;
+
+#[derive(Debug, Clone, Hash, From, PartialEq, Eq, Display, Serialize, Deserialize)]
+pub struct RunnerId(String);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RunnerInfo {
+    pub id: RunnerId,
+    pub info: String,
+    pub current_task: Option<TaskId>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Runner {
+    pub info: RunnerInfo,
+    pub working_on: Option<WorkItem>,
+    pub last_ping: Instant,
+}
 
 #[derive(Default)]
 pub struct Executor {
-    pub todo: Vec<WorkItem>,
-    pub in_progress: HashMap<TaskId, WorkItem>,
+    runners: HashMap<RunnerId, Runner>,
+}
+
+#[derive(Debug, Snafu)]
+pub enum ExecutorError {
+    #[snafu(display("Runner `{runner_id}` not found at {location}"))]
+    RunnerNotFound {
+        runner_id: RunnerId,
+        #[snafu(implicit)]
+        location: Location,
+    },
 }
 
 impl Executor {
-    pub fn add_task(&mut self, task: WorkItem) {
-        self.todo.push(task);
-    }
-
-    pub fn pop_task(&mut self) -> Option<WorkItem> {
-        match self.todo.pop() {
-            Some(task) => {
-                self.in_progress.insert(task.id.clone(), task.clone());
-                Some(task)
-            }
-            None => None,
+    pub fn update_runner(&mut self, runner_info: &RunnerInfo) -> Option<TaskId> {
+        if let Some(runner) = self.runners.get_mut(&runner_info.id) {
+            runner.info = runner_info.clone();
+            runner.last_ping = Instant::now();
+            return runner.working_on.as_ref().map(|it| it.id.clone());
         }
+
+        self.runners.insert(
+            runner_info.id.clone(),
+            Runner {
+                info: runner_info.clone(),
+                working_on: None,
+                last_ping: Instant::now(),
+            },
+        );
+
+        None
     }
 
-    pub fn get_running_task(&self, id: &TaskId) -> Option<WorkItem> {
-        self.in_progress.get(id).cloned()
+    pub fn assign_work(
+        &mut self,
+        runner_info: &RunnerInfo,
+        queue: &[WorkItem],
+    ) -> Result<Option<WorkItem>, ExecutorError> {
+        ensure!(
+            self.runners.contains_key(&runner_info.id),
+            RunnerNotFoundSnafu {
+                runner_id: runner_info.id.clone()
+            }
+        );
+
+        let runner_id = runner_info.id.clone();
+
+        let taken: HashSet<TaskId> = self
+            .runners
+            .values()
+            .filter(|it| it.info.id != runner_info.id)
+            .flat_map(|it| it.working_on.clone())
+            .map(|it| it.id)
+            .collect();
+
+        let task = queue.iter().find(|it| !taken.contains(&it.id)).cloned();
+
+        let runner = self.runners.get_mut(&runner_id).unwrap();
+        runner.working_on = task.clone();
+
+        Ok(task)
     }
 
-    pub fn finish_task(&mut self, id: &TaskId, _result: &FinishedCompilerTask) {
-        self.in_progress.remove(id);
+    pub fn get_current_task(&self, id: &RunnerId) -> Option<WorkItem> {
+        self.runners.get(id).and_then(|it| it.working_on.clone())
+    }
+
+    pub fn finish_task(&mut self, runner: &RunnerId) {
+        if let Some(runner) = self.runners.get_mut(runner) {
+            runner.working_on = None;
+        }
     }
 }
 
