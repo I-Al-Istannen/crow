@@ -1,8 +1,9 @@
 use crate::error::WebError;
 use crate::types::{FullUserForAdmin, OwnUser, User, UserId, UserRole};
 use sqlx::{query, SqliteConnection};
-use tracing::{info, trace_span, Instrument};
+use tracing::{info, instrument, trace_span, Instrument};
 
+#[instrument(skip_all)]
 pub(super) async fn get_user_for_login(
     con: &mut SqliteConnection,
     user_id: &UserId,
@@ -14,6 +15,7 @@ pub(super) async fn get_user_for_login(
         .await?)
 }
 
+#[instrument(skip_all)]
 pub(super) async fn fetch_user(
     con: &mut SqliteConnection,
     user_id: &UserId,
@@ -25,6 +27,7 @@ pub(super) async fn fetch_user(
         .await?)
 }
 
+#[instrument(skip_all)]
 pub(super) async fn get_user(
     con: &mut SqliteConnection,
     user_id: &UserId,
@@ -40,6 +43,7 @@ pub(super) async fn get_user(
     }
 }
 
+#[instrument(skip_all)]
 pub(super) async fn fetch_users(
     con: &mut SqliteConnection,
 ) -> Result<Vec<FullUserForAdmin>, WebError> {
@@ -49,7 +53,11 @@ pub(super) async fn fetch_users(
         .await?)
 }
 
-pub async fn add_user(con: &mut SqliteConnection, user: &UserForAuth) -> Result<(), WebError> {
+#[instrument(skip_all)]
+pub(super) async fn add_user(
+    con: &mut SqliteConnection,
+    user: &UserForAuth,
+) -> Result<(), WebError> {
     let inner = &user.user;
     query!(
         "INSERT INTO Users (id, display_name, role, team) VALUES (?, ?, ?, ?)",

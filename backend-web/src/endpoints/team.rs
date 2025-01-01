@@ -4,7 +4,9 @@ use crate::error::WebError;
 use crate::types::{AppState, Repo, TeamId};
 use axum::extract::{Path, State};
 use serde::Deserialize;
+use tracing::instrument;
 
+#[instrument(skip_all)]
 pub async fn set_team_repo(
     State(AppState { db, .. }): State<AppState>,
     claims: Claims,

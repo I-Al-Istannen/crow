@@ -15,9 +15,10 @@ use shared::{
 };
 use snafu::Report;
 use tokio_util::io::ReaderStream;
-use tracing::{info, warn};
+use tracing::{info, instrument, warn};
 use uuid::Uuid;
 
+#[instrument(skip_all)]
 pub async fn request_revision(
     State(state): State<AppState>,
     claims: Claims,
@@ -42,12 +43,14 @@ pub async fn request_revision(
     Ok(Json(json!({ "taskId": task_id })).into_response())
 }
 
+#[instrument(skip_all)]
 pub async fn get_queued_tasks(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<WorkItem>>, WebError> {
     Ok(Json(state.db.get_queued_tasks().await?))
 }
 
+#[instrument(skip_all)]
 pub async fn get_task(
     State(state): State<AppState>,
     _claims: Claims,
@@ -56,6 +59,7 @@ pub async fn get_task(
     Ok(Json(state.db.get_task(&task_id).await?))
 }
 
+#[instrument(skip_all)]
 pub async fn list_task_ids(
     State(state): State<AppState>,
     _claims: Claims,
@@ -63,6 +67,7 @@ pub async fn list_task_ids(
     Ok(Json(state.db.get_task_ids().await?))
 }
 
+#[instrument(skip_all)]
 pub async fn runner_register(
     State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
@@ -84,6 +89,7 @@ pub async fn runner_register(
     Ok(Json(RunnerRegisterResponse { reset: false }))
 }
 
+#[instrument(skip_all)]
 pub async fn runner_update(
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
     Json(update): Json<RunnerUpdate>,
@@ -96,6 +102,7 @@ pub async fn runner_update(
     Ok(())
 }
 
+#[instrument(skip_all)]
 pub async fn get_work(
     State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
@@ -164,6 +171,7 @@ pub async fn get_work(
     }))
 }
 
+#[instrument(skip_all)]
 pub async fn get_work_tar(
     State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
@@ -193,6 +201,7 @@ pub async fn get_work_tar(
     Ok(Body::from_stream(ReaderStream::new(file)).into_response())
 }
 
+#[instrument(skip_all)]
 pub async fn runner_done(
     State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,

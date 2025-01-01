@@ -3,9 +3,13 @@ use crate::error::WebError;
 use crate::types::{Team, TeamId};
 use sqlx::{query, Acquire, Sqlite, SqliteConnection};
 use std::collections::HashSet;
-use tracing::{info, warn};
+use tracing::{info, info_span, instrument, warn, Instrument};
 
-pub async fn get_team(con: &mut SqliteConnection, team_id: &TeamId) -> Result<Team, WebError> {
+#[instrument(skip_all)]
+pub(super) async fn get_team(
+    con: &mut SqliteConnection,
+    team_id: &TeamId,
+) -> Result<Team, WebError> {
     let team = query!(
         r#"SELECT id as "id!: TeamId", display_name FROM Teams WHERE id = ?"#,
         team_id
@@ -15,6 +19,7 @@ pub async fn get_team(con: &mut SqliteConnection, team_id: &TeamId) -> Result<Te
         display_name: it.display_name,
     })
     .fetch_optional(con)
+    .instrument(info_span!("sqlx_get_team"))
     .await?;
 
     match team {
@@ -23,7 +28,8 @@ pub async fn get_team(con: &mut SqliteConnection, team_id: &TeamId) -> Result<Te
     }
 }
 
-pub async fn sync_teams(
+#[instrument(skip_all)]
+pub(super) async fn sync_teams(
     con: impl Acquire<'_, Database = Sqlite>,
     teams: &[TeamEntry],
 ) -> Result<(), WebError> {
@@ -31,6 +37,7 @@ pub async fn sync_teams(
 
     query!("PRAGMA defer_foreign_keys = ON")
         .execute(&mut *con)
+        .instrument(info_span!("sqlx_sync_teams_pragma"))
         .await?;
 
     for team in teams {
@@ -47,11 +54,13 @@ pub async fn sync_teams(
             team.display_name
         )
         .execute(&mut *con)
+        .instrument(info_span!("sqlx_sync_teams_insert"))
         .await?;
 
         for member in &team.members {
             let res = query!("UPDATE Users SET team = ? WHERE id = ?", team.id, member)
                 .execute(&mut *con)
+                .instrument(info_span!("sqlx_sync_teams_update_user"))
                 .await?;
 
             if res.rows_affected() == 0 {
@@ -63,6 +72,7 @@ pub async fn sync_teams(
     let existing_teams = query!(r#"SELECT id as "id!" FROM Teams"#)
         .map(|it| it.id)
         .fetch_all(&mut *con)
+        .instrument(info_span!("sqlx_sync_teams_get_existing"))
         .await?;
     let expected_teams = teams
         .iter()
@@ -74,6 +84,7 @@ pub async fn sync_teams(
             info!(team = ?team, "Removing team");
             query!("DELETE FROM Teams WHERE id = ?", team)
                 .execute(&mut *con)
+                .instrument(info_span!("sqlx_sync_teams_delete"))
                 .await?;
         }
     }

@@ -3,7 +3,9 @@ use crate::endpoints::Json;
 use crate::error::WebError;
 use crate::types::{AppState, Repo, TeamId};
 use axum::extract::{Path, State};
+use tracing::instrument;
 
+#[instrument(skip_all)]
 pub async fn get_repo(
     State(AppState { db, .. }): State<AppState>,
     claims: Claims,

@@ -1,8 +1,10 @@
 use crate::error::WebError;
 use crate::types::{TeamId, Test, TestId};
 use sqlx::{query, SqliteConnection};
+use tracing::{info_span, instrument, Instrument};
 
-pub async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<Test, WebError> {
+#[instrument(skip_all)]
+pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<Test, WebError> {
     query!(
         r#"
         INSERT INTO Tests 
@@ -19,6 +21,7 @@ pub async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<Test, We
         test.owner
     )
     .execute(&mut *con)
+    .instrument(info_span!("sqlx_add_test"))
     .await?;
 
     let test = query!(
@@ -39,12 +42,14 @@ pub async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<Test, We
         owner: it.owner,
     })
     .fetch_one(con)
+    .instrument(info_span!("sqlx_add_get_test"))
     .await?;
 
     Ok(test)
 }
 
-pub async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>, WebError> {
+#[instrument(skip_all)]
+pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>, WebError> {
     Ok(query!(
         r#"
         SELECT
@@ -62,10 +67,12 @@ pub async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>, WebError
         owner: it.owner,
     })
     .fetch_all(con)
+    .instrument(info_span!("sqlx_get_tests"))
     .await?)
 }
 
-pub async fn fetch_test(
+#[instrument(skip_all)]
+pub(super) async fn fetch_test(
     con: &mut SqliteConnection,
     test_id: &TestId,
 ) -> Result<Option<Test>, WebError> {
@@ -88,6 +95,7 @@ pub async fn fetch_test(
         owner: it.owner,
     })
     .fetch_optional(con)
+    .instrument(info_span!("sqlx_fetch_test"))
     .await?;
 
     Ok(test)

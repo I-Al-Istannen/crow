@@ -4,7 +4,9 @@ use crate::error::WebError;
 use crate::types::{AppState, Test, TestId};
 use axum::extract::{Path, State};
 use serde::Deserialize;
+use tracing::instrument;
 
+#[instrument(skip_all)]
 pub async fn list_tests(
     State(AppState { db, .. }): State<AppState>,
     _claims: Claims,
@@ -12,6 +14,7 @@ pub async fn list_tests(
     Ok(Json(db.get_tests().await?))
 }
 
+#[instrument(skip_all)]
 pub async fn set_test(
     State(AppState { db, .. }): State<AppState>,
     claims: Claims,

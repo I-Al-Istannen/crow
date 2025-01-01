@@ -7,8 +7,10 @@ use shared::{
 use sqlx::{query, Acquire, Sqlite, SqliteConnection};
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
+use tracing::{info_span, instrument, Instrument};
 
-pub async fn add_finished_task(
+#[instrument(skip_all)]
+pub(super) async fn add_finished_task(
     con: impl Acquire<'_, Database = Sqlite>,
     task_id: &TaskId,
     result: &FinishedCompilerTask,
@@ -17,6 +19,7 @@ pub async fn add_finished_task(
 
     query!("PRAGMA defer_foreign_keys = ON")
         .execute(&mut *con)
+        .instrument(info_span!("sqlx_add_finished_pragma"))
         .await?;
 
     let start_time = result
@@ -34,6 +37,7 @@ pub async fn add_finished_task(
         build_id
     )
     .execute(&mut *con)
+    .instrument(info_span!("sqlx_add_finished_insert_task"))
     .await?;
 
     match result {
@@ -65,6 +69,7 @@ pub async fn add_finished_task(
                     test_exec_id
                 )
                 .execute(&mut *con)
+                .instrument(info_span!("sqlx_add_finished_insert_test"))
                 .await?;
             }
         }
@@ -75,7 +80,8 @@ pub async fn add_finished_task(
     Ok(())
 }
 
-pub async fn get_task(
+#[instrument(skip_all)]
+pub(super) async fn get_task(
     con: impl Acquire<'_, Database = Sqlite>,
     task_id: &TaskId,
 ) -> Result<FinishedCompilerTask, WebError> {
@@ -93,6 +99,7 @@ pub async fn get_task(
         task_id
     )
     .fetch_optional(&mut *con)
+    .instrument(info_span!("sqlx_get_task_query"))
     .await?;
 
     let Some(task) = task else {
@@ -126,6 +133,7 @@ pub async fn get_task(
         task_id
     )
     .fetch_all(&mut *con)
+    .instrument(info_span!("sqlx_get_task_tests"))
     .await?;
 
     let mut finished_tests = Vec::new();
@@ -142,13 +150,16 @@ pub async fn get_task(
     })
 }
 
-pub async fn get_task_ids(con: &mut SqliteConnection) -> Result<Vec<TaskId>, WebError> {
+#[instrument(skip_all)]
+pub(super) async fn get_task_ids(con: &mut SqliteConnection) -> Result<Vec<TaskId>, WebError> {
     Ok(query!(r#"SELECT task_id as "task_id!: TaskId" FROM Tasks"#)
         .map(|it| it.task_id)
         .fetch_all(con)
+        .instrument(info_span!("sqlx_get_task_ids"))
         .await?)
 }
 
+#[instrument(skip_all)]
 async fn get_execution(
     con: &mut SqliteConnection,
     execution_id: &str,
@@ -168,6 +179,7 @@ async fn get_execution(
         execution_id
     )
     .fetch_optional(con)
+    .instrument(info_span!("sqlx_get_execution"))
     .await?;
 
     let Some(execution) = execution else {
@@ -199,6 +211,7 @@ async fn get_execution(
     })
 }
 
+#[instrument(skip_all)]
 async fn record_execution_output(
     con: &mut SqliteConnection,
     execution_id: &str,
@@ -218,6 +231,7 @@ async fn record_execution_output(
     Ok(())
 }
 
+#[instrument(skip_all)]
 async fn record_finished_execution(
     con: &mut SqliteConnection,
     execution_id: &str,
@@ -241,10 +255,12 @@ async fn record_finished_execution(
         e.exit_status
     )
     .execute(&mut *con)
+    .instrument(info_span!("sqlx_record_finished_execution"))
     .await?;
     Ok(())
 }
 
+#[instrument(skip_all)]
 async fn record_internal_error(
     con: &mut SqliteConnection,
     execution_id: &str,
@@ -266,10 +282,12 @@ async fn record_internal_error(
         None::<i32>
     )
     .execute(&mut *con)
+    .instrument(info_span!("sqlx_record_internal_error"))
     .await?;
     Ok(())
 }
 
+#[instrument(skip_all)]
 async fn record_aborted(
     con: &mut SqliteConnection,
     execution_id: &str,
@@ -291,6 +309,7 @@ async fn record_aborted(
         None::<i32>
     )
     .execute(&mut *con)
+    .instrument(info_span!("sqlx_record_aborted"))
     .await?;
     Ok(())
 }

@@ -7,6 +7,7 @@ use axum::extract::State;
 use serde::{Deserialize, Serialize};
 use tracing::{info, instrument};
 
+#[instrument(skip_all)]
 pub async fn show_me_myself(
     State(AppState { db, .. }): State<AppState>,
     claims: Claims,
@@ -20,6 +21,7 @@ pub async fn show_me_myself(
     Ok(Json(MeResponse { user, team }))
 }
 
+#[instrument(skip_all)]
 pub async fn list_users(
     State(AppState { db, .. }): State<AppState>,
     claims: Option<Claims>,

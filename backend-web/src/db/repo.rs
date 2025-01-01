@@ -1,8 +1,10 @@
 use crate::error::WebError;
 use crate::types::{Repo, TeamId};
 use sqlx::{query, Acquire, Sqlite, SqliteConnection};
+use tracing::{info_span, instrument, Instrument};
 
-pub async fn fetch_repo(
+#[instrument(skip_all)]
+pub(super) async fn fetch_repo(
     con: &mut SqliteConnection,
     team_id: &TeamId,
 ) -> Result<Option<Repo>, WebError> {
@@ -13,17 +15,23 @@ pub async fn fetch_repo(
             auto_fetch: it.auto_fetch,
         })
         .fetch_optional(con)
+        .instrument(info_span!("sqlx_get_repo"))
         .await?)
 }
 
-pub async fn get_repo(con: &mut SqliteConnection, team_id: &TeamId) -> Result<Repo, WebError> {
+#[instrument(skip_all)]
+pub(super) async fn get_repo(
+    con: &mut SqliteConnection,
+    team_id: &TeamId,
+) -> Result<Repo, WebError> {
     let Some(repo) = fetch_repo(con, team_id).await? else {
         return Err(WebError::NotFound);
     };
     Ok(repo)
 }
 
-pub async fn patch_or_create_repo(
+#[instrument(skip_all)]
+pub(super) async fn patch_or_create_repo(
     con: impl Acquire<'_, Database = Sqlite>,
     team_id: &TeamId,
     repo_url: &str,
@@ -48,6 +56,7 @@ pub async fn patch_or_create_repo(
         auto_fetch
     )
     .execute(&mut *con)
+    .instrument(info_span!("sqlx_update_insert_repo"))
     .await?;
 
     let repo = query!("SELECT * FROM Repos WHERE team = ?", team_id)
@@ -57,6 +66,7 @@ pub async fn patch_or_create_repo(
             auto_fetch: it.auto_fetch,
         })
         .fetch_one(&mut *con)
+        .instrument(info_span!("sqlx_update_get_repo"))
         .await?;
 
     con.commit().await?;
