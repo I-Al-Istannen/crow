@@ -7,8 +7,8 @@ use crate::executor::{execute_task, ExecutingTask};
 use clap::builder::styling::AnsiColor;
 use clap::builder::Styles;
 use clap::Parser;
-use rayon::ThreadPoolBuilder;
-use reqwest::blocking::ClientBuilder;
+use rayon::{ThreadPool, ThreadPoolBuilder};
+use reqwest::blocking::{Client, ClientBuilder};
 use reqwest::StatusCode;
 use shared::{RunnerInfo, RunnerWorkResponse};
 use snafu::{Location, Report, ResultExt, Snafu};
@@ -85,6 +85,13 @@ struct Args {
     endpoint: String,
 }
 
+struct Endpoints {
+    work: String,
+    tar: String,
+    done: String,
+    ping: String,
+}
+
 fn main() -> Report<AnyError> {
     Report::capture(|| {
         tracing_subscriber::registry()
@@ -96,111 +103,145 @@ fn main() -> Report<AnyError> {
             .init();
 
         let args = Args::parse();
-        let work_endpoint = format!("{}/executor/request-work", args.endpoint);
-        let tar_endpoint = format!("{}/executor/request-tar", args.endpoint);
-        let done_endpoint = format!("{}/executor/done", args.endpoint);
-        let ping_endpoint = format!("{}/executor/ping", args.endpoint);
+        let endpoints = Endpoints {
+            work: format!("{}/executor/request-work", args.endpoint),
+            tar: format!("{}/executor/request-tar", args.endpoint),
+            done: format!("{}/executor/done", args.endpoint),
+            ping: format!("{}/executor/ping", args.endpoint),
+        };
 
         let thread_pool = ThreadPoolBuilder::new()
             .build()
             .context(ThreadPoolBuildSnafu)?;
 
         let mut current_backoff = Duration::from_secs(1);
-        let stop_requested = Arc::new(AtomicBool::new(false));
+        let shutdown_requested = Arc::new(AtomicBool::new(false));
 
-        register_termination_handler(&stop_requested);
+        register_termination_handler(&shutdown_requested);
 
         let client = ClientBuilder::new().build().context(ReqwestSnafu)?;
 
-        while !stop_requested.load(Ordering::Relaxed) {
-            let runner_info = RunnerInfo {
-                id: args.id.clone().into(),
-                info: "hey".to_string(),
-                current_task: None,
-            };
-            client
-                .post(&ping_endpoint)
-                .basic_auth(&args.id, Some(&args.token))
-                .json(&runner_info)
-                .send()
-                .context(ReqwestSnafu)?;
-
-            let response = match client
-                .post(&work_endpoint)
-                .json(&runner_info)
-                .basic_auth(&args.id, Some(&args.token))
-                .send()
-            {
-                Err(e) => {
-                    warn!(
-                        error = ?Report::from_error(e),
-                        endpoint = %work_endpoint,
-                        next_retry = ?current_backoff,
-                        "Failed to poll endpoint"
-                    );
-                    backoff(&mut current_backoff, &stop_requested);
-                    continue;
-                }
-                Ok(response) => response,
-            };
-            if !response.status().is_success() || response.status() == StatusCode::NOT_FOUND {
+        while !shutdown_requested.load(Ordering::Relaxed) {
+            let res = iteration(
+                &args,
+                &endpoints,
+                &thread_pool,
+                &mut current_backoff,
+                &shutdown_requested,
+                &client,
+            );
+            if let Err(e) = res {
+                // Emergency wait to prevent busy loops
+                let mut emergency_backoff = Duration::from_secs(5);
                 warn!(
-                    status = %response.status(),
-                    endpoint = %work_endpoint,
-                    next_retry = ?current_backoff,
-                    "Failed to poll endpoint"
+                    backoff = ?emergency_backoff,
+                    error = ?Report::from_error(e),
+                    "Error during iteration"
                 );
-                backoff(&mut current_backoff, &stop_requested);
-                continue;
+                backoff(&mut emergency_backoff, &shutdown_requested);
             }
-            let task = match response.json::<RunnerWorkResponse>() {
-                Err(e) => {
-                    warn!(
-                        error = ?Report::from_error(e),
-                        endpoint = %work_endpoint,
-                        next_retry = ?current_backoff,
-                        "Failed to parse task"
-                    );
-                    backoff(&mut current_backoff, &stop_requested);
-                    continue;
-                }
-                Ok(task) => task,
-            };
-            let Some(task) = task.task else {
-                let current_backoff = &mut NO_TASK_BACKOFF.clone();
-                info!(backoff = ?current_backoff, "No task received");
-                backoff(current_backoff, &stop_requested);
-                continue;
-            };
-            let task_id = task.task_id.clone();
-            info!(id = task_id, "Received task");
-            let task = ExecutingTask {
-                inner: task,
-                pool: &thread_pool,
-                aborted: stop_requested.clone(),
-            };
-            let source_tar = tempfile::NamedTempFile::new().context(TempFileSnafu)?;
-            client
-                .get(&tar_endpoint)
-                .basic_auth(&args.id, Some(&args.token))
-                .send()
-                .context(ReqwestSnafu)?
-                .copy_to(&mut source_tar.as_file())
-                .context(ReqwestSnafu)?;
-            let res = execute_task(task, source_tar.into_temp_path());
-            info!(id = task_id, res = ?res, "Task finished");
-            client
-                .post(&done_endpoint)
-                .json(&res)
-                .basic_auth(&args.id, Some(&args.token))
-                .send()
-                .context(ReqwestSnafu)?;
         }
 
         info!("Goodbye!");
 
         Ok(())
     })
+}
+
+fn iteration(
+    args: &Args,
+    endpoints: &Endpoints,
+    thread_pool: &ThreadPool,
+    current_backoff: &mut Duration,
+    shutdown_requested: &Arc<AtomicBool>,
+    client: &Client,
+) -> Result<(), AnyError> {
+    let runner_info = RunnerInfo {
+        id: args.id.clone().into(),
+        info: "hey".to_string(),
+        current_task: None,
+    };
+    client
+        .post(&endpoints.ping)
+        .basic_auth(&args.id, Some(&args.token))
+        .json(&runner_info)
+        .send()
+        .context(ReqwestSnafu)?;
+
+    let response = match client
+        .post(&endpoints.work)
+        .json(&runner_info)
+        .basic_auth(&args.id, Some(&args.token))
+        .send()
+    {
+        Err(e) => {
+            warn!(
+                error = ?Report::from_error(e),
+                endpoint = %endpoints.work,
+                next_retry = ?current_backoff,
+                "Failed to poll endpoint"
+            );
+            backoff(current_backoff, shutdown_requested);
+            return Ok(());
+        }
+        Ok(response) => response,
+    };
+    if !response.status().is_success() || response.status() == StatusCode::NOT_FOUND {
+        warn!(
+            status = %response.status(),
+            endpoint = %endpoints.work,
+            next_retry = ?current_backoff,
+            "Failed to poll endpoint"
+        );
+        backoff(current_backoff, shutdown_requested);
+        return Ok(());
+    }
+    let task = match response.json::<RunnerWorkResponse>() {
+        Err(e) => {
+            warn!(
+                error = ?Report::from_error(e),
+                endpoint = %endpoints.work,
+                next_retry = ?current_backoff,
+                "Failed to parse task"
+            );
+            backoff(current_backoff, shutdown_requested);
+            return Ok(());
+        }
+        Ok(task) => task,
+    };
+    let Some(task) = task.task else {
+        let current_backoff = &mut NO_TASK_BACKOFF.clone();
+        info!(backoff = ?current_backoff, "No task received");
+        backoff(current_backoff, shutdown_requested);
+        return Ok(());
+    };
+    let task_id = task.task_id.clone();
+
+    info!(id = task_id, "Received task");
+    let task = ExecutingTask {
+        inner: task,
+        pool: thread_pool,
+        aborted: shutdown_requested.clone(),
+    };
+    let source_tar = tempfile::NamedTempFile::new().context(TempFileSnafu)?;
+    client
+        .get(&endpoints.tar)
+        .basic_auth(&args.id, Some(&args.token))
+        .send()
+        .context(ReqwestSnafu)?
+        .copy_to(&mut source_tar.as_file())
+        .context(ReqwestSnafu)?;
+    let res = execute_task(task, source_tar.into_temp_path());
+
+    info!(id = task_id, res = ?res, "Task finished");
+    client
+        .post(&endpoints.done)
+        .json(&res)
+        .basic_auth(&args.id, Some(&args.token))
+        .send()
+        .context(ReqwestSnafu)?;
+
+    Ok(())
 }
 
 fn register_termination_handler(stop_requested: &Arc<AtomicBool>) {
@@ -217,11 +258,11 @@ fn register_termination_handler(stop_requested: &Arc<AtomicBool>) {
     }
 }
 
-fn backoff(current_backoff: &mut Duration, stop_requested: &Arc<AtomicBool>) {
+fn backoff(current_backoff: &mut Duration, shutdown_requested: &Arc<AtomicBool>) {
     // We need to be responsive to stop requests (CTRL+C), so we can't just sleep for
     // the full duration
     let target = Instant::now() + *current_backoff;
-    while Instant::now() < target && !stop_requested.load(Ordering::Relaxed) {
+    while Instant::now() < target && !shutdown_requested.load(Ordering::Relaxed) {
         std::thread::sleep(Duration::from_millis(100));
     }
     *current_backoff *= 2;
