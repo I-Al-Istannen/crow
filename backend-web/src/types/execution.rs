@@ -30,7 +30,7 @@ pub enum ExecutorError {
 }
 
 impl Executor {
-    pub fn update_runner(&mut self, runner_info: &RunnerInfo) -> Option<TaskId> {
+    pub fn register_runner(&mut self, runner_info: &RunnerInfo) -> Option<TaskId> {
         if let Some(runner) = self.runners.get_mut(&runner_info.id) {
             runner.info = runner_info.clone();
             runner.last_ping = Instant::now();

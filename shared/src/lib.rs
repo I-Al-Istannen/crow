@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::time::{Duration, SystemTime};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CompilerTask {
     pub task_id: String,
     pub image: String,
@@ -12,6 +13,7 @@ pub struct CompilerTask {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CompilerTest {
     pub test_id: String,
     pub timeout: Duration,
@@ -20,6 +22,7 @@ pub struct CompilerTest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FinishedExecution {
     pub stdout: String,
     pub stderr: String,
@@ -28,6 +31,7 @@ pub struct FinishedExecution {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AbortedExecution {
     pub stdout: String,
     pub stderr: String,
@@ -35,12 +39,14 @@ pub struct AbortedExecution {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InternalError {
     pub message: String,
     pub runtime: Duration,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ExecutionOutput {
     Aborted(AbortedExecution),
     Error(InternalError),
@@ -66,12 +72,14 @@ impl ExecutionOutput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FinishedTest {
     pub test_id: String,
     pub output: ExecutionOutput,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum FinishedCompilerTask {
     BuildFailed {
         start: SystemTime,
@@ -97,6 +105,7 @@ impl FinishedCompilerTask {
 pub struct RunnerId(String);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RunnerInfo {
     pub id: RunnerId,
     pub info: String,
@@ -104,6 +113,7 @@ pub struct RunnerInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum RunnerUpdate {
     StartedBuild,
     FinishedBuild(FinishedExecution),
@@ -113,12 +123,14 @@ pub enum RunnerUpdate {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RunnerWorkResponse {
     pub task: Option<CompilerTask>,
     pub reset: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct RunnerRegisterResponse {
     pub reset: bool,
 }

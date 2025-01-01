@@ -39,7 +39,7 @@ pub async fn request_revision(
     };
     state.db.queue_task(task.clone()).await?;
 
-    Ok(Json(json!({ "task_id": task_id })).into_response())
+    Ok(Json(json!({ "taskId": task_id })).into_response())
 }
 
 pub async fn get_queued_tasks(
@@ -73,7 +73,7 @@ pub async fn runner_register(
         return Err(WebError::InvalidCredentials);
     }
 
-    let task = state.executor.lock().unwrap().update_runner(&runner);
+    let task = state.executor.lock().unwrap().register_runner(&runner);
     let current_task = runner.current_task.map(|it| it.into());
 
     if task != current_task {

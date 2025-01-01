@@ -29,6 +29,7 @@ pub async fn set_team_repo(
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TeamPatchPayload {
     pub repo_url: String,
     pub auto_fetch: bool,
