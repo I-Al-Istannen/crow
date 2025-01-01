@@ -207,7 +207,8 @@ impl LocalRepos {
             Command::new("tar")
                 .arg("cfa")
                 .arg(target)
-                .arg(tempdir.path())
+                .arg(".")
+                .current_dir(tempdir.path())
                 .output()
                 .await,
         )

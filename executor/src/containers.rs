@@ -1,7 +1,7 @@
 use crate::docker::{export_image_unpacked, DockerError, ImageId};
 use derive_more::{Display, From};
 use serde::Deserialize;
-use snafu::{ensure, IntoError, Location, NoneError, ResultExt, Snafu};
+use snafu::{ensure, IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::fs::create_dir;
 use std::io::Read;
 use std::os::fd::AsRawFd;
@@ -316,7 +316,7 @@ impl TaskContainer<()> {
 
 impl TaskContainer<Created> {
     pub fn integrate_source(&self, source_tar: TempPath) -> Result<(), IntegrateSourceError> {
-        let work_path = self.workdir.join("work");
+        let work_path = self.rootfs.join("work");
         let tar_path = source_tar.to_path_buf();
 
         create_dir(&work_path).context(SourceUntarStartSnafu {
@@ -471,14 +471,14 @@ impl<T> Drop for TaskContainer<T> {
 
         if let Err(e) = kill_container(&self.container_id) {
             error!(
-                error = ?e,
+                error = %Report::from_error(e),
                 container = ?self.container_id,
                 "Failed to kill container"
             );
         }
         if let Err(e) = delete_container_dir(&self.container_id, &self.workdir) {
             error!(
-                error = ?e,
+                error = %Report::from_error(e),
                 container = ?self.container_id,
                 "Failed to delete container workdir"
             );
@@ -678,7 +678,7 @@ fn delete_container_dir(
         }
         .into_error(io::Error::new(
             io::ErrorKind::Other,
-            format!("rm failed: {:?}", output.stderr),
+            format!("rm failed: `{:?}`", String::from_utf8_lossy(&output.stderr)),
         )));
     }
 
