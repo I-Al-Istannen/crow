@@ -2,8 +2,8 @@ use crate::auth::{Claims, Keys};
 use crate::config::Config;
 use crate::db::{Database, UserForAuth};
 use crate::endpoints::{
-    get_queued_tasks, get_repo, get_work, get_work_tar, list_users, login, request_revision,
-    runner_done, set_team_repo, show_me_myself,
+    get_queued_tasks, get_repo, get_work, get_work_tar, list_tests, list_users, login,
+    request_revision, runner_done, set_team_repo, set_test, show_me_myself,
 };
 use crate::error::WebError;
 use crate::types::{AppState, User, UserRole};
@@ -134,16 +134,18 @@ async fn main_server(
     );
 
     let app = Router::new()
-        .route("/users", get(list_users).layer(require_admin))
-        .route("/users/me", get(show_me_myself))
-        .route("/login", post(login))
-        .route("/repo/:team_id", put(set_team_repo))
-        .route("/repo/:team_id", get(get_repo))
-        .route("/executor/request-work", get(get_work))
-        .route("/executor/request-tar", get(get_work_tar))
         .route("/executor/done/:task_id", post(runner_done))
+        .route("/executor/request-tar", get(get_work_tar))
+        .route("/executor/request-work", get(get_work))
+        .route("/login", post(login))
         .route("/queue", get(get_queued_tasks))
         .route("/queue/rev/:revision", put(request_revision))
+        .route("/repo/:team_id", get(get_repo))
+        .route("/repo/:team_id", put(set_team_repo))
+        .route("/tests", get(list_tests))
+        .route("/tests/:test_id", put(set_test))
+        .route("/users", get(list_users).layer(require_admin))
+        .route("/users/me", get(show_me_myself))
         .layer(prometheus_layer)
         .layer(CorsLayer::very_permissive()) // TODO: Make nicer
         .layer(TraceLayer::new_for_http())

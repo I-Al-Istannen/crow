@@ -1,3 +1,4 @@
+use crate::types::test::TestId;
 use crate::types::TeamId;
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
@@ -37,10 +38,6 @@ impl Executor {
 #[derive(Debug, Clone, Hash, From, PartialEq, Eq, Display, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(transparent)]
 pub struct TaskId(String);
-
-#[derive(Debug, Clone, Hash, From, PartialEq, Eq, Display, Serialize, Deserialize, sqlx::Type)]
-#[sqlx(transparent)]
-pub struct TestId(String);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkItem {

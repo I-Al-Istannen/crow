@@ -50,17 +50,26 @@ pub async fn get_work(
         return Err(WebError::NotFound);
     };
 
+    let tests = state
+        .db
+        .get_tests()
+        .await?
+        .into_iter()
+        .map(|test| CompilerTest {
+            test_id: test.id.to_string(),
+            timeout: state.execution_config.test_timeout,
+            run_command: state.execution_config.test_command.clone(),
+            expected_output: test.expected_output,
+        })
+        .collect();
+
     // FIXME: Replace
     let task = CompilerTask {
         task_id: task.id.to_string(),
         image: "alpine:latest".to_string(),
         build_command: state.execution_config.build_command.clone(),
         build_timeout: state.execution_config.build_timeout,
-        tests: vec![CompilerTest {
-            test_id: "test1".to_string(),
-            timeout: state.execution_config.test_timeout,
-            run_command: vec!["echo".to_string(), "Hello, World!".to_string()],
-        }],
+        tests,
     };
 
     Ok(Json(task))

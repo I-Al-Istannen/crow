@@ -4,6 +4,7 @@ jwt_secret = "A very cool JWT secret."
 [execution]
 runner_token = "correct horse battery staple"
 build_command = ["bash", "-c", "echo 'Hello world!'"]
+test_command = ["bash", "-c", "echo 'Hello test!'"]
 build_timeout = "5m"
 test_timeout = "10m"
 

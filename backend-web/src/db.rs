@@ -2,12 +2,15 @@ mod queue;
 mod repo;
 mod task;
 mod team;
+mod test;
 mod user;
 
 pub use self::user::UserForAuth;
 use crate::config::TeamEntry;
 use crate::error::WebError;
-use crate::types::{FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, UserId, WorkItem};
+use crate::types::{
+    FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, Test, TestId, UserId, WorkItem,
+};
 use shared::FinishedCompilerTask;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
 use sqlx::{query, Pool, Sqlite, SqlitePool};
@@ -129,6 +132,21 @@ impl Database {
         con.commit().await?;
 
         Ok(())
+    }
+
+    pub async fn add_test(&self, test: Test) -> Result<Test, WebError> {
+        let pool = self.write_lock().await;
+        test::add_test(&mut *pool.acquire().await?, test).await
+    }
+
+    pub async fn get_tests(&self) -> Result<Vec<Test>, WebError> {
+        let pool = self.read_lock().await;
+        test::get_tests(&mut *pool.acquire().await?).await
+    }
+
+    pub async fn fetch_test(&self, test_id: &TestId) -> Result<Option<Test>, WebError> {
+        let pool = self.read_lock().await;
+        test::fetch_test(&mut *pool.acquire().await?, test_id).await
     }
 }
 

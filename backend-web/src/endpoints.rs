@@ -1,6 +1,7 @@
 mod execution;
 mod repo;
 mod team;
+mod test;
 mod user;
 
 use crate::error::WebError;
@@ -17,6 +18,8 @@ pub use self::execution::request_revision;
 pub use self::execution::runner_done;
 pub use self::repo::get_repo;
 pub use self::team::set_team_repo;
+pub use self::test::list_tests;
+pub use self::test::set_test;
 pub use self::user::list_users;
 pub use self::user::login;
 pub use self::user::show_me_myself;

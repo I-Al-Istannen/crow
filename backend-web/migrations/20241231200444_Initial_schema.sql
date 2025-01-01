@@ -53,3 +53,11 @@ CREATE TABLE ExecutionResults
     duration_ms  INTEGER     NOT NULL,
     exit_code    INTEGER
 );
+
+CREATE TABLE Tests
+(
+    id              VARCHAR(36) PRIMARY KEY,
+    name            VARCHAR(255) NOT NULL,
+    expected_output TEXT         NOT NULL,
+    owner           VARCHAR(36)  NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE
+);

@@ -3,6 +3,8 @@ pub use self::execution::Executor;
 pub use self::execution::TaskId;
 pub use self::execution::WorkItem;
 pub use self::repo::Repo;
+pub use self::test::Test;
+pub use self::test::TestId;
 pub use self::user::FullUserForAdmin;
 pub use self::user::OwnUser;
 pub use self::user::Team;
@@ -18,6 +20,7 @@ use std::sync::{Arc, Mutex};
 
 mod execution;
 mod repo;
+mod test;
 mod user;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
