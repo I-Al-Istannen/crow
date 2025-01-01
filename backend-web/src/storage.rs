@@ -113,6 +113,7 @@ impl LocalRepos {
     }
 
     pub async fn update_repo(&self, repo: &Repo) -> Result<(), GitError> {
+        // TODO: Delete if URL is changed(?)
         let path = self.get_repo_path(&repo.team);
         let (done_tx, done_rx) = sync::oneshot::channel();
 

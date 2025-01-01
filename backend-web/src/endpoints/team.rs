@@ -8,24 +8,28 @@ use tracing::instrument;
 
 #[instrument(skip_all)]
 pub async fn set_team_repo(
-    State(AppState { db, .. }): State<AppState>,
+    State(state): State<AppState>,
     claims: Claims,
     Path(target_team): Path<TeamId>,
     Json(payload): Json<TeamPatchPayload>,
 ) -> Result<Json<Repo>, WebError> {
-    let user = db.get_user(&claims.sub).await?;
+    let user = state.db.get_user(&claims.sub).await?;
 
-    let Some(team) = user.user.team else {
-        return Err(WebError::NotInTeam);
-    };
+    if !claims.is_admin() {
+        let Some(team) = user.user.team else {
+            return Err(WebError::NotInTeam);
+        };
 
-    if team != target_team && !claims.is_admin() {
-        return Err(WebError::NoPermissions);
+        if team != target_team {
+            return Err(WebError::NoPermissions);
+        }
     }
 
-    let repo = db
+    let repo = state
+        .db
         .set_team_repo(&target_team, &payload.repo_url, payload.auto_fetch)
         .await?;
+    state.local_repos.update_repo(&repo).await?;
 
     Ok(Json(repo))
 }
