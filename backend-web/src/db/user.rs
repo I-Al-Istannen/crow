@@ -40,7 +40,9 @@ pub(super) async fn get_user(
     }
 }
 
-pub(super) async fn fetch_users(con: &mut SqliteConnection) -> Result<Vec<FullUserForAdmin>, WebError> {
+pub(super) async fn fetch_users(
+    con: &mut SqliteConnection,
+) -> Result<Vec<FullUserForAdmin>, WebError> {
     Ok(sqlx::query_as("SELECT * FROM Users")
         .fetch_all(con)
         .instrument(trace_span!("sqlx_get_users"))

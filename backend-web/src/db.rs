@@ -1,8 +1,11 @@
+mod repo;
+mod team;
 mod user;
 
 pub use self::user::UserForAuth;
+use crate::config::TeamEntry;
 use crate::error::WebError;
-use crate::types::{FullUserForAdmin, OwnUser, UserId};
+use crate::types::{FullUserForAdmin, OwnUser, Repo, Team, TeamId, UserId};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
 use sqlx::{query, Pool, Sqlite, SqlitePool};
 use std::path::Path;
@@ -72,6 +75,31 @@ impl Database {
     pub async fn add_user(&self, user: &UserForAuth) -> Result<(), WebError> {
         let pool = self.write_lock().await;
         user::add_user(&mut *pool.acquire().await?, user).await
+    }
+
+    pub async fn set_team_repo(
+        &self,
+        team_id: &TeamId,
+        repo_url: &str,
+        auto_fetch: bool,
+    ) -> Result<Repo, WebError> {
+        let pool = self.write_lock().await;
+        repo::patch_or_create_repo(&*pool, team_id, repo_url, auto_fetch).await
+    }
+
+    pub async fn get_repo(&self, team_id: &TeamId) -> Result<Repo, WebError> {
+        let pool = self.read_lock().await;
+        repo::get_repo(&mut *pool.acquire().await?, team_id).await
+    }
+
+    pub async fn get_team(&self, team_id: &TeamId) -> Result<Team, WebError> {
+        let pool = self.read_lock().await;
+        team::get_team(&mut *pool.acquire().await?, team_id).await
+    }
+
+    pub async fn sync_teams(&self, teams: &[TeamEntry]) -> Result<(), WebError> {
+        let pool = self.write_lock().await;
+        team::sync_teams(&*pool, teams).await
     }
 }
 

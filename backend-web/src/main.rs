@@ -1,13 +1,13 @@
 use crate::auth::{Claims, Keys};
 use crate::config::Config;
 use crate::db::{Database, UserForAuth};
-use crate::endpoints::{list_users, login, show_me_myself};
+use crate::endpoints::{get_repo, list_users, login, set_team_repo, show_me_myself};
 use crate::error::WebError;
 use crate::types::{AppState, User, UserRole};
 use axum::extract::Request;
 use axum::middleware::Next;
 use axum::response::IntoResponse;
-use axum::routing::{get, post};
+use axum::routing::{get, post, put};
 use axum::{middleware, Router};
 use axum_prometheus::metrics_exporter_prometheus::PrometheusHandle;
 use axum_prometheus::{GenericMetricLayer, Handle, PrometheusMetricLayerBuilder};
@@ -95,6 +95,8 @@ async fn main() {
         .unwrap();
     }
 
+    db.sync_teams(&config.teams).await.unwrap();
+
     let state = AppState::new(db, Keys::new(config.jwt_secret.as_bytes()));
 
     let (prometheus_layer, metric_handle) = PrometheusMetricLayerBuilder::new()
@@ -128,6 +130,8 @@ async fn main_server(
         .route("/users", get(list_users).layer(require_admin))
         .route("/users/me", get(show_me_myself))
         .route("/login", post(login))
+        .route("/repo/:team_id", put(set_team_repo))
+        .route("/repo/:team_id", get(get_repo))
         .layer(prometheus_layer)
         .layer(CorsLayer::very_permissive()) // TODO: Make nicer
         .layer(TraceLayer::new_for_http())

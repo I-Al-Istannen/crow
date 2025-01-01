@@ -2,12 +2,16 @@ use crate::auth::Keys;
 use crate::db::Database;
 use serde::{Deserialize, Serialize};
 
+pub use self::repo::Repo;
+pub use self::user::FullUserForAdmin;
+pub use self::user::OwnUser;
+pub use self::user::Team;
+pub use self::user::TeamId;
 pub use self::user::User;
 pub use self::user::UserId;
 pub use self::user::UserRole;
-pub use self::user::OwnUser;
-pub use self::user::FullUserForAdmin;
 
+mod repo;
 mod user;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -2,7 +2,7 @@ use crate::auth;
 use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::WebError;
-use crate::types::{AppState, FullUserForAdmin, OwnUser, User, UserId};
+use crate::types::{AppState, FullUserForAdmin, OwnUser, Team, User, UserId};
 use axum::extract::State;
 use serde::{Deserialize, Serialize};
 use tracing::{info, instrument};
@@ -10,8 +10,14 @@ use tracing::{info, instrument};
 pub async fn show_me_myself(
     State(AppState { db, .. }): State<AppState>,
     claims: Claims,
-) -> Result<Json<OwnUser>, WebError> {
-    Ok(Json(db.get_user(&claims.sub).await?))
+) -> Result<Json<MeResponse>, WebError> {
+    let user = db.get_user(&claims.sub).await?;
+    let team = match &user.user.team {
+        Some(team) => Some(db.get_team(team).await?),
+        None => None,
+    };
+
+    Ok(Json(MeResponse { user, team }))
 }
 
 pub async fn list_users(
@@ -48,6 +54,12 @@ pub async fn login(
     Ok(Json(LoginResponse { user, token }))
 }
 
+#[derive(Debug, Serialize)]
+pub struct MeResponse {
+    pub user: OwnUser,
+    pub team: Option<Team>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct LoginPayload {
     pub username: UserId,
@@ -68,7 +80,7 @@ pub enum UserInfoResponse {
 
 impl UserInfoResponse {
     pub fn from_full_user(claims: &Option<Claims>, user: FullUserForAdmin) -> Option<Self> {
-        if Claims::is_admin(claims) {
+        if Claims::is_admin_opt(claims) {
             Some(Self::FullUser(user))
         } else {
             Some(Self::User(user.into_user()))

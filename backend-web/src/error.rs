@@ -12,6 +12,7 @@ pub enum WebError {
     InvalidJson(String),
     InternalServerError,
     NotFound,
+    NotInTeam,
 }
 
 impl WebError {
@@ -22,6 +23,7 @@ impl WebError {
             Self::InvalidJson(_) => ("invalid_json", StatusCode::BAD_REQUEST),
             Self::InternalServerError => ("internal_error", StatusCode::INTERNAL_SERVER_ERROR),
             Self::NotFound => ("not_found", StatusCode::NOT_FOUND),
+            Self::NotInTeam => ("not_in_team", StatusCode::BAD_REQUEST),
         }
     }
 }
@@ -34,6 +36,7 @@ impl Display for WebError {
             Self::InvalidJson(msg) => write!(f, "Invalid JSON: `{}`", msg),
             Self::InternalServerError => write!(f, "Internal server error"),
             Self::NotFound => write!(f, "Not found"),
+            Self::NotInTeam => write!(f, "Not in team"),
         }
     }
 }

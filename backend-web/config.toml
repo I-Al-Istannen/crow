@@ -1,2 +1,7 @@
 database_path = "./target/dev.db"
 jwt_secret = "A very cool JWT secret."
+
+[[teams]]
+id = "admin_team"
+display_name = "The admin team"
+members = ["admin"]

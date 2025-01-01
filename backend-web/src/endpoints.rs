@@ -1,15 +1,19 @@
-mod users;
+mod repo;
+mod team;
+mod user;
 
-use std::error::Error;
-use axum::extract::FromRequest;
+use crate::error::WebError;
 use axum::extract::rejection::JsonRejection;
+use axum::extract::FromRequest;
 use axum::response::IntoResponse;
 use serde::Serialize;
-use crate::error::WebError;
+use std::error::Error;
 
-pub use self::users::show_me_myself;
-pub use self::users::list_users;
-pub use self::users::login;
+pub use self::repo::get_repo;
+pub use self::team::set_team_repo;
+pub use self::user::list_users;
+pub use self::user::login;
+pub use self::user::show_me_myself;
 
 // create an extractor that internally uses `axum::Json` but has a custom rejection
 #[derive(FromRequest)]

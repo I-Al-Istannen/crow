@@ -35,7 +35,11 @@ impl FromRequestParts<AppState> for Claims {
 }
 
 impl Claims {
-    pub fn is_admin(claims: &Option<Claims>) -> bool {
+    pub fn is_admin(&self) -> bool {
+        self.role == UserRole::Admin
+    }
+
+    pub fn is_admin_opt(claims: &Option<Claims>) -> bool {
         claims.as_ref().map(|x| x.role).unwrap_or(UserRole::Regular) == UserRole::Admin
     }
 }
