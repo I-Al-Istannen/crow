@@ -180,5 +180,5 @@ where
     D: serde::Deserializer<'de>,
 {
     let millis = u64::deserialize(deserializer)?;
-    Ok(Duration::from_micros(millis))
+    Ok(Duration::from_millis(millis))
 }

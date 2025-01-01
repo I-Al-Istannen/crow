@@ -26,7 +26,7 @@ pub(super) async fn add_finished_task(
         .start_time()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or(Duration::ZERO)
-        .as_secs() as i64;
+        .as_millis() as i64;
 
     let build_id = uuid::Uuid::new_v4().to_string();
 
