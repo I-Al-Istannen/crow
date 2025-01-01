@@ -8,7 +8,9 @@ use clap::builder::styling::AnsiColor;
 use clap::builder::Styles;
 use clap::Parser;
 use rayon::ThreadPoolBuilder;
-use shared::CompilerTask;
+use reqwest::blocking::ClientBuilder;
+use reqwest::StatusCode;
+use shared::{RunnerInfo, RunnerWorkResponse};
 use snafu::{Location, Report, ResultExt, Snafu};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -49,6 +51,18 @@ pub enum AnyError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display("Could not build reqwest client at {location}"))]
+    Reqwest {
+        source: reqwest::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not create temp file at {location}"))]
+    TempFile {
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
 }
 
 const CLAP_STYLE: Styles = Styles::styled()
@@ -57,10 +71,16 @@ const CLAP_STYLE: Styles = Styles::styled()
     .literal(AnsiColor::Blue.on_default().bold())
     .placeholder(AnsiColor::Green.on_default());
 
+const NO_TASK_BACKOFF: Duration = Duration::from_secs(2);
+
 /// Executor of compiler tasks, crow of judgement.
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None, styles = CLAP_STYLE)]
 struct Args {
+    /// A unique name for this runner
+    id: String,
+    /// The runner token of the server
+    token: String,
     /// Endpoint to poll for work updates
     endpoint: String,
 }
@@ -76,6 +96,10 @@ fn main() -> Report<AnyError> {
             .init();
 
         let args = Args::parse();
+        let work_endpoint = format!("{}/executor/request-work", args.endpoint);
+        let tar_endpoint = format!("{}/executor/request-tar", args.endpoint);
+        let done_endpoint = format!("{}/executor/done", args.endpoint);
+        let ping_endpoint = format!("{}/executor/ping", args.endpoint);
 
         let thread_pool = ThreadPoolBuilder::new()
             .build()
@@ -86,12 +110,31 @@ fn main() -> Report<AnyError> {
 
         register_termination_handler(&stop_requested);
 
+        let client = ClientBuilder::new().build().context(ReqwestSnafu)?;
+
         while !stop_requested.load(Ordering::Relaxed) {
-            let response = match reqwest::blocking::get(&args.endpoint) {
+            let runner_info = RunnerInfo {
+                id: args.id.clone().into(),
+                info: "hey".to_string(),
+                current_task: None,
+            };
+            client
+                .post(&ping_endpoint)
+                .basic_auth(&args.id, Some(&args.token))
+                .json(&runner_info)
+                .send()
+                .context(ReqwestSnafu)?;
+
+            let response = match client
+                .post(&work_endpoint)
+                .json(&runner_info)
+                .basic_auth(&args.id, Some(&args.token))
+                .send()
+            {
                 Err(e) => {
                     warn!(
                         error = ?Report::from_error(e),
-                        endpoint = ?args.endpoint,
+                        endpoint = %work_endpoint,
                         next_retry = ?current_backoff,
                         "Failed to poll endpoint"
                     );
@@ -100,11 +143,21 @@ fn main() -> Report<AnyError> {
                 }
                 Ok(response) => response,
             };
-            let task = match response.json::<CompilerTask>() {
+            if !response.status().is_success() || response.status() == StatusCode::NOT_FOUND {
+                warn!(
+                    status = %response.status(),
+                    endpoint = %work_endpoint,
+                    next_retry = ?current_backoff,
+                    "Failed to poll endpoint"
+                );
+                backoff(&mut current_backoff, &stop_requested);
+                continue;
+            }
+            let task = match response.json::<RunnerWorkResponse>() {
                 Err(e) => {
                     warn!(
                         error = ?Report::from_error(e),
-                        endpoint = ?args.endpoint,
+                        endpoint = %work_endpoint,
                         next_retry = ?current_backoff,
                         "Failed to parse task"
                     );
@@ -113,6 +166,12 @@ fn main() -> Report<AnyError> {
                 }
                 Ok(task) => task,
             };
+            let Some(task) = task.task else {
+                let current_backoff = &mut NO_TASK_BACKOFF.clone();
+                info!(backoff = ?current_backoff, "No task received");
+                backoff(current_backoff, &stop_requested);
+                continue;
+            };
             let task_id = task.task_id.clone();
             info!(id = task_id, "Received task");
             let task = ExecutingTask {
@@ -120,8 +179,22 @@ fn main() -> Report<AnyError> {
                 pool: &thread_pool,
                 aborted: stop_requested.clone(),
             };
-            let res = execute_task(task);
+            let source_tar = tempfile::NamedTempFile::new().context(TempFileSnafu)?;
+            client
+                .get(&tar_endpoint)
+                .basic_auth(&args.id, Some(&args.token))
+                .send()
+                .context(ReqwestSnafu)?
+                .copy_to(&mut source_tar.as_file())
+                .context(ReqwestSnafu)?;
+            let res = execute_task(task, source_tar.into_temp_path());
             info!(id = task_id, res = ?res, "Task finished");
+            client
+                .post(&done_endpoint)
+                .json(&res)
+                .basic_auth(&args.id, Some(&args.token))
+                .send()
+                .context(ReqwestSnafu)?;
         }
 
         info!("Goodbye!");

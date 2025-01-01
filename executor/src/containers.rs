@@ -1,7 +1,7 @@
 use crate::docker::{export_image_unpacked, DockerError, ImageId};
 use derive_more::{Display, From};
 use serde::Deserialize;
-use snafu::{IntoError, Location, NoneError, ResultExt, Snafu};
+use snafu::{ensure, IntoError, Location, NoneError, ResultExt, Snafu};
 use std::fs::create_dir;
 use std::io::Read;
 use std::os::fd::AsRawFd;
@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::{fs, io, thread};
-use tempfile::TempDir;
+use tempfile::{TempDir, TempPath};
 use tracing::{debug, error, warn};
 use uuid::Uuid;
 
@@ -49,6 +49,27 @@ pub enum ContainerCreateError {
     #[snafu(display("Could not create temporary directory at {location}"))]
     TempDirCreation {
         source: io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+}
+
+#[derive(Snafu, Debug)]
+pub enum IntegrateSourceError {
+    #[snafu(display("Could not run 'tar -C `{work_path:?}` xf `{tar_path:?}`' at {location}"))]
+    SourceUntarStart {
+        source: io::Error,
+        tar_path: PathBuf,
+        work_path: PathBuf,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not untar `{tar_path:?}` into `{work_path:?}` with {stdout} and {stderr} at {location}"))]
+    SourceUntar {
+        tar_path: PathBuf,
+        work_path: PathBuf,
+        stdout: String,
+        stderr: String,
         #[snafu(implicit)]
         location: Location,
     },
@@ -294,6 +315,41 @@ impl TaskContainer<()> {
 }
 
 impl TaskContainer<Created> {
+    pub fn integrate_source(&self, source_tar: TempPath) -> Result<(), IntegrateSourceError> {
+        let work_path = self.workdir.join("work");
+        let tar_path = source_tar.to_path_buf();
+
+        create_dir(&work_path).context(SourceUntarStartSnafu {
+            tar_path: tar_path.clone(),
+            work_path: work_path.clone(),
+        })?;
+
+        let res = Command::new("tar")
+            .arg("-C")
+            .arg(&work_path)
+            .arg("-xf")
+            .arg(&source_tar)
+            .output()
+            .context(SourceUntarStartSnafu {
+                tar_path: tar_path.clone(),
+                work_path: work_path.clone(),
+            })?;
+
+        drop(source_tar);
+
+        ensure!(
+            res.status.success(),
+            SourceUntarSnafu {
+                tar_path,
+                work_path,
+                stdout: String::from_utf8_lossy(&res.stdout).to_string(),
+                stderr: String::from_utf8_lossy(&res.stderr).to_string(),
+            }
+        );
+
+        Ok(())
+    }
+
     pub fn run(mut self) -> io::Result<TaskContainer<Started>> {
         let mut process = start_container(&self.workdir, &self.container_id)?;
 

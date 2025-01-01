@@ -2,20 +2,10 @@ use crate::types::test::TestId;
 use crate::types::TeamId;
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
-use shared::{FinishedCompilerTask, FinishedTest};
+use shared::{FinishedCompilerTask, FinishedTest, RunnerId, RunnerInfo};
 use snafu::{ensure, Location, Snafu};
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
-
-#[derive(Debug, Clone, Hash, From, PartialEq, Eq, Display, Serialize, Deserialize)]
-pub struct RunnerId(String);
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RunnerInfo {
-    pub id: RunnerId,
-    pub info: String,
-    pub current_task: Option<TaskId>,
-}
 
 #[derive(Debug, Clone)]
 pub struct Runner {

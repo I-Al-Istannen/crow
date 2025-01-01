@@ -1,16 +1,18 @@
 use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::WebError;
-use crate::types::{AppState, RunnerInfo, TaskId, WorkItem};
+use crate::types::{AppState, TaskId, WorkItem};
 use axum::body::Body;
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
 use axum_extra::headers::authorization::Basic;
 use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
-use serde::Serialize;
 use serde_json::json;
-use shared::{CompilerTask, CompilerTest, FinishedCompilerTask};
+use shared::{
+    CompilerTask, CompilerTest, FinishedCompilerTask, RunnerInfo, RunnerPingResponse,
+    RunnerWorkResponse,
+};
 use snafu::Report;
 use tokio_util::io::ReaderStream;
 use tracing::{info, warn};
@@ -75,8 +77,9 @@ pub async fn runner_ping(
     }
 
     let task = state.executor.lock().unwrap().update_runner(&runner);
+    let current_task = runner.current_task.map(|it| it.into());
 
-    if task != runner.current_task {
+    if task != current_task {
         info!(runner = %runner.id, task = ?task, "Runner task changed, resetting it");
         return Ok(Json(RunnerPingResponse { reset: true }));
     }
@@ -121,7 +124,10 @@ pub async fn get_work(
     };
 
     let Some(task) = task else {
-        return Err(WebError::NotFound);
+        return Ok(Json(RunnerWorkResponse {
+            task: None,
+            reset: false,
+        }));
     };
 
     let tests = state
@@ -188,12 +194,20 @@ pub async fn get_work_tar(
 pub async fn runner_done(
     State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
-    Path(task_id): Path<TaskId>,
     Json(task): Json<FinishedCompilerTask>,
 ) -> Result<(), WebError> {
     if state.execution_config.runner_token != auth.password() {
         return Err(WebError::InvalidCredentials);
     }
+    let task_id = state
+        .executor
+        .lock()
+        .unwrap()
+        .get_current_task(&auth.username().to_string().into());
+    let Some(task_id) = task_id else {
+        return Err(WebError::NotFound);
+    };
+    let task_id = task_id.id;
 
     state.db.add_finished_task(&task_id, &task).await?;
     state
@@ -203,15 +217,4 @@ pub async fn runner_done(
         .finish_task(&auth.username().to_string().into());
 
     Ok(())
-}
-
-#[derive(Debug, Serialize)]
-pub struct RunnerWorkResponse {
-    pub task: Option<CompilerTask>,
-    pub reset: bool,
-}
-
-#[derive(Debug, Serialize)]
-pub struct RunnerPingResponse {
-    pub reset: bool,
 }

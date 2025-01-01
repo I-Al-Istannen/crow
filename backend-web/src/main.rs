@@ -195,7 +195,7 @@ async fn main_server(
     );
 
     let app = Router::new()
-        .route("/executor/done/:task_id", post(runner_done))
+        .route("/executor/done", post(runner_done))
         .route("/executor/ping", post(runner_ping))
         .route("/executor/request-tar", get(get_work_tar))
         .route("/executor/request-work", post(get_work))

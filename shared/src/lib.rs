@@ -1,3 +1,4 @@
+use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
 use std::time::{Duration, SystemTime};
 
@@ -90,4 +91,25 @@ impl FinishedCompilerTask {
             FinishedCompilerTask::RanTests { start, .. } => *start,
         }
     }
+}
+
+#[derive(Debug, Clone, Hash, From, PartialEq, Eq, Display, Serialize, Deserialize)]
+pub struct RunnerId(String);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RunnerInfo {
+    pub id: RunnerId,
+    pub info: String,
+    pub current_task: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RunnerWorkResponse {
+    pub task: Option<CompilerTask>,
+    pub reset: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RunnerPingResponse {
+    pub reset: bool,
 }

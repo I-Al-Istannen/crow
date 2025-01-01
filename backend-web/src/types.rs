@@ -1,6 +1,5 @@
 pub use self::execution::ExecutionExitStatus;
 pub use self::execution::Executor;
-pub use self::execution::RunnerInfo;
 pub use self::execution::TaskId;
 pub use self::execution::WorkItem;
 pub use self::repo::Repo;

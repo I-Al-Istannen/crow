@@ -1,4 +1,6 @@
-use crate::containers::{ContainerCreateError, TaskContainer, TestRunError, WaitForContainerError};
+use crate::containers::{
+    ContainerCreateError, IntegrateSourceError, TaskContainer, TestRunError, WaitForContainerError,
+};
 use crate::docker::ImageId;
 use rayon::ThreadPool;
 use shared::{
@@ -9,6 +11,7 @@ use snafu::{Location, Report, ResultExt, Snafu};
 use std::sync::atomic::AtomicBool;
 use std::sync::{mpsc, Arc};
 use std::time::{Instant, SystemTime};
+use tempfile::TempPath;
 use tracing::error;
 
 #[derive(Debug, Snafu)]
@@ -16,6 +19,12 @@ pub enum TaskRunError {
     #[snafu(display("Could not create container at {location}"))]
     ContainerCreate {
         source: ContainerCreateError,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not integrate source at {location}"))]
+    IntegrateSource {
+        source: IntegrateSourceError,
         #[snafu(implicit)]
         location: Location,
     },
@@ -39,18 +48,21 @@ pub struct ExecutingTask<'a> {
     pub aborted: Arc<AtomicBool>,
 }
 
-pub fn execute_task(task: ExecutingTask) -> FinishedCompilerTask {
+pub fn execute_task(task: ExecutingTask, source_tar: TempPath) -> FinishedCompilerTask {
     let task_id = task.inner.task_id.clone();
     let start = SystemTime::now();
     let start_monotonic = Instant::now();
 
-    match execute_task_impl(task) {
+    match execute_task_impl(task, source_tar) {
         Ok(res) => res,
         Err(e) => task_run_error_to_task(start, start_monotonic, task_id, e),
     }
 }
 
-fn execute_task_impl(task: ExecutingTask) -> Result<FinishedCompilerTask, TaskRunError> {
+fn execute_task_impl(
+    task: ExecutingTask,
+    source_tar: TempPath,
+) -> Result<FinishedCompilerTask, TaskRunError> {
     let start = SystemTime::now();
     let start_monotonic = Instant::now();
 
@@ -59,6 +71,11 @@ fn execute_task_impl(task: ExecutingTask) -> Result<FinishedCompilerTask, TaskRu
     let task = task.inner;
     let container = TaskContainer::new(&ImageId(task.image), &task.build_command)
         .context(ContainerCreateSnafu)?;
+
+    container
+        .integrate_source(source_tar)
+        .context(IntegrateSourceSnafu)?;
+
     let container = container.run().context(ContainerRunSnafu)?;
     let container = container
         .wait_for_build(task.build_timeout, aborted.clone())
