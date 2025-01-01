@@ -9,7 +9,6 @@ use clap::builder::Styles;
 use clap::Parser;
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use reqwest::blocking::{Client, ClientBuilder};
-use reqwest::StatusCode;
 use shared::{RunnerInfo, RunnerUpdate, RunnerWorkResponse};
 use snafu::{Location, Report, ResultExt, Snafu};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -190,19 +189,19 @@ fn iteration(
                 error = ?Report::from_error(e),
                 endpoint = %endpoints.work,
                 next_retry = ?current_backoff,
-                "Failed to poll endpoint"
+                "Failed to request work"
             );
             backoff(current_backoff, shutdown_requested);
             return Ok(());
         }
         Ok(response) => response,
     };
-    if !response.status().is_success() || response.status() == StatusCode::NOT_FOUND {
+    if !response.status().is_success() {
         warn!(
             status = %response.status(),
             endpoint = %endpoints.work,
             next_retry = ?current_backoff,
-            "Failed to poll endpoint"
+            "Failed to request work"
         );
         backoff(current_backoff, shutdown_requested);
         return Ok(());
@@ -298,7 +297,7 @@ fn backoff(current_backoff: &mut Duration, shutdown_requested: &Arc<AtomicBool>)
     // the full duration
     let target = Instant::now() + *current_backoff;
     while Instant::now() < target && !shutdown_requested.load(Ordering::Relaxed) {
-        std::thread::sleep(Duration::from_millis(100));
+        thread::sleep(Duration::from_millis(100));
     }
     *current_backoff *= 2;
     *current_backoff = (*current_backoff).min(Duration::from_secs(60));

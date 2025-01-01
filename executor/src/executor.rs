@@ -53,11 +53,15 @@ pub fn execute_task(task: ExecutingTask, source_tar: TempPath) -> FinishedCompil
     let task_id = task.inner.task_id.clone();
     let start = SystemTime::now();
     let start_monotonic = Instant::now();
+    let message_channel = task.message_channel.clone();
 
-    match execute_task_impl(task, source_tar) {
+    let res = match execute_task_impl(task, source_tar) {
         Ok(res) => res,
         Err(e) => task_run_error_to_task(start, start_monotonic, task_id, e),
-    }
+    };
+    let _ = message_channel.send(RunnerUpdate::Done);
+
+    res
 }
 
 fn execute_task_impl(

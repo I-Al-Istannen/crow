@@ -109,6 +109,7 @@ pub enum RunnerUpdate {
     FinishedBuild(FinishedExecution),
     StartedTest(String),
     FinishedTest(FinishedTest),
+    Done,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
