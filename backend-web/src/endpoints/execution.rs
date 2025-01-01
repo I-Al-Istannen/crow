@@ -68,9 +68,6 @@ pub async fn runner_register(
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
     Json(runner): Json<RunnerInfo>,
 ) -> Result<Json<RunnerRegisterResponse>, WebError> {
-    if state.execution_config.runner_token != auth.password() {
-        return Err(WebError::InvalidCredentials);
-    }
     let runner_id = auth.username().to_string();
     if runner.id.to_string() != runner_id {
         return Err(WebError::InvalidCredentials);
@@ -88,13 +85,9 @@ pub async fn runner_register(
 }
 
 pub async fn runner_update(
-    State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
     Json(update): Json<RunnerUpdate>,
 ) -> Result<(), WebError> {
-    if state.execution_config.runner_token != auth.password() {
-        return Err(WebError::InvalidCredentials);
-    }
     let runner_id: RunnerId = auth.username().to_string().into();
 
     // TODO: Handle update
@@ -108,9 +101,6 @@ pub async fn get_work(
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
     Json(runner): Json<RunnerInfo>,
 ) -> Result<Json<RunnerWorkResponse>, WebError> {
-    if state.execution_config.runner_token != auth.password() {
-        return Err(WebError::InvalidCredentials);
-    }
     if runner.id.to_string() != auth.username() {
         return Err(WebError::InvalidCredentials);
     }
@@ -178,10 +168,6 @@ pub async fn get_work_tar(
     State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
 ) -> Result<Response, WebError> {
-    if state.execution_config.runner_token != auth.password() {
-        return Err(WebError::InvalidCredentials);
-    }
-
     let task = state
         .executor
         .lock()
@@ -212,9 +198,6 @@ pub async fn runner_done(
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
     Json(task): Json<FinishedCompilerTask>,
 ) -> Result<(), WebError> {
-    if state.execution_config.runner_token != auth.password() {
-        return Err(WebError::InvalidCredentials);
-    }
     let task_id = state
         .executor
         .lock()

@@ -9,23 +9,21 @@ use crate::endpoints::{
 use crate::error::WebError;
 use crate::storage::LocalRepos;
 use crate::types::{AppState, User, UserRole};
-use axum::extract::Request;
+use axum::extract::{Request, State};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
 use axum::routing::{get, post, put};
 use axum::{middleware, Router};
+use axum_extra::headers::authorization::Basic;
+use axum_extra::headers::Authorization;
+use axum_extra::TypedHeader;
 use axum_prometheus::metrics_exporter_prometheus::PrometheusHandle;
 use axum_prometheus::{GenericMetricLayer, Handle, PrometheusMetricLayerBuilder};
 use clap::builder::styling::AnsiColor;
 use clap::builder::Styles;
 use clap::Parser;
-use shared::{
-    AbortedExecution, ExecutionOutput, FinishedCompilerTask, FinishedExecution, FinishedTest,
-    InternalError,
-};
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::time::{Duration, SystemTime};
 use std::{env, fs};
 use tokio::select;
 use tokio::signal::unix::{signal, SignalKind};
@@ -105,57 +103,6 @@ async fn main() {
         .await
         .unwrap();
     }
-    if db.get_task_ids().await.unwrap().is_empty() {
-        db.add_finished_task(
-            &"foobar".to_string().into(),
-            &FinishedCompilerTask::RanTests {
-                start: SystemTime::now(),
-                build_output: FinishedExecution {
-                    stdout: "stdout!".to_string(),
-                    stderr: "stderr!".to_string(),
-                    runtime: Duration::from_secs(42),
-                    exit_status: Some(0),
-                },
-                tests: vec![
-                    FinishedTest {
-                        test_id: "test1".to_string(),
-                        output: ExecutionOutput::Error(InternalError {
-                            message: "error".to_string(),
-                            runtime: Duration::from_secs(42),
-                        }),
-                    },
-                    FinishedTest {
-                        test_id: "test2".to_string(),
-                        output: ExecutionOutput::Aborted(AbortedExecution {
-                            stdout: "stdout".to_string(),
-                            stderr: "stderr".to_string(),
-                            runtime: Duration::from_secs(42),
-                        }),
-                    },
-                    FinishedTest {
-                        test_id: "test3".to_string(),
-                        output: ExecutionOutput::Timeout(FinishedExecution {
-                            stdout: "stdout!".to_string(),
-                            stderr: "stderr!".to_string(),
-                            runtime: Duration::from_secs(42),
-                            exit_status: None,
-                        }),
-                    },
-                    FinishedTest {
-                        test_id: "test4".to_string(),
-                        output: ExecutionOutput::Finished(FinishedExecution {
-                            stdout: "stdout!".to_string(),
-                            stderr: "stderr!".to_string(),
-                            runtime: Duration::from_secs(42),
-                            exit_status: Some(0),
-                        }),
-                    },
-                ],
-            },
-        )
-        .await
-        .unwrap();
-    }
 
     db.sync_teams(&config.teams).await.unwrap();
 
@@ -184,7 +131,7 @@ async fn main_server(
     state: AppState,
     prometheus_layer: GenericMetricLayer<'static, PrometheusHandle, Handle>,
 ) {
-    let require_admin = middleware::from_fn_with_state(
+    let authed_admin = middleware::from_fn_with_state(
         state.clone(),
         |claims: Claims, request: Request, next: Next| async move {
             if claims.role != UserRole::Admin {
@@ -193,13 +140,41 @@ async fn main_server(
             next.run(request).await
         },
     );
+    let authed_runner = middleware::from_fn_with_state(
+        state.clone(),
+        |TypedHeader(header): TypedHeader<Authorization<Basic>>,
+         State(state): State<AppState>,
+         request: Request,
+         next: Next| async move {
+            let token = header.0.password();
+            if token != state.execution_config.runner_token {
+                return WebError::InvalidCredentials.into_response();
+            }
+            next.run(request).await
+        },
+    );
 
     let app = Router::new()
-        .route("/executor/done", post(runner_done))
-        .route("/executor/register", post(runner_register))
-        .route("/executor/request-tar", get(get_work_tar))
-        .route("/executor/request-work", post(get_work))
-        .route("/executor/update", post(runner_update))
+        .route(
+            "/executor/done",
+            post(runner_done).layer(authed_runner.clone()),
+        )
+        .route(
+            "/executor/register",
+            post(runner_register).layer(authed_runner.clone()),
+        )
+        .route(
+            "/executor/request-tar",
+            get(get_work_tar).layer(authed_runner.clone()),
+        )
+        .route(
+            "/executor/request-work",
+            post(get_work).layer(authed_runner.clone()),
+        )
+        .route(
+            "/executor/update",
+            post(runner_update).layer(authed_runner.clone()),
+        )
         .route("/login", post(login))
         .route("/queue", get(get_queued_tasks))
         .route("/queue/rev/:revision", put(request_revision))
@@ -209,7 +184,7 @@ async fn main_server(
         .route("/tasks/:task_id", get(get_task))
         .route("/tests", get(list_tests))
         .route("/tests/:test_id", put(set_test))
-        .route("/users", get(list_users).layer(require_admin))
+        .route("/users", get(list_users).layer(authed_admin))
         .route("/users/me", get(show_me_myself))
         .layer(prometheus_layer)
         .layer(CorsLayer::very_permissive()) // TODO: Make nicer
