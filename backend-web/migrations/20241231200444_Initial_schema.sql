@@ -19,3 +19,37 @@ CREATE TABLE Repos
     url        VARCHAR(255) NOT NULL,
     auto_fetch BOOLEAN      NOT NULL DEFAULT TRUE
 );
+
+CREATE TABLE Queue
+(
+    id       VARCHAR(36) PRIMARY KEY,
+    team     VARCHAR(36)  NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    revision VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE Tasks
+(
+    task_id      VARCHAR(36) PRIMARY KEY,
+    start_time   TIMESTAMP NOT NULL,
+    execution_id VARCHAR(36) DEFAULT NULL REFERENCES ExecutionResults (execution_id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE TestResults
+(
+    task_id      VARCHAR(36) NOT NULL REFERENCES Tasks (task_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    test_id      VARCHAR(36) NOT NULL,
+    execution_id VARCHAR(36) NOT NULL REFERENCES ExecutionResults (execution_id) ON DELETE CASCADE ON UPDATE CASCADE,
+
+    PRIMARY KEY (task_id, test_id)
+);
+
+CREATE TABLE ExecutionResults
+(
+    execution_id VARCHAR(36) PRIMARY KEY,
+    stdout       TEXT        NOT NULL,
+    stderr       TEXT        NOT NULL,
+    error        TEXT,
+    result       VARCHAR(30) NOT NULL CHECK (result IN ('Aborted', 'Error', 'Finished', 'Timeout')),
+    duration_ms  INTEGER     NOT NULL,
+    exit_code    INTEGER
+);

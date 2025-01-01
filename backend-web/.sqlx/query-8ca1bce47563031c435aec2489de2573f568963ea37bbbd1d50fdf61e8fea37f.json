@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO ExecutionResults\n            (execution_id, stdout, stderr, error, result, duration_ms, exit_code)\n        VALUES \n            (?, ?, ?, ?, ?, ?, ?)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "8ca1bce47563031c435aec2489de2573f568963ea37bbbd1d50fdf61e8fea37f"
+}

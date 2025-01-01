@@ -1,11 +1,14 @@
+mod queue;
 mod repo;
+mod task;
 mod team;
 mod user;
 
 pub use self::user::UserForAuth;
 use crate::config::TeamEntry;
 use crate::error::WebError;
-use crate::types::{FullUserForAdmin, OwnUser, Repo, Team, TeamId, UserId};
+use crate::types::{FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, UserId, WorkItem};
+use shared::FinishedCompilerTask;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
 use sqlx::{query, Pool, Sqlite, SqlitePool};
 use std::path::Path;
@@ -100,6 +103,32 @@ impl Database {
     pub async fn sync_teams(&self, teams: &[TeamEntry]) -> Result<(), WebError> {
         let pool = self.write_lock().await;
         team::sync_teams(&*pool, teams).await
+    }
+
+    pub async fn queue_task(&self, task: WorkItem) -> Result<(), WebError> {
+        let pool = self.write_lock().await;
+        queue::queue_task(&mut *pool.acquire().await?, task).await
+    }
+
+    pub async fn get_queued_tasks(&self) -> Result<Vec<WorkItem>, WebError> {
+        let pool = self.read_lock().await;
+        queue::get_queued_tasks(&mut *pool.acquire().await?).await
+    }
+
+    pub async fn add_finished_task(
+        &self,
+        task_id: &TaskId,
+        result: &FinishedCompilerTask,
+    ) -> Result<(), WebError> {
+        let pool = self.write_lock().await;
+        let mut con = pool.begin().await?;
+
+        queue::remove_queued_task(&mut con, task_id).await?;
+        task::add_finished_task(&mut con, task_id, result).await?;
+
+        con.commit().await?;
+
+        Ok(())
     }
 }
 

@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id as \"id!: TeamId\", display_name FROM Teams WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: TeamId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "display_name",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "f37baf9df89a200039a7961b1aa10ef6af972f9d91b8cebc65ec89d499d89ff3"
+}

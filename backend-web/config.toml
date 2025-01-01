@@ -1,6 +1,12 @@
 database_path = "./target/dev.db"
 jwt_secret = "A very cool JWT secret."
 
+[execution]
+runner_token = "correct horse battery staple"
+build_command = ["bash", "-c", "echo 'Hello world!'"]
+build_timeout = "5m"
+test_timeout = "10m"
+
 [[teams]]
 id = "admin_team"
 display_name = "The admin team"

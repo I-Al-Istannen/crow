@@ -1,7 +1,10 @@
 use crate::auth::{Claims, Keys};
 use crate::config::Config;
 use crate::db::{Database, UserForAuth};
-use crate::endpoints::{get_repo, list_users, login, set_team_repo, show_me_myself};
+use crate::endpoints::{
+    get_queued_tasks, get_repo, get_work, get_work_tar, list_users, login, request_revision,
+    runner_done, set_team_repo, show_me_myself,
+};
 use crate::error::WebError;
 use crate::types::{AppState, User, UserRole};
 use axum::extract::Request;
@@ -97,7 +100,11 @@ async fn main() {
 
     db.sync_teams(&config.teams).await.unwrap();
 
-    let state = AppState::new(db, Keys::new(config.jwt_secret.as_bytes()));
+    let state = AppState::new(
+        db,
+        Keys::new(config.jwt_secret.as_bytes()),
+        config.execution,
+    );
 
     let (prometheus_layer, metric_handle) = PrometheusMetricLayerBuilder::new()
         .with_prefix("compilers-backend")
@@ -132,6 +139,11 @@ async fn main_server(
         .route("/login", post(login))
         .route("/repo/:team_id", put(set_team_repo))
         .route("/repo/:team_id", get(get_repo))
+        .route("/executor/request-work", get(get_work))
+        .route("/executor/request-tar", get(get_work_tar))
+        .route("/executor/done/:task_id", post(runner_done))
+        .route("/queue", get(get_queued_tasks))
+        .route("/queue/rev/:revision", put(request_revision))
         .layer(prometheus_layer)
         .layer(CorsLayer::very_permissive()) // TODO: Make nicer
         .layer(TraceLayer::new_for_http())

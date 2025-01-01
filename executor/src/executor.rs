@@ -8,6 +8,7 @@ use shared::{
 use snafu::{Location, Report, ResultExt, Snafu};
 use std::sync::atomic::AtomicBool;
 use std::sync::{mpsc, Arc};
+use std::time::{Instant, SystemTime};
 use tracing::error;
 
 #[derive(Debug, Snafu)]
@@ -40,13 +41,19 @@ pub struct ExecutingTask<'a> {
 
 pub fn execute_task(task: ExecutingTask) -> FinishedCompilerTask {
     let task_id = task.inner.task_id.clone();
+    let start = SystemTime::now();
+    let start_monotonic = Instant::now();
+
     match execute_task_impl(task) {
         Ok(res) => res,
-        Err(e) => task_run_error_to_task(task_id, e),
+        Err(e) => task_run_error_to_task(start, start_monotonic, task_id, e),
     }
 }
 
 fn execute_task_impl(task: ExecutingTask) -> Result<FinishedCompilerTask, TaskRunError> {
+    let start = SystemTime::now();
+    let start_monotonic = Instant::now();
+
     let pool = task.pool;
     let aborted = task.aborted;
     let task = task.inner;
@@ -97,13 +104,16 @@ fn execute_task_impl(task: ExecutingTask) -> Result<FinishedCompilerTask, TaskRu
                 runtime: res.runtime,
                 exit_status: None,
             }),
-            Err(e) => test_run_error_to_output(task_id.clone(), test_id.clone(), e),
+            Err(e) => {
+                test_run_error_to_output(start_monotonic, task_id.clone(), test_id.clone(), e)
+            }
         };
 
         finished_tests.push(FinishedTest { test_id, output });
     }
 
     Ok(FinishedCompilerTask::RanTests {
+        start,
         build_output: FinishedExecution {
             stdout: container.data.stdout.clone(),
             stderr: container.data.stderr.clone(),
@@ -114,10 +124,18 @@ fn execute_task_impl(task: ExecutingTask) -> Result<FinishedCompilerTask, TaskRu
     })
 }
 
-fn task_run_error_to_task(task_id: String, e: TaskRunError) -> FinishedCompilerTask {
+fn task_run_error_to_task(
+    start: SystemTime,
+    start_monotonic: Instant,
+    task_id: String,
+    e: TaskRunError,
+) -> FinishedCompilerTask {
     if let TaskRunError::WaitForBuild { source, .. } = &e {
         if let Some(build_output) = execution_output_from_wait_error(source) {
-            return FinishedCompilerTask::BuildFailed { build_output };
+            return FinishedCompilerTask::BuildFailed {
+                start,
+                build_output,
+            };
         }
     }
 
@@ -130,14 +148,20 @@ fn task_run_error_to_task(task_id: String, e: TaskRunError) -> FinishedCompilerT
     );
 
     FinishedCompilerTask::BuildFailed {
+        start,
         build_output: ExecutionOutput::Error(InternalError {
+            runtime: start_monotonic.elapsed(),
             message: format!("Internal error while building task:\n{}", report),
-            id: task_id,
         }),
     }
 }
 
-fn test_run_error_to_output(task_id: String, test_id: String, e: TestRunError) -> ExecutionOutput {
+fn test_run_error_to_output(
+    start_monotonic: Instant,
+    task_id: String,
+    test_id: String,
+    e: TestRunError,
+) -> ExecutionOutput {
     if let TestRunError::Execution { source, .. } = &e {
         if let Some(res) = execution_output_from_wait_error(source) {
             return res;
@@ -154,8 +178,8 @@ fn test_run_error_to_output(task_id: String, test_id: String, e: TestRunError) -
     );
 
     ExecutionOutput::Error(InternalError {
+        runtime: start_monotonic.elapsed(),
         message: format!("Internal error while running test:\n{}", report),
-        id: test_id,
     })
 }
 
