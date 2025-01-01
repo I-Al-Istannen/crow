@@ -15,6 +15,7 @@ pub use self::user::UserRole;
 use crate::auth::Keys;
 use crate::config::ExecutionConfig;
 use crate::db::Database;
+use crate::storage::LocalRepos;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
@@ -32,15 +33,22 @@ pub struct AppState {
     pub jwt_keys: Keys,
     pub execution_config: ExecutionConfig,
     pub executor: Arc<Mutex<Executor>>,
+    pub local_repos: LocalRepos,
 }
 
 impl AppState {
-    pub fn new(db: Database, jwt_secret: Keys, runner_config: ExecutionConfig) -> Self {
+    pub fn new(
+        db: Database,
+        jwt_secret: Keys,
+        runner_config: ExecutionConfig,
+        local_repos: LocalRepos,
+    ) -> Self {
         Self {
             db,
             jwt_keys: jwt_secret,
             execution_config: runner_config,
             executor: Arc::new(Mutex::new(Executor::default())),
+            local_repos,
         }
     }
 }

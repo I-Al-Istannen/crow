@@ -23,3 +23,5 @@ axum-extra = { version = "0.9.6", features = ["typed-header"] }
 shared = { version = "0.1.0", path = "../shared" }
 parse_duration = "2.1.1"
 uuid = { version = "1.11.0", features = ["v4"] }
+tempfile = "3.14.0"
+tokio-util = { version = "0.7.13", features = ["io"] }

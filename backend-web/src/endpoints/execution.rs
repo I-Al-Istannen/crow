@@ -2,6 +2,7 @@ use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::WebError;
 use crate::types::{AppState, TaskId, WorkItem};
+use axum::body::Body;
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
 use axum_extra::headers::authorization::Bearer;
@@ -9,6 +10,7 @@ use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
 use serde_json::json;
 use shared::{CompilerTask, CompilerTest, FinishedCompilerTask};
+use tokio_util::io::ReaderStream;
 use uuid::Uuid;
 
 pub async fn request_revision(
@@ -19,6 +21,10 @@ pub async fn request_revision(
     let Some(team) = state.db.get_user(&claims.sub).await?.user.team else {
         return Err(WebError::NotInTeam);
     };
+
+    // Update repo to ensure revision is present
+    let repo = state.db.get_repo(&team).await?;
+    state.local_repos.update_repo(&repo).await?;
 
     let task_id: TaskId = Uuid::new_v4().to_string().into();
     let task = WorkItem {
@@ -94,21 +100,34 @@ pub async fn get_work_tar(
     State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(task_id): Path<TaskId>,
-) -> Result<(), WebError> {
+) -> Result<Response, WebError> {
     if state.execution_config.runner_token != auth.token() {
         return Err(WebError::InvalidCredentials);
     }
 
-    let _task = state
+    let task = state
         .executor
         .lock()
         .unwrap()
         .get_running_task(&task_id)
         .ok_or(WebError::NotFound)?;
 
-    // TODO: Return task tar here
+    let repo = state.db.get_repo(&task.team).await?;
 
-    Ok(())
+    let temp_file = tempfile::NamedTempFile::new().unwrap();
+    state
+        .local_repos
+        .export_repo(&repo, temp_file.path(), &task.revision)
+        .await?;
+
+    let file = tokio::fs::File::open(temp_file.path())
+        .await
+        .map_err(|e| WebError::InternalServerError(e.to_string()))?;
+
+    // Delete the file, we have an open file handle to it
+    drop(temp_file);
+
+    Ok(Body::from_stream(ReaderStream::new(file)).into_response())
 }
 
 pub async fn runner_done(

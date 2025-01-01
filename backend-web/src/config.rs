@@ -27,6 +27,8 @@ pub struct ExecutionConfig {
     pub build_timeout: Duration,
     #[serde(deserialize_with = "parse_duration")]
     pub test_timeout: Duration,
+
+    pub local_repo_path: PathBuf,
 }
 
 fn parse_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>

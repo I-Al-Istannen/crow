@@ -10,7 +10,7 @@ pub enum WebError {
     NoPermissions,
     InvalidCredentials,
     InvalidJson(String),
-    InternalServerError,
+    InternalServerError(String),
     NotFound,
     NotInTeam,
 }
@@ -21,7 +21,7 @@ impl WebError {
             Self::NoPermissions => ("no_permissions", StatusCode::FORBIDDEN),
             Self::InvalidCredentials => ("invalid_credentials", StatusCode::UNAUTHORIZED),
             Self::InvalidJson(_) => ("invalid_json", StatusCode::BAD_REQUEST),
-            Self::InternalServerError => ("internal_error", StatusCode::INTERNAL_SERVER_ERROR),
+            Self::InternalServerError(_) => ("internal_error", StatusCode::INTERNAL_SERVER_ERROR),
             Self::NotFound => ("not_found", StatusCode::NOT_FOUND),
             Self::NotInTeam => ("not_in_team", StatusCode::BAD_REQUEST),
         }
@@ -33,8 +33,8 @@ impl Display for WebError {
         match self {
             Self::NoPermissions => write!(f, "No permissions"),
             Self::InvalidCredentials => write!(f, "Invalid credentials"),
-            Self::InvalidJson(msg) => write!(f, "Invalid JSON: `{}`", msg),
-            Self::InternalServerError => write!(f, "Internal server error"),
+            Self::InvalidJson(msg) => write!(f, "Invalid JSON: `{msg}`"),
+            Self::InternalServerError(msg) => write!(f, "Internal server error: `{msg}`"),
             Self::NotFound => write!(f, "Not found"),
             Self::NotInTeam => write!(f, "Not in team"),
         }

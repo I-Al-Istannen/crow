@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            id as \"id!: TestId\",\n            name,\n            expected_output,\n            owner as \"owner!: TeamId\"\n        FROM Tests\n        WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: TestId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "expected_output",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "owner!: TeamId",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "973556d6434865c674ccc4e00d1d04c97bf2fa75f4eecbe4eea76bbb83b7ce55"
+}

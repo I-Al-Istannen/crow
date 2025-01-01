@@ -7,6 +7,7 @@ build_command = ["bash", "-c", "echo 'Hello world!'"]
 test_command = ["bash", "-c", "echo 'Hello test!'"]
 build_timeout = "5m"
 test_timeout = "10m"
+local_repo_path = "target/repos"
 
 [[teams]]
 id = "admin_team"

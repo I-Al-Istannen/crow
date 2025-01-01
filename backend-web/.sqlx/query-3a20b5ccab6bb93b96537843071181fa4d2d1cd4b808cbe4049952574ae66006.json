@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT task_id as \"task_id!: TaskId\" FROM Tasks",
+  "describe": {
+    "columns": [
+      {
+        "name": "task_id!: TaskId",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "3a20b5ccab6bb93b96537843071181fa4d2d1cd4b808cbe4049952574ae66006"
+}

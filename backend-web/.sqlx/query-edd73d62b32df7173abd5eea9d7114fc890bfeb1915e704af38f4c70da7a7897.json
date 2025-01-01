@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT \n            execution_id,\n            stdout,\n            stderr,\n            error,\n            result as \"result!: ExecutionExitStatus\",\n            duration_ms as \"duration_ms!: u64\",\n            exit_code as \"exit_code?: i32\"\n        FROM ExecutionResults\n        WHERE execution_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "execution_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "stdout",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "stderr",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "error",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "result!: ExecutionExitStatus",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "duration_ms!: u64",
+        "ordinal": 5,
+        "type_info": "Integer"
+      },
+      {
+        "name": "exit_code?: i32",
+        "ordinal": 6,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "edd73d62b32df7173abd5eea9d7114fc890bfeb1915e704af38f4c70da7a7897"
+}

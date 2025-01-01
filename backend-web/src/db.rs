@@ -163,6 +163,6 @@ impl Database {
 impl From<sqlx::Error> for WebError {
     fn from(value: sqlx::Error) -> Self {
         warn!(error = ?value, "sqlx query error");
-        WebError::InternalServerError
+        WebError::InternalServerError(value.to_string())
     }
 }

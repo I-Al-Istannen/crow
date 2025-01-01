@@ -42,7 +42,7 @@ pub fn create_jwt(user: UserId, keys: &Keys, role: UserRole) -> Result<String, W
     };
     encode(&Header::default(), &claims, &keys.encoding).map_err(|e| {
         info!(error = ?e, "Error creating JWT");
-        WebError::InternalServerError
+        WebError::InternalServerError("Error creating JWT".to_string())
     })
 }
 

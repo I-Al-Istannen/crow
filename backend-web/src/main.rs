@@ -6,6 +6,7 @@ use crate::endpoints::{
     list_users, login, request_revision, runner_done, set_team_repo, set_test, show_me_myself,
 };
 use crate::error::WebError;
+use crate::storage::LocalRepos;
 use crate::types::{AppState, User, UserRole};
 use axum::extract::Request;
 use axum::middleware::Next;
@@ -39,6 +40,7 @@ mod config;
 mod db;
 mod endpoints;
 mod error;
+mod storage;
 mod types;
 
 // noinspection DuplicatedCode
@@ -156,10 +158,12 @@ async fn main() {
 
     db.sync_teams(&config.teams).await.unwrap();
 
+    let local_repo_path = config.execution.local_repo_path.clone();
     let state = AppState::new(
         db,
         Keys::new(config.jwt_secret.as_bytes()),
         config.execution,
+        LocalRepos::new(local_repo_path),
     );
 
     let (prometheus_layer, metric_handle) = PrometheusMetricLayerBuilder::new()
