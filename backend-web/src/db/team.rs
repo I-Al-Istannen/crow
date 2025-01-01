@@ -2,7 +2,8 @@ use crate::config::TeamEntry;
 use crate::error::WebError;
 use crate::types::{Team, TeamId};
 use sqlx::{query, Acquire, Sqlite, SqliteConnection};
-use tracing::warn;
+use std::collections::HashSet;
+use tracing::{info, warn};
 
 pub async fn get_team(con: &mut SqliteConnection, team_id: &TeamId) -> Result<Team, WebError> {
     let team = query!(
@@ -31,12 +32,18 @@ pub async fn sync_teams(
     query!("PRAGMA defer_foreign_keys = ON")
         .execute(&mut *con)
         .await?;
-    query!("DELETE FROM Teams").execute(&mut *con).await?;
 
     for team in teams {
         query!(
-            "INSERT INTO Teams (id, display_name) VALUES (?, ?)",
+            r#"
+            INSERT INTO Teams
+                (id, display_name)
+            VALUES
+                (?, ?)
+            ON CONFLICT DO UPDATE SET
+                display_name = ?"#,
             team.id,
+            team.display_name,
             team.display_name
         )
         .execute(&mut *con)
@@ -50,6 +57,24 @@ pub async fn sync_teams(
             if res.rows_affected() == 0 {
                 warn!(user = ?member, team = ?team.id, "User not found when adding to team");
             }
+        }
+    }
+
+    let existing_teams = query!(r#"SELECT id as "id!" FROM Teams"#)
+        .map(|it| it.id)
+        .fetch_all(&mut *con)
+        .await?;
+    let expected_teams = teams
+        .iter()
+        .map(|team| team.id.to_string())
+        .collect::<HashSet<_>>();
+
+    for team in existing_teams {
+        if !expected_teams.contains(&team) {
+            info!(team = ?team, "Removing team");
+            query!("DELETE FROM Teams WHERE id = ?", team)
+                .execute(&mut *con)
+                .await?;
         }
     }
 
