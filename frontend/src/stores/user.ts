@@ -1,11 +1,12 @@
-import { type User, UserSchema } from '@/types.ts'
+import { type Team, type User, UserSchema } from '@/types.ts'
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { fetchWithError } from '@/data/fetching.ts'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string | null>(null)
-  const userInfo = ref<User | null>(null)
+  const user = ref<User | null>(null)
+  const team = ref<Team | null>(null)
 
   const loggedIn = computed(() => token.value !== null)
 
@@ -16,9 +17,9 @@ export const useUserStore = defineStore('user', () => {
       body: JSON.stringify({ username: 'admin', password: 'admin' }),
     })
     const json = await res.json()
-    userInfo.value = UserSchema.parse(json['user'])
+    user.value = UserSchema.parse(json['user'])
     token.value = json['token']
   }
 
-  return { token, userInfo, loggedIn, logIn }
+  return { token, team, user, loggedIn, logIn }
 })

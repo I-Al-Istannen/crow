@@ -5,10 +5,11 @@
         <CardTitle>Repository settings</CardTitle>
         <CardDescription>Change your repository URL and crows behaviour</CardDescription>
       </CardHeader>
-      <CardContent>
-        <form @submit="onSubmit" class="space-y-4">
-          <FormField v-slot="{ componentField }" name="repoUrl">
-            <FormItem>
+      <CardContent v-if="isLoading">Requesting repo information...</CardContent>
+      <CardContent v-show="isFetched">
+        <form novalidate @submit="onSubmit" class="space-y-4" :inert="!isFetched">
+          <FormField v-slot="{ componentField }" name="repoUrl" :validate-on-input="true">
+            <FormItem v-auto-animate>
               <FormLabel class="text-sm font-medium">Repo URL</FormLabel>
               <FormControl>
                 <Input
@@ -21,7 +22,7 @@
               <FormMessage />
             </FormItem>
           </FormField>
-          <FormField v-slot="{ value, handleChange }" name="autoFetch">
+          <FormField v-slot="{ value, handleChange }" name="autoFetch" :validate-on-input="true">
             <FormItem class="flex flex-row items-start gap-x-3 space-y-0">
               <FormControl>
                 <Checkbox :checked="value" @update:checked="handleChange" />
@@ -35,7 +36,10 @@
               </div>
             </FormItem>
           </FormField>
-          <Button type="submit">Submit</Button>
+          <Button type="submit" :disabled="mutationPending">
+            <LoaderCircle class="animate-spin mr-2 -ml-2" v-if="mutationPending" />
+            Submit
+          </Button>
         </form>
       </CardContent>
     </Card>
@@ -52,19 +56,54 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { computed, watch } from 'vue'
+import { mutateRepo, queryRepo } from '@/data/network.ts'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { LoaderCircle } from 'lucide-vue-next'
 import PageContainer from '@/components/PageContainer.vue'
 import { PatchRepoSchema } from '@/types.ts'
+import { storeToRefs } from 'pinia'
 import { toTypedSchema } from '@vee-validate/zod'
+import { toast } from 'vue-sonner'
 import { useForm } from 'vee-validate'
+import { useQueryClient } from '@tanstack/vue-query'
+import { useUserStore } from '@/stores/user.ts'
+import { vAutoAnimate } from '@formkit/auto-animate/vue'
+
+const { team } = storeToRefs(useUserStore())
+const teamId = computed(() => team.value?.id)
+
+const { data: repo, isFetched, isLoading } = queryRepo(teamId)
+const { mutateAsync, isPending: mutationPending } = mutateRepo(useQueryClient())
 
 const form = useForm({
   validationSchema: toTypedSchema(PatchRepoSchema),
 })
 
-const onSubmit = form.handleSubmit((values) => {
-  console.log(values)
+watch(repo, () => {
+  form.resetForm({
+    values: {
+      repoUrl: repo.value?.url,
+      autoFetch: repo.value?.autoFetch,
+    },
+  })
+})
+
+const onSubmit = form.handleSubmit(async (values) => {
+  if (!teamId.value) {
+    return
+  }
+
+  await mutateAsync([
+    teamId.value,
+    {
+      repoUrl: values.repoUrl,
+      autoFetch: values.autoFetch,
+    },
+  ])
+
+  toast.success('Repository settings updated!')
 })
 </script>

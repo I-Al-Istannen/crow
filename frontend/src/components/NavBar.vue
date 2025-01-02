@@ -13,10 +13,9 @@
               <router-link :to="route.route">
                 <NavigationMenuLink
                   :class="[
-                    navigationMenuTriggerStyle(),
-                    route.route.name == currentRoute.name ? 'bg-accent' : '',
+                    routerLinkClasses,
+                    route.route.name == currentRoute.name ? 'bg-accent' : 'bg-background',
                   ]"
-                  class="font-medium"
                 >
                   {{ route.title }}
                 </NavigationMenuLink>
@@ -60,7 +59,6 @@ import {
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-  navigationMenuTriggerStyle,
 } from '@/components/ui/navigation-menu'
 import { Button } from '@/components/ui/button'
 import { computed } from 'vue'
@@ -69,9 +67,15 @@ import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user.ts'
 
+const routerLinkClasses =
+  'group inline-flex h-9 w-max items-center justify-center rounded-md px-4 py-2' +
+  ' text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground' +
+  ' focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none' +
+  ' disabled:opacity-50 data-[active]:bg-accent'
+
 const currentRoute = useRoute()
-const { userInfo } = storeToRefs(useUserStore())
-const userName = computed(() => userInfo.value?.displayName)
+const { user } = storeToRefs(useUserStore())
+const userName = computed(() => user.value?.displayName)
 
 const routes = computed(() =>
   router.getRoutes().map((route) => ({

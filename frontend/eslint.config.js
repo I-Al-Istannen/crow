@@ -40,6 +40,7 @@ export default [
             'Command',
             'Dialog',
             'Input',
+            'Label',
             'Popover',
             'Select',
             'Separator',

@@ -14,6 +14,17 @@ export const TeamSchema = z.object({
   displayName: z.string(),
 })
 
+export const ShowMyselfResponseSchema = z.object({
+  user: UserSchema,
+  team: TeamSchema,
+})
+
+export const RepoSchema = z.object({
+  team: TeamIdSchema,
+  url: z.string().url('The repo URL is invalid'),
+  autoFetch: z.boolean(),
+})
+
 export const CompilerTestSchema = z.object({
   testId: z.string(),
   timeout: z.number().describe('duration in ms'),
@@ -123,3 +134,5 @@ export type UserId = z.infer<typeof UserIdSchema>
 export type TeamId = z.infer<typeof TeamIdSchema>
 export type Team = z.infer<typeof TeamSchema>
 export type PatchRepo = z.infer<typeof PatchRepoSchema>
+export type ShowMyselfResponse = z.infer<typeof ShowMyselfResponseSchema>
+export type Repo = z.infer<typeof RepoSchema>
