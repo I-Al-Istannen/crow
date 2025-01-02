@@ -12,15 +12,9 @@ use tracing::{info_span, instrument, Instrument};
 #[instrument(skip_all)]
 pub(super) async fn add_finished_task(
     con: impl Acquire<'_, Database = Sqlite>,
-    task_id: &TaskId,
     result: &FinishedCompilerTask,
 ) -> Result<()> {
     let mut con = con.begin().await?;
-
-    query!("PRAGMA defer_foreign_keys = ON")
-        .execute(&mut *con)
-        .instrument(info_span!("sqlx_add_finished_pragma"))
-        .await?;
 
     let start_time = result
         .info()
@@ -35,35 +29,17 @@ pub(super) async fn add_finished_task(
         .unwrap_or(Duration::ZERO)
         .as_millis() as i64;
 
-    let build_id = uuid::Uuid::new_v4().to_string();
-
-    query!(
-        r#"
-        INSERT INTO Tasks
-            (task_id, team_id, revision, start_time, end_time, execution_id)
-        VALUES
-            (?, ?, ?, ?, ?, ?)
-        "#,
-        task_id,
-        result.info().team_id,
-        result.info().revision_id,
-        start_time,
-        end_time,
-        build_id
-    )
-    .execute(&mut *con)
-    .instrument(info_span!("sqlx_add_finished_insert_task"))
-    .await?;
-
     match result {
         FinishedCompilerTask::BuildFailed { build_output, .. } => {
-            record_execution_output(&mut con, &build_id, build_output).await?;
+            let id = record_execution_output(&mut con, build_output).await?;
+            record_task(&mut con, result, start_time, end_time, &id).await?;
         }
         FinishedCompilerTask::RanTests {
             tests,
             build_output,
             ..
         } => {
+            let build_id = uuid::Uuid::new_v4().to_string();
             record_finished_execution(
                 &mut con,
                 &build_id,
@@ -71,15 +47,14 @@ pub(super) async fn add_finished_task(
                 ExecutionExitStatus::Finished,
             )
             .await?;
+            record_task(&mut con, result, start_time, end_time, &build_id).await?;
 
             for test in tests {
-                let test_exec_id = uuid::Uuid::new_v4().to_string();
-
-                record_execution_output(&mut con, &test_exec_id, &test.output).await?;
+                let test_exec_id = record_execution_output(&mut con, &test.output).await?;
 
                 query!(
                     "INSERT INTO TestResults (task_id, test_id, execution_id) VALUES (?, ?, ?)",
-                    task_id,
+                    result.info().task_id,
                     test.test_id,
                     test_exec_id
                 )
@@ -222,7 +197,7 @@ pub(super) async fn get_task_ids(con: &mut SqliteConnection) -> Result<Vec<TaskI
 async fn get_execution(con: &mut SqliteConnection, execution_id: &str) -> Result<ExecutionOutput> {
     let execution = query!(
         r#"
-        SELECT 
+        SELECT
             execution_id,
             stdout,
             stderr,
@@ -270,19 +245,49 @@ async fn get_execution(con: &mut SqliteConnection, execution_id: &str) -> Result
 #[instrument(skip_all)]
 async fn record_execution_output(
     con: &mut SqliteConnection,
-    execution_id: &str,
     e: &ExecutionOutput,
-) -> Result<()> {
+) -> Result<String> {
+    let execution_id = uuid::Uuid::new_v4().to_string();
+
     match e {
-        ExecutionOutput::Aborted(e) => record_aborted(con, execution_id, e).await?,
-        ExecutionOutput::Error(e) => record_internal_error(con, execution_id, e).await?,
+        ExecutionOutput::Aborted(e) => record_aborted(con, &execution_id, e).await?,
+        ExecutionOutput::Error(e) => record_internal_error(con, &execution_id, e).await?,
         ExecutionOutput::Finished(e) => {
-            record_finished_execution(con, execution_id, e, ExecutionExitStatus::Finished).await?
+            record_finished_execution(con, &execution_id, e, ExecutionExitStatus::Finished).await?
         }
         ExecutionOutput::Timeout(e) => {
-            record_finished_execution(con, execution_id, e, ExecutionExitStatus::Timeout).await?
+            record_finished_execution(con, &execution_id, e, ExecutionExitStatus::Timeout).await?
         }
     }
+
+    Ok(execution_id)
+}
+
+#[instrument(skip_all)]
+async fn record_task(
+    con: &mut SqliteConnection,
+    result: &FinishedCompilerTask,
+    start_time: i64,
+    end_time: i64,
+    build_id: &str,
+) -> Result<()> {
+    query!(
+        r#"
+        INSERT INTO Tasks
+            (task_id, team_id, revision, start_time, end_time, execution_id)
+        VALUES
+            (?, ?, ?, ?, ?, ?)
+        "#,
+        result.info().task_id,
+        result.info().team_id,
+        result.info().revision_id,
+        start_time,
+        end_time,
+        build_id
+    )
+    .execute(&mut *con)
+    .instrument(info_span!("sqlx_add_finished_insert_task"))
+    .await?;
 
     Ok(())
 }
@@ -324,7 +329,7 @@ async fn record_internal_error(
 ) -> Result<()> {
     let runtime = e.runtime.as_millis() as i64;
     query!(
-        "INSERT INTO ExecutionResults 
+        "INSERT INTO ExecutionResults
             (execution_id, stdout, stderr, error, result, duration_ms, exit_code)
          VALUES
             (?, ?, ?, ?, ?, ?, ?)
@@ -353,7 +358,7 @@ async fn record_aborted(
     query!(
         "INSERT INTO ExecutionResults
             (execution_id, stdout, stderr, error, result, duration_ms, exit_code)
-        VALUES 
+        VALUES
             (?, ?, ?, ?, ?, ?, ?)
         ",
         execution_id,

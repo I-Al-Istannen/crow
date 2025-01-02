@@ -116,16 +116,12 @@ impl Database {
         queue::get_queued_tasks(&mut *pool.acquire().await?).await
     }
 
-    pub async fn add_finished_task(
-        &self,
-        task_id: &TaskId,
-        result: &FinishedCompilerTask,
-    ) -> Result<()> {
+    pub async fn add_finished_task(&self, result: &FinishedCompilerTask) -> Result<()> {
         let pool = self.write_lock().await;
         let mut con = pool.begin().await?;
 
-        queue::remove_queued_task(&mut con, task_id).await?;
-        task::add_finished_task(&mut con, task_id, result).await?;
+        queue::remove_queued_task(&mut con, &(result.info().task_id.clone().into())).await?;
+        task::add_finished_task(&mut con, result).await?;
 
         con.commit().await?;
 

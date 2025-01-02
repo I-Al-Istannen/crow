@@ -19,15 +19,12 @@ impl From<FinishedTest> for FinishedTestSummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum FinishedCompilerTaskSummary {
     #[serde(rename_all = "camelCase")]
-    BuildFailed {
-        #[serde(flatten)]
-        info: FinishedTaskInfo,
-    },
+    BuildFailed { info: FinishedTaskInfo },
     #[serde(rename_all = "camelCase")]
     RanTests {
-        #[serde(flatten)]
         info: FinishedTaskInfo,
         tests: Vec<FinishedTestSummary>,
     },

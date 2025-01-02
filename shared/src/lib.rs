@@ -91,6 +91,7 @@ pub struct FinishedTest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FinishedTaskInfo {
     pub task_id: String,
 

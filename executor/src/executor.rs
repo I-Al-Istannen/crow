@@ -51,13 +51,15 @@ pub struct ExecutingTask<'a> {
 
 pub fn execute_task(task: ExecutingTask, source_tar: TempPath) -> FinishedCompilerTask {
     let task_id = task.inner.task_id.clone();
+    let team_id = task.inner.team_id.clone();
+    let revision_id = task.inner.revision_id.clone();
     let start = SystemTime::now();
     let start_monotonic = Instant::now();
     let message_channel = task.message_channel.clone();
 
     let res = match execute_task_impl(task, source_tar) {
         Ok(res) => res,
-        Err(e) => task_run_error_to_task(start, start_monotonic, task_id, e),
+        Err(e) => task_run_error_to_task(start, start_monotonic, task_id, team_id, revision_id, e),
     };
     let _ = message_channel.send(RunnerUpdate::Done);
 
@@ -160,14 +162,16 @@ fn task_run_error_to_task(
     start: SystemTime,
     start_monotonic: Instant,
     task_id: String,
+    team_id: String,
+    revision_id: String,
     e: TaskRunError,
 ) -> FinishedCompilerTask {
     let info = FinishedTaskInfo {
         task_id: task_id.clone(),
         end: SystemTime::now(),
         start,
-        team_id: task_id.clone(),
-        revision_id: task_id.clone(),
+        team_id,
+        revision_id,
     };
 
     if let TaskRunError::WaitForBuild { source, .. } = &e {

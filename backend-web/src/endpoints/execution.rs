@@ -207,19 +207,9 @@ pub async fn runner_done(
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
     Json(task): Json<FinishedCompilerTask>,
 ) -> Result<()> {
-    let task_id = state
-        .executor
-        .lock()
-        .unwrap()
-        .get_current_task(&auth.username().to_string().into());
-    let Some(task_id) = task_id else {
-        return Err(WebError::NotFound);
-    };
-    let task_id = task_id.id;
-
     println!("{}", serde_json::to_string(&task).unwrap());
 
-    state.db.add_finished_task(&task_id, &task).await?;
+    state.db.add_finished_task(&task).await?;
     state
         .executor
         .lock()
