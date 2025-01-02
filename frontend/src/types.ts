@@ -1,22 +1,22 @@
 import { z } from 'zod'
 
-export const UserIdSchema = z.string();
-export const TeamIdSchema = z.string();
+export const UserIdSchema = z.string()
+export const TeamIdSchema = z.string()
 
 export const UserSchema = z.object({
   id: UserIdSchema,
   displayName: z.string(),
-  team: TeamIdSchema.nullable()
-});
+  team: TeamIdSchema.nullable(),
+})
 
 export const TeamSchema = z.object({
   id: TeamIdSchema,
   displayName: z.string(),
-});
+})
 
 export const CompilerTestSchema = z.object({
   testId: z.string(),
-  timeout: z.number().describe("duration in ms"),
+  timeout: z.number().describe('duration in ms'),
   runCommand: z.array(z.string()),
   expectedOutput: z.string(),
 })
@@ -25,26 +25,26 @@ export const CompilerTaskSchema = z.object({
   taskId: z.string(),
   image: z.string(),
   buildCommand: z.array(z.string()),
-  buildTimeout: z.number().describe("duration in ms"),
+  buildTimeout: z.number().describe('duration in ms'),
   tests: z.array(CompilerTestSchema),
 })
 
 export const FinishedExecutionSchema = z.object({
   stdout: z.string(),
   stderr: z.string(),
-  runtime: z.number().describe("duration in ms"),
+  runtime: z.number().describe('duration in ms'),
   exitStatus: z.number().nullable(),
 })
 
 export const AbortedExecutionSchema = z.object({
   stdout: z.string(),
   stderr: z.string(),
-  runtime: z.number().describe("duration in ms"),
+  runtime: z.number().describe('duration in ms'),
 })
 
 export const InternalErrorSchema = z.object({
   message: z.string(),
-  runtime: z.number().describe("duration in ms"),
+  runtime: z.number().describe('duration in ms'),
 })
 
 export const ExecutionOutputSchema = z.union([
@@ -100,6 +100,11 @@ export const RunnerRegisterResponseSchema = z.object({
   reset: z.boolean(),
 })
 
+export const PatchRepoSchema = z.object({
+  repoUrl: z.string().url('invalid url'),
+  autoFetch: z.boolean(),
+})
+
 export type CompilerTest = z.infer<typeof CompilerTestSchema>
 export type CompilerTask = z.infer<typeof CompilerTaskSchema>
 export type FinishedExecution = z.infer<typeof FinishedExecutionSchema>
@@ -117,3 +122,4 @@ export type User = z.infer<typeof UserSchema>
 export type UserId = z.infer<typeof UserIdSchema>
 export type TeamId = z.infer<typeof TeamIdSchema>
 export type Team = z.infer<typeof TeamSchema>
+export type PatchRepo = z.infer<typeof PatchRepoSchema>

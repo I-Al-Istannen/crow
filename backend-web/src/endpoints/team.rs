@@ -34,6 +34,25 @@ pub async fn set_team_repo(
     Ok(Json(repo))
 }
 
+#[instrument(skip_all)]
+pub async fn get_team_repo(
+    State(AppState { db, .. }): State<AppState>,
+    claims: Claims,
+    Path(team_id): Path<TeamId>,
+) -> Result<Json<Repo>, WebError> {
+    let user = db.get_user(&claims.sub).await?;
+
+    if claims.is_admin() {
+        return Ok(Json(db.get_repo(&team_id).await?));
+    }
+
+    let Some(team) = user.user.team else {
+        return Err(WebError::NotInTeam);
+    };
+
+    Ok(Json(db.get_repo(&team).await?))
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TeamPatchPayload {

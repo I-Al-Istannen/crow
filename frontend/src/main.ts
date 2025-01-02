@@ -1,4 +1,5 @@
 import './assets/index.css'
+import './assets/fonts.css'
 
 import App from './App.vue'
 import { VueQueryPlugin } from '@tanstack/vue-query'

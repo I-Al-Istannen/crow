@@ -1,5 +1,4 @@
 mod execution;
-mod repo;
 mod team;
 mod test;
 mod user;
@@ -20,7 +19,7 @@ pub use self::execution::request_revision;
 pub use self::execution::runner_done;
 pub use self::execution::runner_register;
 pub use self::execution::runner_update;
-pub use self::repo::get_repo;
+pub use self::team::get_team_repo;
 pub use self::team::set_team_repo;
 pub use self::test::list_tests;
 pub use self::test::set_test;

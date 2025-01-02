@@ -22,13 +22,13 @@ const router = createRouter({
       },
     },
     {
-      path: "/repo",
-      name: "repo",
+      path: '/repo',
+      name: 'repo',
       component: RepoView,
       meta: {
-        name: "Repository",
-      }
-    }
+        name: 'Repository',
+      },
+    },
   ],
 })
 
