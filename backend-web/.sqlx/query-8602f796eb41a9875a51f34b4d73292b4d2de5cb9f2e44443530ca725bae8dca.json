@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            task_id as \"task_id!: TaskId\"\n        FROM Tasks\n        WHERE team_id = ?\n        ORDER BY start_time DESC\n        LIMIT ?\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "task_id!: TaskId",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "8602f796eb41a9875a51f34b4d73292b4d2de5cb9f2e44443530ca725bae8dca"
+}

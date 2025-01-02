@@ -1,4 +1,4 @@
-use crate::error::WebError;
+use crate::error::{Result, WebError};
 use crate::types::{Repo, TeamId};
 use sqlx::{query, Acquire, Sqlite, SqliteConnection};
 use tracing::{info_span, instrument, Instrument};
@@ -7,7 +7,7 @@ use tracing::{info_span, instrument, Instrument};
 pub(super) async fn fetch_repo(
     con: &mut SqliteConnection,
     team_id: &TeamId,
-) -> Result<Option<Repo>, WebError> {
+) -> Result<Option<Repo>> {
     Ok(query!("SELECT * FROM Repos WHERE team = ?", team_id)
         .map(|it| Repo {
             team: team_id.clone(),
@@ -20,10 +20,7 @@ pub(super) async fn fetch_repo(
 }
 
 #[instrument(skip_all)]
-pub(super) async fn get_repo(
-    con: &mut SqliteConnection,
-    team_id: &TeamId,
-) -> Result<Repo, WebError> {
+pub(super) async fn get_repo(con: &mut SqliteConnection, team_id: &TeamId) -> Result<Repo> {
     let Some(repo) = fetch_repo(con, team_id).await? else {
         return Err(WebError::NotFound);
     };
@@ -36,7 +33,7 @@ pub(super) async fn patch_or_create_repo(
     team_id: &TeamId,
     repo_url: &str,
     auto_fetch: bool,
-) -> Result<Repo, WebError> {
+) -> Result<Repo> {
     let mut con = con.begin().await?;
 
     query!(

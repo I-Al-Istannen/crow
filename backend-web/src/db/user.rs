@@ -1,4 +1,4 @@
-use crate::error::WebError;
+use crate::error::{Result, WebError};
 use crate::types::{FullUserForAdmin, OwnUser, User, UserId, UserRole};
 use sqlx::{query, SqliteConnection};
 use tracing::{info, instrument, trace_span, Instrument};
@@ -7,7 +7,7 @@ use tracing::{info, instrument, trace_span, Instrument};
 pub(super) async fn get_user_for_login(
     con: &mut SqliteConnection,
     user_id: &UserId,
-) -> Result<Option<UserForAuth>, WebError> {
+) -> Result<Option<UserForAuth>> {
     Ok(sqlx::query_as("SELECT * FROM Users WHERE id = ?")
         .bind(user_id)
         .fetch_optional(con)
@@ -19,7 +19,7 @@ pub(super) async fn get_user_for_login(
 pub(super) async fn fetch_user(
     con: &mut SqliteConnection,
     user_id: &UserId,
-) -> Result<Option<FullUserForAdmin>, WebError> {
+) -> Result<Option<FullUserForAdmin>> {
     Ok(sqlx::query_as("SELECT * FROM Users WHERE id = ?")
         .bind(user_id)
         .fetch_optional(con)
@@ -28,10 +28,7 @@ pub(super) async fn fetch_user(
 }
 
 #[instrument(skip_all)]
-pub(super) async fn get_user(
-    con: &mut SqliteConnection,
-    user_id: &UserId,
-) -> Result<OwnUser, WebError> {
+pub(super) async fn get_user(con: &mut SqliteConnection, user_id: &UserId) -> Result<OwnUser> {
     let maybe_user = fetch_user(con, user_id).await?;
 
     match maybe_user {
@@ -44,9 +41,7 @@ pub(super) async fn get_user(
 }
 
 #[instrument(skip_all)]
-pub(super) async fn fetch_users(
-    con: &mut SqliteConnection,
-) -> Result<Vec<FullUserForAdmin>, WebError> {
+pub(super) async fn fetch_users(con: &mut SqliteConnection) -> Result<Vec<FullUserForAdmin>> {
     Ok(sqlx::query_as("SELECT * FROM Users")
         .fetch_all(con)
         .instrument(trace_span!("sqlx_get_users"))
@@ -54,10 +49,7 @@ pub(super) async fn fetch_users(
 }
 
 #[instrument(skip_all)]
-pub(super) async fn add_user(
-    con: &mut SqliteConnection,
-    user: &UserForAuth,
-) -> Result<(), WebError> {
+pub(super) async fn add_user(con: &mut SqliteConnection, user: &UserForAuth) -> Result<()> {
     let inner = &user.user;
     query!(
         "INSERT INTO Users (id, display_name, role, team) VALUES (?, ?, ?, ?)",

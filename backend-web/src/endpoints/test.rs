@@ -1,6 +1,6 @@
 use crate::auth::Claims;
 use crate::endpoints::Json;
-use crate::error::WebError;
+use crate::error::{Result, WebError};
 use crate::types::{AppState, Test, TestId};
 use axum::extract::{Path, State};
 use serde::Deserialize;
@@ -10,7 +10,7 @@ use tracing::instrument;
 pub async fn list_tests(
     State(AppState { db, .. }): State<AppState>,
     _claims: Claims,
-) -> Result<Json<Vec<Test>>, WebError> {
+) -> Result<Json<Vec<Test>>> {
     Ok(Json(db.get_tests().await?))
 }
 
@@ -20,7 +20,7 @@ pub async fn set_test(
     claims: Claims,
     Path(test_id): Path<TestId>,
     Json(payload): Json<AddTestPayload>,
-) -> Result<Json<Test>, WebError> {
+) -> Result<Json<Test>> {
     let Some(team) = db.get_user(&claims.sub).await?.user.team else {
         return Err(WebError::NotInTeam);
     };

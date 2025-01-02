@@ -30,7 +30,10 @@ CREATE TABLE Queue
 CREATE TABLE Tasks
 (
     task_id      VARCHAR(36) PRIMARY KEY,
-    start_time   INTEGER NOT NULL,
+    team_id      VARCHAR(36) NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    revision     VARCHAR(40) NOT NULL,
+    start_time   INTEGER     NOT NULL,
+    end_time     INTEGER     NOT NULL,
     execution_id VARCHAR(36) DEFAULT NULL REFERENCES ExecutionResults (execution_id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 

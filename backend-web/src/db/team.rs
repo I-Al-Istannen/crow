@@ -1,15 +1,12 @@
 use crate::config::TeamEntry;
-use crate::error::WebError;
+use crate::error::{Result, WebError};
 use crate::types::{Team, TeamId};
 use sqlx::{query, Acquire, Sqlite, SqliteConnection};
 use std::collections::HashSet;
 use tracing::{info, info_span, instrument, warn, Instrument};
 
 #[instrument(skip_all)]
-pub(super) async fn get_team(
-    con: &mut SqliteConnection,
-    team_id: &TeamId,
-) -> Result<Team, WebError> {
+pub(super) async fn get_team(con: &mut SqliteConnection, team_id: &TeamId) -> Result<Team> {
     let team = query!(
         r#"SELECT id as "id!: TeamId", display_name FROM Teams WHERE id = ?"#,
         team_id
@@ -32,7 +29,7 @@ pub(super) async fn get_team(
 pub(super) async fn sync_teams(
     con: impl Acquire<'_, Database = Sqlite>,
     teams: &[TeamEntry],
-) -> Result<(), WebError> {
+) -> Result<()> {
     let mut con = con.begin().await?;
 
     query!("PRAGMA defer_foreign_keys = ON")

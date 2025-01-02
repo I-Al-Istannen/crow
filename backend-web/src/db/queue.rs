@@ -1,10 +1,10 @@
-use crate::error::WebError;
+use crate::error::Result;
 use crate::types::{TaskId, TeamId, WorkItem};
 use sqlx::{query, SqliteConnection};
 use tracing::{info_span, instrument, Instrument};
 
 #[instrument(skip_all)]
-pub(super) async fn queue_task(con: &mut SqliteConnection, task: WorkItem) -> Result<(), WebError> {
+pub(super) async fn queue_task(con: &mut SqliteConnection, task: WorkItem) -> Result<()> {
     query!(
         "INSERT INTO Queue (id, team, revision) VALUES (?, ?, ?)",
         task.id,
@@ -19,10 +19,7 @@ pub(super) async fn queue_task(con: &mut SqliteConnection, task: WorkItem) -> Re
 }
 
 #[instrument(skip_all)]
-pub(super) async fn remove_queued_task(
-    con: &mut SqliteConnection,
-    task: &TaskId,
-) -> Result<(), WebError> {
+pub(super) async fn remove_queued_task(con: &mut SqliteConnection, task: &TaskId) -> Result<()> {
     query!("DELETE FROM Queue WHERE id = ?", task)
         .execute(con)
         .instrument(info_span!("sqlx_delete_queue"))
@@ -32,9 +29,7 @@ pub(super) async fn remove_queued_task(
 }
 
 #[instrument(skip_all)]
-pub(super) async fn get_queued_tasks(
-    con: &mut SqliteConnection,
-) -> Result<Vec<WorkItem>, WebError> {
+pub(super) async fn get_queued_tasks(con: &mut SqliteConnection) -> Result<Vec<WorkItem>> {
     let tasks =
         query!(r#"SELECT id as "id!: TaskId", team as "team!: TeamId", revision FROM Queue"#)
             .fetch_all(con)

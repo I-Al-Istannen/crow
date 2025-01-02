@@ -1,7 +1,7 @@
 use crate::auth;
 use crate::auth::Claims;
 use crate::endpoints::Json;
-use crate::error::WebError;
+use crate::error::{Result, WebError};
 use crate::types::{AppState, FullUserForAdmin, OwnUser, Team, User, UserId};
 use axum::extract::State;
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ use tracing::{info, instrument};
 pub async fn show_me_myself(
     State(AppState { db, .. }): State<AppState>,
     claims: Claims,
-) -> Result<Json<MeResponse>, WebError> {
+) -> Result<Json<MeResponse>> {
     let user = db.get_user(&claims.sub).await?;
     let team = match &user.user.team {
         Some(team) => Some(db.get_team(team).await?),
@@ -25,7 +25,7 @@ pub async fn show_me_myself(
 pub async fn list_users(
     State(AppState { db, .. }): State<AppState>,
     claims: Option<Claims>,
-) -> Result<Json<Vec<UserInfoResponse>>, WebError> {
+) -> Result<Json<Vec<UserInfoResponse>>> {
     let users = db
         .fetch_users()
         .await?
@@ -40,7 +40,7 @@ pub async fn list_users(
 pub async fn login(
     State(state): State<AppState>,
     Json(payload): Json<LoginPayload>,
-) -> Result<Json<LoginResponse>, WebError> {
+) -> Result<Json<LoginResponse>> {
     let user = state.db.get_user_for_login(&payload.username).await?;
 
     let auth_user = match user {

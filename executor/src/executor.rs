@@ -5,7 +5,7 @@ use crate::docker::ImageId;
 use rayon::ThreadPool;
 use shared::{
     AbortedExecution, CompilerTask, ExecutionOutput, FinishedCompilerTask, FinishedExecution,
-    FinishedTest, InternalError, RunnerUpdate,
+    FinishedTaskInfo, FinishedTest, InternalError, RunnerUpdate,
 };
 use snafu::{Location, Report, ResultExt, Snafu};
 use std::sync::atomic::AtomicBool;
@@ -144,7 +144,12 @@ fn execute_task_impl(
     });
 
     Ok(FinishedCompilerTask::RanTests {
-        start,
+        info: FinishedTaskInfo {
+            end: SystemTime::now(),
+            start,
+            team_id: task.team_id,
+            revision_id: task.revision_id,
+        },
         build_output,
         tests: test_results,
     })
@@ -156,12 +161,16 @@ fn task_run_error_to_task(
     task_id: String,
     e: TaskRunError,
 ) -> FinishedCompilerTask {
+    let info = FinishedTaskInfo {
+        end: SystemTime::now(),
+        start,
+        team_id: task_id.clone(),
+        revision_id: task_id.clone(),
+    };
+
     if let TaskRunError::WaitForBuild { source, .. } = &e {
         if let Some(build_output) = execution_output_from_wait_error(source) {
-            return FinishedCompilerTask::BuildFailed {
-                start,
-                build_output,
-            };
+            return FinishedCompilerTask::BuildFailed { info, build_output };
         }
     }
 
@@ -174,7 +183,7 @@ fn task_run_error_to_task(
     );
 
     FinishedCompilerTask::BuildFailed {
-        start,
+        info,
         build_output: ExecutionOutput::Error(InternalError {
             runtime: start_monotonic.elapsed(),
             message: format!("Internal error while building task:\n{}", report),

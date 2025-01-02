@@ -1,7 +1,7 @@
 use std::ops::Add;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use crate::error::WebError;
+use crate::error::{Result, WebError};
 use crate::types::{JwtIssuer, UserId, UserRole};
 pub use extractors::Claims;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
@@ -27,7 +27,7 @@ impl Keys {
 const JWT_ISSUER: &str = "compilers";
 
 #[instrument(level = "debug", skip(keys))]
-pub fn create_jwt(user: UserId, keys: &Keys, role: UserRole) -> Result<String, WebError> {
+pub fn create_jwt(user: UserId, keys: &Keys, role: UserRole) -> Result<String> {
     let exp = SystemTime::now()
         .add(Duration::from_secs(60 * 60 * 24)) // 24 hours
         .duration_since(UNIX_EPOCH)
@@ -47,7 +47,7 @@ pub fn create_jwt(user: UserId, keys: &Keys, role: UserRole) -> Result<String, W
 }
 
 #[instrument(level = "debug", skip(keys))]
-fn validate_jwt(jwt: &str, keys: &Keys) -> Result<Claims, WebError> {
+fn validate_jwt(jwt: &str, keys: &Keys) -> Result<Claims> {
     let mut validation = Validation::default();
     validation.set_issuer(&[JWT_ISSUER]);
     decode::<Claims>(jwt, &keys.decoding, &validation)

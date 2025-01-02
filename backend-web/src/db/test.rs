@@ -1,10 +1,10 @@
-use crate::error::WebError;
+use crate::error::Result;
 use crate::types::{TeamId, Test, TestId};
 use sqlx::{query, SqliteConnection};
 use tracing::{info_span, instrument, Instrument};
 
 #[instrument(skip_all)]
-pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<Test, WebError> {
+pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<Test> {
     query!(
         r#"
         INSERT INTO Tests 
@@ -49,7 +49,7 @@ pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<T
 }
 
 #[instrument(skip_all)]
-pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>, WebError> {
+pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>> {
     Ok(query!(
         r#"
         SELECT
@@ -75,7 +75,7 @@ pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>, W
 pub(super) async fn fetch_test(
     con: &mut SqliteConnection,
     test_id: &TestId,
-) -> Result<Option<Test>, WebError> {
+) -> Result<Option<Test>> {
     let test = query!(
         r#"
         SELECT 

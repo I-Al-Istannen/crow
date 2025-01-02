@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            task_id as \"task_id!: TaskId\",\n            start_time as \"start_time!: u64\",\n            end_time as \"end_time!: u64\",\n            team_id as \"team_id!: TeamId\",\n            revision as \"revision_id!: String\",\n            execution_id as \"execution_id!: String\"\n        FROM Tasks\n        WHERE task_id = ?\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "task_id!: TaskId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "start_time!: u64",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "end_time!: u64",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "team_id!: TeamId",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "revision_id!: String",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "execution_id!: String",
+        "ordinal": 5,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "382e48ace1754e05d792f5c38ed416c5d930ef0c058c2f387452ef62c9aea110"
+}

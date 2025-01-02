@@ -7,7 +7,7 @@ mod user;
 
 pub use self::user::UserForAuth;
 use crate::config::TeamEntry;
-use crate::error::WebError;
+use crate::error::{Result, WebError};
 use crate::types::{
     FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, Test, TestId, UserId, WorkItem,
 };
@@ -25,7 +25,7 @@ pub struct Database {
 }
 
 impl Database {
-    pub async fn new(db_path: &Path) -> Result<Self, sqlx::Error> {
+    pub async fn new(db_path: &Path) -> std::result::Result<Self, sqlx::Error> {
         let pool = SqlitePool::connect_with(
             SqliteConnectOptions::default()
                 .foreign_keys(true)
@@ -60,25 +60,22 @@ impl Database {
     }
 
     #[instrument(skip_all)]
-    pub async fn get_user_for_login(
-        &self,
-        user_id: &UserId,
-    ) -> Result<Option<UserForAuth>, WebError> {
+    pub async fn get_user_for_login(&self, user_id: &UserId) -> Result<Option<UserForAuth>> {
         let pool = self.read_lock().await;
         user::get_user_for_login(&mut *pool.acquire().await?, user_id).await
     }
 
-    pub async fn get_user(&self, user_id: &UserId) -> Result<OwnUser, WebError> {
+    pub async fn get_user(&self, user_id: &UserId) -> Result<OwnUser> {
         let pool = self.read_lock().await;
         user::get_user(&mut *pool.acquire().await?, user_id).await
     }
 
-    pub async fn fetch_users(&self) -> Result<Vec<FullUserForAdmin>, WebError> {
+    pub async fn fetch_users(&self) -> Result<Vec<FullUserForAdmin>> {
         let pool = self.read_lock().await;
         user::fetch_users(&mut *pool.acquire().await?).await
     }
 
-    pub async fn add_user(&self, user: &UserForAuth) -> Result<(), WebError> {
+    pub async fn add_user(&self, user: &UserForAuth) -> Result<()> {
         let pool = self.write_lock().await;
         user::add_user(&mut *pool.acquire().await?, user).await
     }
@@ -88,32 +85,32 @@ impl Database {
         team_id: &TeamId,
         repo_url: &str,
         auto_fetch: bool,
-    ) -> Result<Repo, WebError> {
+    ) -> Result<Repo> {
         let pool = self.write_lock().await;
         repo::patch_or_create_repo(&*pool, team_id, repo_url, auto_fetch).await
     }
 
-    pub async fn get_repo(&self, team_id: &TeamId) -> Result<Repo, WebError> {
+    pub async fn get_repo(&self, team_id: &TeamId) -> Result<Repo> {
         let pool = self.read_lock().await;
         repo::get_repo(&mut *pool.acquire().await?, team_id).await
     }
 
-    pub async fn get_team(&self, team_id: &TeamId) -> Result<Team, WebError> {
+    pub async fn get_team(&self, team_id: &TeamId) -> Result<Team> {
         let pool = self.read_lock().await;
         team::get_team(&mut *pool.acquire().await?, team_id).await
     }
 
-    pub async fn sync_teams(&self, teams: &[TeamEntry]) -> Result<(), WebError> {
+    pub async fn sync_teams(&self, teams: &[TeamEntry]) -> Result<()> {
         let pool = self.write_lock().await;
         team::sync_teams(&*pool, teams).await
     }
 
-    pub async fn queue_task(&self, task: WorkItem) -> Result<(), WebError> {
+    pub async fn queue_task(&self, task: WorkItem) -> Result<()> {
         let pool = self.write_lock().await;
         queue::queue_task(&mut *pool.acquire().await?, task).await
     }
 
-    pub async fn get_queued_tasks(&self) -> Result<Vec<WorkItem>, WebError> {
+    pub async fn get_queued_tasks(&self) -> Result<Vec<WorkItem>> {
         let pool = self.read_lock().await;
         queue::get_queued_tasks(&mut *pool.acquire().await?).await
     }
@@ -122,7 +119,7 @@ impl Database {
         &self,
         task_id: &TaskId,
         result: &FinishedCompilerTask,
-    ) -> Result<(), WebError> {
+    ) -> Result<()> {
         let pool = self.write_lock().await;
         let mut con = pool.begin().await?;
 
@@ -134,27 +131,36 @@ impl Database {
         Ok(())
     }
 
-    pub async fn get_task(&self, task_id: &TaskId) -> Result<FinishedCompilerTask, WebError> {
+    pub async fn get_task(&self, task_id: &TaskId) -> Result<FinishedCompilerTask> {
         let pool = self.read_lock().await;
         task::get_task(&*pool, task_id).await
     }
 
-    pub async fn get_task_ids(&self) -> Result<Vec<TaskId>, WebError> {
+    pub async fn get_recent_tasks(
+        &self,
+        team_id: &TeamId,
+        count: u32,
+    ) -> Result<Vec<FinishedCompilerTask>> {
+        let pool = self.read_lock().await;
+        task::get_recent_tasks(&*pool, team_id, count as i64).await
+    }
+
+    pub async fn get_task_ids(&self) -> Result<Vec<TaskId>> {
         let pool = self.read_lock().await;
         task::get_task_ids(&mut *pool.acquire().await?).await
     }
 
-    pub async fn add_test(&self, test: Test) -> Result<Test, WebError> {
+    pub async fn add_test(&self, test: Test) -> Result<Test> {
         let pool = self.write_lock().await;
         test::add_test(&mut *pool.acquire().await?, test).await
     }
 
-    pub async fn get_tests(&self) -> Result<Vec<Test>, WebError> {
+    pub async fn get_tests(&self) -> Result<Vec<Test>> {
         let pool = self.read_lock().await;
         test::get_tests(&mut *pool.acquire().await?).await
     }
 
-    pub async fn fetch_test(&self, test_id: &TestId) -> Result<Option<Test>, WebError> {
+    pub async fn fetch_test(&self, test_id: &TestId) -> Result<Option<Test>> {
         let pool = self.read_lock().await;
         test::fetch_test(&mut *pool.acquire().await?, test_id).await
     }

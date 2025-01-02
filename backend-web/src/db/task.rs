@@ -1,8 +1,8 @@
-use crate::error::WebError;
-use crate::types::{ExecutionExitStatus, TaskId};
+use crate::error::{Result, WebError};
+use crate::types::{ExecutionExitStatus, TaskId, TeamId};
 use shared::{
-    AbortedExecution, ExecutionOutput, FinishedCompilerTask, FinishedExecution, FinishedTest,
-    InternalError,
+    AbortedExecution, ExecutionOutput, FinishedCompilerTask, FinishedExecution, FinishedTaskInfo,
+    FinishedTest, InternalError,
 };
 use sqlx::{query, Acquire, Sqlite, SqliteConnection};
 use std::ops::Add;
@@ -14,7 +14,7 @@ pub(super) async fn add_finished_task(
     con: impl Acquire<'_, Database = Sqlite>,
     task_id: &TaskId,
     result: &FinishedCompilerTask,
-) -> Result<(), WebError> {
+) -> Result<()> {
     let mut con = con.begin().await?;
 
     query!("PRAGMA defer_foreign_keys = ON")
@@ -23,7 +23,14 @@ pub(super) async fn add_finished_task(
         .await?;
 
     let start_time = result
-        .start_time()
+        .info()
+        .start
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or(Duration::ZERO)
+        .as_millis() as i64;
+    let end_time = result
+        .info()
+        .end
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or(Duration::ZERO)
         .as_millis() as i64;
@@ -31,9 +38,17 @@ pub(super) async fn add_finished_task(
     let build_id = uuid::Uuid::new_v4().to_string();
 
     query!(
-        "INSERT INTO Tasks (task_id, start_time, execution_id) VALUES (?, ?, ?)",
+        r#"
+        INSERT INTO Tasks
+            (task_id, team_id, revision, start_time, end_time, execution_id)
+        VALUES
+            (?, ?, ?, ?, ?, ?)
+        "#,
         task_id,
+        result.info().team_id,
+        result.info().revision_id,
         start_time,
+        end_time,
         build_id
     )
     .execute(&mut *con)
@@ -84,7 +99,7 @@ pub(super) async fn add_finished_task(
 pub(super) async fn get_task(
     con: impl Acquire<'_, Database = Sqlite>,
     task_id: &TaskId,
-) -> Result<FinishedCompilerTask, WebError> {
+) -> Result<FinishedCompilerTask> {
     let mut con = con.begin().await?;
 
     let task = query!(
@@ -92,6 +107,9 @@ pub(super) async fn get_task(
         SELECT
             task_id as "task_id!: TaskId",
             start_time as "start_time!: u64",
+            end_time as "end_time!: u64",
+            team_id as "team_id!: TeamId",
+            revision as "revision_id!: String",
             execution_id as "execution_id!: String"
         FROM Tasks
         WHERE task_id = ?
@@ -108,12 +126,16 @@ pub(super) async fn get_task(
 
     let build_output = get_execution(&mut con, &task.execution_id).await?;
     let start = SystemTime::UNIX_EPOCH.add(Duration::from_millis(task.start_time));
+    let end = SystemTime::UNIX_EPOCH.add(Duration::from_millis(task.end_time));
+    let info = FinishedTaskInfo {
+        start,
+        end,
+        revision_id: task.revision_id,
+        team_id: task.team_id.to_string(),
+    };
 
     if !build_output.produced_results() {
-        return Ok(FinishedCompilerTask::BuildFailed {
-            start,
-            build_output,
-        });
+        return Ok(FinishedCompilerTask::BuildFailed { info, build_output });
     }
 
     let tests = query!(
@@ -144,14 +166,50 @@ pub(super) async fn get_task(
     }
 
     Ok(FinishedCompilerTask::RanTests {
-        start,
+        info,
         build_output: build_output.into_finished_execution().unwrap(),
         tests: finished_tests,
     })
 }
 
+pub(super) async fn get_recent_tasks(
+    con: impl Acquire<'_, Database = Sqlite>,
+    team_id: &TeamId,
+    count: i64,
+) -> Result<Vec<FinishedCompilerTask>> {
+    let mut con = con.begin().await?;
+
+    let tasks = query!(
+        r#"
+        SELECT
+            task_id as "task_id!: TaskId"
+        FROM Tasks
+        WHERE team_id = ?
+        ORDER BY start_time DESC
+        LIMIT ?
+        "#,
+        team_id,
+        count
+    )
+    .map(|it| it.task_id)
+    .fetch_all(&mut *con)
+    .instrument(info_span!("sqlx_get_recent_tasks_query"))
+    .await?;
+
+    let mut finished_tasks = Vec::new();
+
+    for task in tasks {
+        let task = get_task(&mut con, &task)
+            .instrument(info_span!("sqlx_get_recent_tasks_inner"))
+            .await?;
+        finished_tasks.push(task);
+    }
+
+    Ok(finished_tasks)
+}
+
 #[instrument(skip_all)]
-pub(super) async fn get_task_ids(con: &mut SqliteConnection) -> Result<Vec<TaskId>, WebError> {
+pub(super) async fn get_task_ids(con: &mut SqliteConnection) -> Result<Vec<TaskId>> {
     Ok(query!(r#"SELECT task_id as "task_id!: TaskId" FROM Tasks"#)
         .map(|it| it.task_id)
         .fetch_all(con)
@@ -160,10 +218,7 @@ pub(super) async fn get_task_ids(con: &mut SqliteConnection) -> Result<Vec<TaskI
 }
 
 #[instrument(skip_all)]
-async fn get_execution(
-    con: &mut SqliteConnection,
-    execution_id: &str,
-) -> Result<ExecutionOutput, WebError> {
+async fn get_execution(con: &mut SqliteConnection, execution_id: &str) -> Result<ExecutionOutput> {
     let execution = query!(
         r#"
         SELECT 
@@ -216,7 +271,7 @@ async fn record_execution_output(
     con: &mut SqliteConnection,
     execution_id: &str,
     e: &ExecutionOutput,
-) -> Result<(), WebError> {
+) -> Result<()> {
     match e {
         ExecutionOutput::Aborted(e) => record_aborted(con, execution_id, e).await?,
         ExecutionOutput::Error(e) => record_internal_error(con, execution_id, e).await?,
@@ -237,7 +292,7 @@ async fn record_finished_execution(
     execution_id: &str,
     e: &FinishedExecution,
     status: ExecutionExitStatus,
-) -> Result<(), WebError> {
+) -> Result<()> {
     let runtime = e.runtime.as_millis() as i64;
 
     query!(
@@ -265,7 +320,7 @@ async fn record_internal_error(
     con: &mut SqliteConnection,
     execution_id: &str,
     e: &InternalError,
-) -> Result<(), WebError> {
+) -> Result<()> {
     let runtime = e.runtime.as_millis() as i64;
     query!(
         "INSERT INTO ExecutionResults 
@@ -292,7 +347,7 @@ async fn record_aborted(
     con: &mut SqliteConnection,
     execution_id: &str,
     e: &AbortedExecution,
-) -> Result<(), WebError> {
+) -> Result<()> {
     let runtime = e.runtime.as_millis() as i64;
     query!(
         "INSERT INTO ExecutionResults

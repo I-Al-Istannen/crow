@@ -2,9 +2,9 @@ use crate::auth::{Claims, Keys};
 use crate::config::Config;
 use crate::db::{Database, UserForAuth};
 use crate::endpoints::{
-    get_queued_tasks, get_task, get_team_repo, get_work, get_work_tar, list_task_ids, list_tests,
-    list_users, login, request_revision, runner_done, runner_register, runner_update,
-    set_team_repo, set_test, show_me_myself,
+    get_queued_tasks, get_recent_tasks, get_task, get_team_repo, get_work, get_work_tar,
+    list_task_ids, list_tests, list_users, login, request_revision, runner_done, runner_register,
+    runner_update, set_team_repo, set_test, show_me_myself,
 };
 use crate::error::WebError;
 use crate::storage::LocalRepos;
@@ -180,6 +180,7 @@ async fn main_server(
         .route("/queue/rev/:revision", put(request_revision))
         .route("/repo/:team_id", get(get_team_repo))
         .route("/repo/:team_id", put(set_team_repo))
+        .route("/team/recent-tasks", get(get_recent_tasks))
         .route("/tasks", get(list_task_ids))
         .route("/tasks/:task_id", get(get_task))
         .route("/tests", get(list_tests))

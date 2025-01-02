@@ -6,6 +6,8 @@ use std::time::{Duration, SystemTime};
 #[serde(rename_all = "camelCase")]
 pub struct CompilerTask {
     pub task_id: String,
+    pub revision_id: String,
+    pub team_id: String,
     pub image: String,
     pub build_command: Vec<String>,
     #[serde(serialize_with = "serialize_duration")]
@@ -89,29 +91,40 @@ pub struct FinishedTest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FinishedTaskInfo {
+    #[serde(serialize_with = "serialize_system_time")]
+    #[serde(deserialize_with = "deserialize_system_time")]
+    pub start: SystemTime,
+    #[serde(serialize_with = "serialize_system_time")]
+    #[serde(deserialize_with = "deserialize_system_time")]
+    pub end: SystemTime,
+
+    pub team_id: String,
+    pub revision_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum FinishedCompilerTask {
     #[serde(rename_all = "camelCase")]
     BuildFailed {
-        #[serde(serialize_with = "serialize_system_time")]
-        #[serde(deserialize_with = "deserialize_system_time")]
-        start: SystemTime,
+        #[serde(flatten)]
+        info: FinishedTaskInfo,
         build_output: ExecutionOutput,
     },
     #[serde(rename_all = "camelCase")]
     RanTests {
-        #[serde(serialize_with = "serialize_system_time")]
-        #[serde(deserialize_with = "deserialize_system_time")]
-        start: SystemTime,
+        #[serde(flatten)]
+        info: FinishedTaskInfo,
         build_output: FinishedExecution,
         tests: Vec<FinishedTest>,
     },
 }
 
 impl FinishedCompilerTask {
-    pub fn start_time(&self) -> SystemTime {
+    pub fn info(&self) -> &FinishedTaskInfo {
         match self {
-            FinishedCompilerTask::BuildFailed { start, .. } => *start,
-            FinishedCompilerTask::RanTests { start, .. } => *start,
+            FinishedCompilerTask::BuildFailed { info, .. } => info,
+            FinishedCompilerTask::RanTests { info, .. } => info,
         }
     }
 }

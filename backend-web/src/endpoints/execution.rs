@@ -1,6 +1,6 @@
 use crate::auth::Claims;
 use crate::endpoints::Json;
-use crate::error::WebError;
+use crate::error::{Result, WebError};
 use crate::types::{AppState, TaskId, WorkItem};
 use axum::body::Body;
 use axum::extract::{Path, State};
@@ -23,7 +23,7 @@ pub async fn request_revision(
     State(state): State<AppState>,
     claims: Claims,
     Path(revision): Path<String>,
-) -> Result<Response, WebError> {
+) -> Result<Response> {
     let Some(team) = state.db.get_user(&claims.sub).await?.user.team else {
         return Err(WebError::NotInTeam);
     };
@@ -44,9 +44,7 @@ pub async fn request_revision(
 }
 
 #[instrument(skip_all)]
-pub async fn get_queued_tasks(
-    State(state): State<AppState>,
-) -> Result<Json<Vec<WorkItem>>, WebError> {
+pub async fn get_queued_tasks(State(state): State<AppState>) -> Result<Json<Vec<WorkItem>>> {
     Ok(Json(state.db.get_queued_tasks().await?))
 }
 
@@ -55,7 +53,7 @@ pub async fn get_task(
     State(state): State<AppState>,
     _claims: Claims,
     Path(task_id): Path<TaskId>,
-) -> Result<Json<FinishedCompilerTask>, WebError> {
+) -> Result<Json<FinishedCompilerTask>> {
     Ok(Json(state.db.get_task(&task_id).await?))
 }
 
@@ -63,7 +61,7 @@ pub async fn get_task(
 pub async fn list_task_ids(
     State(state): State<AppState>,
     _claims: Claims,
-) -> Result<Json<Vec<TaskId>>, WebError> {
+) -> Result<Json<Vec<TaskId>>> {
     Ok(Json(state.db.get_task_ids().await?))
 }
 
@@ -72,7 +70,7 @@ pub async fn runner_register(
     State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
     Json(runner): Json<RunnerInfo>,
-) -> Result<Json<RunnerRegisterResponse>, WebError> {
+) -> Result<Json<RunnerRegisterResponse>> {
     let runner_id = auth.username().to_string();
     if runner.id.to_string() != runner_id {
         return Err(WebError::InvalidCredentials);
@@ -93,7 +91,7 @@ pub async fn runner_register(
 pub async fn runner_update(
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
     Json(update): Json<RunnerUpdate>,
-) -> Result<(), WebError> {
+) -> Result<()> {
     let runner_id: RunnerId = auth.username().to_string().into();
 
     // TODO: Handle update
@@ -107,7 +105,7 @@ pub async fn get_work(
     State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
     Json(runner): Json<RunnerInfo>,
-) -> Result<Json<RunnerWorkResponse>, WebError> {
+) -> Result<Json<RunnerWorkResponse>> {
     if runner.id.to_string() != auth.username() {
         return Err(WebError::InvalidCredentials);
     }
@@ -159,6 +157,8 @@ pub async fn get_work(
     // FIXME: Replace
     let task = CompilerTask {
         task_id: task.id.to_string(),
+        team_id: task.team.to_string(),
+        revision_id: task.revision,
         image: "alpine:latest".to_string(),
         build_command: state.execution_config.build_command.clone(),
         build_timeout: state.execution_config.build_timeout,
@@ -175,7 +175,7 @@ pub async fn get_work(
 pub async fn get_work_tar(
     State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
-) -> Result<Response, WebError> {
+) -> Result<Response> {
     let task = state
         .executor
         .lock()
@@ -206,7 +206,7 @@ pub async fn runner_done(
     State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
     Json(task): Json<FinishedCompilerTask>,
-) -> Result<(), WebError> {
+) -> Result<()> {
     let task_id = state
         .executor
         .lock()
@@ -216,6 +216,8 @@ pub async fn runner_done(
         return Err(WebError::NotFound);
     };
     let task_id = task_id.id;
+
+    println!("{}", serde_json::to_string(&task).unwrap());
 
     state.db.add_finished_task(&task_id, &task).await?;
     state
