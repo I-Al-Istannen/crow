@@ -145,6 +145,7 @@ fn execute_task_impl(
 
     Ok(FinishedCompilerTask::RanTests {
         info: FinishedTaskInfo {
+            task_id: task.task_id,
             end: SystemTime::now(),
             start,
             team_id: task.team_id,
@@ -162,6 +163,7 @@ fn task_run_error_to_task(
     e: TaskRunError,
 ) -> FinishedCompilerTask {
     let info = FinishedTaskInfo {
+        task_id: task_id.clone(),
         end: SystemTime::now(),
         start,
         team_id: task_id.clone(),

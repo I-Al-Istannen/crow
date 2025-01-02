@@ -2,7 +2,7 @@ use crate::types::test::TestId;
 use crate::types::TeamId;
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
-use shared::{FinishedCompilerTask, FinishedTest, RunnerId, RunnerInfo};
+use shared::{ExecutionOutput, FinishedCompilerTask, FinishedTest, RunnerId, RunnerInfo};
 use snafu::{ensure, Location, Snafu};
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
@@ -119,4 +119,15 @@ pub enum ExecutionExitStatus {
     Error,
     Finished,
     Timeout,
+}
+
+impl From<&ExecutionOutput> for ExecutionExitStatus {
+    fn from(value: &ExecutionOutput) -> Self {
+        match value {
+            ExecutionOutput::Aborted(_) => Self::Aborted,
+            ExecutionOutput::Error(_) => Self::Error,
+            ExecutionOutput::Finished(_) => Self::Finished,
+            ExecutionOutput::Timeout(_) => Self::Timeout,
+        }
+    }
 }

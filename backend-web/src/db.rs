@@ -9,7 +9,8 @@ pub use self::user::UserForAuth;
 use crate::config::TeamEntry;
 use crate::error::{Result, WebError};
 use crate::types::{
-    FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, Test, TestId, UserId, WorkItem,
+    FinishedCompilerTaskSummary, FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, Test,
+    TestId, UserId, WorkItem,
 };
 use shared::FinishedCompilerTask;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
@@ -140,7 +141,7 @@ impl Database {
         &self,
         team_id: &TeamId,
         count: u32,
-    ) -> Result<Vec<FinishedCompilerTask>> {
+    ) -> Result<Vec<FinishedCompilerTaskSummary>> {
         let pool = self.read_lock().await;
         task::get_recent_tasks(&*pool, team_id, count as i64).await
     }

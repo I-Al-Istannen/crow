@@ -92,6 +92,8 @@ pub struct FinishedTest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FinishedTaskInfo {
+    pub task_id: String,
+
     #[serde(serialize_with = "serialize_system_time")]
     #[serde(deserialize_with = "deserialize_system_time")]
     pub start: SystemTime,

@@ -1,10 +1,9 @@
 use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::{Result, WebError};
-use crate::types::{AppState, Repo, TeamId};
+use crate::types::{AppState, FinishedCompilerTaskSummary, Repo, TeamId};
 use axum::extract::{Path, State};
 use serde::Deserialize;
-use shared::FinishedCompilerTask;
 use std::time::Duration;
 use tracing::instrument;
 
@@ -63,7 +62,7 @@ pub async fn get_team_repo(
 pub async fn get_recent_tasks(
     State(AppState { db, .. }): State<AppState>,
     claims: Claims,
-) -> Result<Json<Vec<FinishedCompilerTask>>> {
+) -> Result<Json<Vec<FinishedCompilerTaskSummary>>> {
     let user = db.get_user(&claims.sub).await?;
     let Some(team) = user.user.team else {
         return Err(WebError::NotInTeam);

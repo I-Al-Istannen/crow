@@ -1,5 +1,5 @@
 use crate::error::{Result, WebError};
-use crate::types::{ExecutionExitStatus, TaskId, TeamId};
+use crate::types::{ExecutionExitStatus, FinishedCompilerTaskSummary, TaskId, TeamId};
 use shared::{
     AbortedExecution, ExecutionOutput, FinishedCompilerTask, FinishedExecution, FinishedTaskInfo,
     FinishedTest, InternalError,
@@ -128,6 +128,7 @@ pub(super) async fn get_task(
     let start = SystemTime::UNIX_EPOCH.add(Duration::from_millis(task.start_time));
     let end = SystemTime::UNIX_EPOCH.add(Duration::from_millis(task.end_time));
     let info = FinishedTaskInfo {
+        task_id: task_id.to_string(),
         start,
         end,
         revision_id: task.revision_id,
@@ -176,7 +177,7 @@ pub(super) async fn get_recent_tasks(
     con: impl Acquire<'_, Database = Sqlite>,
     team_id: &TeamId,
     count: i64,
-) -> Result<Vec<FinishedCompilerTask>> {
+) -> Result<Vec<FinishedCompilerTaskSummary>> {
     let mut con = con.begin().await?;
 
     let tasks = query!(
@@ -202,7 +203,7 @@ pub(super) async fn get_recent_tasks(
         let task = get_task(&mut con, &task)
             .instrument(info_span!("sqlx_get_recent_tasks_inner"))
             .await?;
-        finished_tasks.push(task);
+        finished_tasks.push(task.into());
     }
 
     Ok(finished_tasks)

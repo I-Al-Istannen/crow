@@ -3,6 +3,7 @@ pub use self::execution::Executor;
 pub use self::execution::TaskId;
 pub use self::execution::WorkItem;
 pub use self::repo::Repo;
+pub use self::task::FinishedCompilerTaskSummary;
 pub use self::test::Test;
 pub use self::test::TestId;
 pub use self::user::FullUserForAdmin;
@@ -21,6 +22,7 @@ use std::sync::{Arc, Mutex};
 
 mod execution;
 mod repo;
+mod task;
 mod test;
 mod user;
 
