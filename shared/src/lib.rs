@@ -57,7 +57,6 @@ pub struct InternalError {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub enum ExecutionOutput {
     Aborted(AbortedExecution),
     Error(InternalError),
@@ -90,14 +89,15 @@ pub struct FinishedTest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub enum FinishedCompilerTask {
+    #[serde(rename_all = "camelCase")]
     BuildFailed {
         #[serde(serialize_with = "serialize_system_time")]
         #[serde(deserialize_with = "deserialize_system_time")]
         start: SystemTime,
         build_output: ExecutionOutput,
     },
+    #[serde(rename_all = "camelCase")]
     RanTests {
         #[serde(serialize_with = "serialize_system_time")]
         #[serde(deserialize_with = "deserialize_system_time")]
@@ -128,7 +128,6 @@ pub struct RunnerInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub enum RunnerUpdate {
     StartedBuild,
     FinishedBuild(FinishedExecution),
