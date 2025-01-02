@@ -1,21 +1,24 @@
-import { QueryClient, useMutation, useQuery } from '@tanstack/vue-query'
-import { type Ref, computed, toRef, toValue } from 'vue'
 import {
+  type FinishedCompilerTaskSummary,
+  FinishedCompilerTaskSummarySchema,
   type Repo,
   RepoSchema,
   type ShowMyselfResponse,
   ShowMyselfResponseSchema,
   type TeamId,
 } from '@/types.ts'
+import { QueryClient, useMutation, useQuery } from '@tanstack/vue-query'
+import { computed, type Ref, toRef, toValue } from 'vue'
 import type { MaybeRefOrGetter } from '@vueuse/core'
 import { fetchWithAuth } from '@/data/fetching.ts'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user.ts'
+import { z } from 'zod'
 
 type RepoPatch = {
-  repoUrl: string,
-  autoFetch: boolean,
-};
+  repoUrl: string
+  autoFetch: boolean
+}
 
 async function fetchMyself(): Promise<ShowMyselfResponse> {
   const response = await fetchWithAuth('/users/me')
@@ -76,6 +79,24 @@ export function mutateRepo(queryClient: QueryClient) {
     },
     meta: {
       purpose: 'updating your repository',
-    }
+    },
+  })
+}
+
+export async function fetchGetRecentTasks(): Promise<FinishedCompilerTaskSummary[]> {
+  const response = await fetchWithAuth('/team/recent-tasks')
+  const json = await response.json()
+  return z.array(FinishedCompilerTaskSummarySchema).parse(json)
+}
+
+export function queryRecentTasks() {
+  return useQuery({
+    queryKey: ['recent-tasks'],
+    queryFn: fetchGetRecentTasks,
+    refetchInterval: 2 * 60 * 1000, // 2 minutes
+    meta: {
+      purpose: 'fetching recent tasks',
+    },
+    enabled: isLoggedIn(),
   })
 }

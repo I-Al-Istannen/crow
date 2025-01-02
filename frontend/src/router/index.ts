@@ -29,6 +29,15 @@ const router = createRouter({
         name: 'Repository',
       },
     },
+    {
+      path: '/task-detail/:taskId',
+      name: 'task-detail',
+      component: RepoView,
+      meta: {
+        name: 'Task Detail',
+        hidden: true,
+      },
+    },
   ],
 })
 

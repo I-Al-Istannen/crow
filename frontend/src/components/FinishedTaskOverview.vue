@@ -1,45 +1,41 @@
 <template>
-  <div
-    class="leading-none tracking-tight flex items-start justify-between p-3"
-    :class="['rounded-xl', 'border', 'bg-card', 'text-card-foreground']"
-  >
-    <span class="flex flex-col justify-center">
-      <span>
-        {{ task.info.revisionId }}
-        <span class="ml-4 text-sm text-muted-foreground">{{ task.info.taskId }}</span>
+  <router-link :to="{ name: 'task-detail', params: { taskId: task.info.taskId } }" class="block">
+    <div
+      class="leading-none tracking-tight flex items-start justify-between p-2 hover:bg-accent hover:text-accent-foreground"
+      :class="['rounded-xl', 'border', 'bg-card', 'text-card-foreground']"
+    >
+      <span class="flex flex-col justify-center">
+        <span class="mb-1 font-medium">{{ task.info.revisionId }}</span>
+        <span v-if="tests && testStatistics" class="text-sm space-x-2">
+          <span>{{ tests.length }} tests</span>
+          <span v-if="testStatistics.finish > 0" class="text-green-500">
+            {{ testStatistics.finish }} finished
+          </span>
+          <span v-if="testStatistics.error > 0" class="text-red-500">
+            {{ testStatistics.error }} errors
+          </span>
+          <span v-if="testStatistics.timeout > 0" class="text-orange-500">
+            {{ testStatistics.timeout }} timeouts
+          </span>
+          <span v-if="testStatistics.abort > 0" class="text-gray-500">
+            {{ testStatistics.abort }} aborted
+          </span>
+        </span>
+        <span v-else class="text-red-500"> build failed </span>
       </span>
-      <span v-if="tests && testStatistics" class="inline-grid grid-cols-5 justify-items-center gap-y-1 mt-2">
-        <LucideTestTubeDiagonal class="inline w-[1em] h-[1em] text-blue-500" />
-        <LucideCheck class="inline w-[1em] h-[1em] text-green-500" />
-        <LucideX class="inline w-[1em] h-[1em] text-red-500" />
-        <LucideClockAlert class="inline w-[1em] h-[1em] text-orange-500" />
-        <LucideUnplug class="inline w-[1em] h-[1em] text-gray-500" />
-        <span>{{ tests.length }}</span>
-        <span>{{ testStatistics.finish }}</span>
-        <span>{{ testStatistics.error }}</span>
-        <span>{{ testStatistics.timeout }}</span>
-        <span>{{ testStatistics.abort }}</span>
+      <span class="text-sm text-muted-foreground flex flex-col justify-center items-end">
+        <span>
+          {{ formatTime(task.info.start) }}
+        </span>
+        <span>
+          {{ formatDuration(task.info.start, task.info.end) }}
+        </span>
       </span>
-    </span>
-    <span class="text-sm text-muted-foreground flex flex-col justify-center items-end">
-      <span>
-        {{ formatTime(task.info.start) }}
-      </span>
-      <span>
-        {{ formatDuration(task.info.start, task.info.end) }}
-      </span>
-    </span>
-  </div>
+    </div>
+  </router-link>
 </template>
 
 <script setup lang="ts">
-import {
-  LucideCheck,
-  LucideClockAlert,
-  LucideTestTubeDiagonal,
-  LucideUnplug,
-  LucideX,
-} from 'lucide-vue-next'
 import { computed, toRefs } from 'vue'
 import type { FinishedCompilerTaskSummary } from '@/types.ts'
 

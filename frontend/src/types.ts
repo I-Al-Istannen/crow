@@ -70,16 +70,24 @@ export const FinishedTestSchema = z.object({
   output: ExecutionOutputSchema,
 })
 
+export const FinishedTaskInfoSchema = z.object({
+  taskId: z.string(),
+  start: z.number().transform((ms) => new Date(ms)),
+  end: z.number().transform((ms) => new Date(ms)),
+  teamId: TeamIdSchema,
+  revisionId: z.string(),
+})
+
 export const FinishedCompilerTaskSchema = z.union([
   z.object({
     BuildFailed: z.object({
-      start: z.number().transform((ms) => new Date(ms)),
+      info: FinishedTaskInfoSchema,
       build_output: ExecutionOutputSchema,
     }),
   }),
   z.object({
     RanTests: z.object({
-      start: z.number().transform((ms) => new Date(ms)),
+      info: FinishedTaskInfoSchema,
       buildOutput: FinishedExecutionSchema,
       tests: z.array(FinishedTestSchema),
     }),
@@ -116,6 +124,30 @@ export const PatchRepoSchema = z.object({
   autoFetch: z.boolean(),
 })
 
+export const ExecutionExitStatusSchema = z.union([
+  z.literal('Aborted'),
+  z.literal('Error'),
+  z.literal('Finished'),
+  z.literal('Timeout'),
+])
+
+export const FinishedTestSummarySchema = z.object({
+  testId: z.string(),
+  output: ExecutionExitStatusSchema,
+})
+
+export const FinishedCompilerTaskSummarySchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('BuildFailed'),
+    info: FinishedTaskInfoSchema,
+  }),
+  z.object({
+    type: z.literal('RanTests'),
+    info: FinishedTaskInfoSchema,
+    tests: z.array(FinishedTestSummarySchema),
+  }),
+])
+
 export type CompilerTest = z.infer<typeof CompilerTestSchema>
 export type CompilerTask = z.infer<typeof CompilerTaskSchema>
 export type FinishedExecution = z.infer<typeof FinishedExecutionSchema>
@@ -136,3 +168,6 @@ export type Team = z.infer<typeof TeamSchema>
 export type PatchRepo = z.infer<typeof PatchRepoSchema>
 export type ShowMyselfResponse = z.infer<typeof ShowMyselfResponseSchema>
 export type Repo = z.infer<typeof RepoSchema>
+export type FinishedCompilerTaskSummary = z.infer<typeof FinishedCompilerTaskSummarySchema>
+export type FinishedTestSummary = z.infer<typeof FinishedTestSummarySchema>
+export type ExecutionExitStatus = z.infer<typeof ExecutionExitStatusSchema>

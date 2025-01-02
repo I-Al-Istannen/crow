@@ -20,6 +20,7 @@ app.use(VueQueryPlugin, {
           description: error.message,
           duration: 5000,
         })
+        console.log('Error during request', query, error)
       },
     }),
   },

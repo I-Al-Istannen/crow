@@ -80,6 +80,10 @@ const { mutateAsync, isPending: mutationPending } = mutateRepo(useQueryClient())
 
 const form = useForm({
   validationSchema: toTypedSchema(PatchRepoSchema),
+  initialValues: {
+    repoUrl: repo.value?.url,
+    autoFetch: repo.value?.autoFetch,
+  },
 })
 
 watch(repo, () => {

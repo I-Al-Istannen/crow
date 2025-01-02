@@ -78,10 +78,13 @@ const { user } = storeToRefs(useUserStore())
 const userName = computed(() => user.value?.displayName)
 
 const routes = computed(() =>
-  router.getRoutes().map((route) => ({
-    route: route,
-    title: (route.meta?.name || route.name) as string,
-    icon: route.meta?.icon || Home,
-  })),
+  router
+    .getRoutes()
+    .filter((route) => !route.meta?.hidden)
+    .map((route) => ({
+      route: route,
+      title: (route.meta?.name || route.name) as string,
+      icon: route.meta?.icon || Home,
+    })),
 )
 </script>
