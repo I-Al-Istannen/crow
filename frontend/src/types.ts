@@ -1,9 +1,10 @@
 import { z } from 'zod'
 
-export const UserIdSchema = z.string()
-export const TeamIdSchema = z.string()
+export const RunnerIdSchema = z.string()
 export const TaskIdSchema = z.string()
+export const TeamIdSchema = z.string()
 export const TestIdSchema = z.string()
+export const UserIdSchema = z.string()
 
 export const AbortedExecutionSchema = z.object({
   stdout: z.string(),
@@ -94,6 +95,27 @@ export const RepoSchema = z.object({
 })
 
 // Out of order due to dependencies
+export const WorkItemSchema = z.object({
+  id: TaskIdSchema,
+  team: TeamIdSchema,
+  revision: z.string(),
+  insertTime: z.number().transform((ms) => new Date(ms)),
+})
+
+// Out of order due to dependencies
+export const RunnerSchema = z.object({
+  id: RunnerIdSchema,
+  info: z.string(),
+  workingOn: WorkItemSchema.nullish(),
+  lastSeen: z.number().transform((ms) => new Date(ms)),
+})
+
+export const QueueResponseSchema = z.object({
+  queue: z.array(WorkItemSchema),
+  runners: z.array(RunnerSchema),
+})
+
+// Out of order due to dependencies
 export const UserSchema = z.object({
   id: UserIdSchema,
   displayName: z.string(),
@@ -130,13 +152,6 @@ export const TestSummarySchema = z.object({
   creatorName: z.string(),
 })
 
-export const WorkItemSchema = z.object({
-  id: TaskIdSchema,
-  team: TeamIdSchema,
-  revision: z.string(),
-  insertTime: z.number().transform((ms) => new Date(ms)),
-})
-
 export type AbortedExecution = z.infer<typeof AbortedExecutionSchema>
 export type ExecutionExitStatus = z.infer<typeof ExecutionExitStatusSchema>
 export type ExecutionOutput = z.infer<typeof ExecutionOutputSchema>
@@ -147,7 +162,9 @@ export type FinishedTaskInfo = z.infer<typeof FinishedTaskInfoSchema>
 export type FinishedTest = z.infer<typeof FinishedTestSchema>
 export type FinishedTestSummary = z.infer<typeof FinishedTestSummarySchema>
 export type InternalError = z.infer<typeof InternalErrorSchema>
+export type QueueResponse = z.infer<typeof QueueResponseSchema>
 export type Repo = z.infer<typeof RepoSchema>
+export type Runner = z.infer<typeof RunnerSchema>
 export type ShowMyselfResponse = z.infer<typeof ShowMyselfResponseSchema>
 export type TaskId = z.infer<typeof TaskIdSchema>
 export type Team = z.infer<typeof TeamSchema>

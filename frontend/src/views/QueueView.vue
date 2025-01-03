@@ -7,36 +7,31 @@
       </CardHeader>
       <CardContent v-auto-animate>
         <div v-if="isLoading">Loading data...</div>
-        <div v-if="!queue && isFetched">Loading failed</div>
-        <div v-if="queue !== undefined" class="space-y-2">
-          <Table>
-            <TableHeader>
-              <TableHead>Position</TableHead>
-              <TableHead>Revision</TableHead>
-              <TableHead>Team</TableHead>
-              <TableHead>Queued since</TableHead>
-              <TableHead>Queued for</TableHead>
-            </TableHeader>
-            <TableBody>
-              <TableRow v-for="(item, index) in queue" :key="item.id">
-                <TableCell class="font-medium">
-                  {{ index + 1 }}
-                </TableCell>
-                <TableCell>
-                  {{ item.revision }}
-                </TableCell>
-                <TableCell>
-                  {{ item.team }}
-                </TableCell>
-                <TableCell>
-                  {{ formatTime(item.insertTime) }}
-                </TableCell>
-                <TableCell>
-                  {{ formatApproxDuration(currentTime, item.insertTime.getTime()) }}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
+        <div v-if="!queueResponse && isFetched">Loading failed</div>
+        <div v-if="queueResponse !== undefined">
+          <div>
+            <div
+              class="p-2 leading-none tracking-tight inline-block"
+              :class="['rounded-xl', 'border', 'bg-card', 'text-card-foreground']"
+              v-for="runner in queueResponse.runners"
+              :key="runner.id"
+            >
+              <span class="flex flex-col justify-center">
+                <span class="mb-1 font-medium">
+                  {{ runner.id }}
+                  <span class="ml-4 text-sm text-muted-foreground">
+                    pinged {{ formatApproxDuration(currentTime, runner.lastSeen.getTime()) }} ago
+                  </span>
+                </span>
+                <span class="text-sm text-muted-foreground flex justify-between">
+                  <span>{{ runner.info }}</span>
+                  <span v-if="runner.workingOn" class="font-medium">active</span>
+                  <span v-else>idle</span>
+                </span>
+              </span>
+            </div>
+          </div>
+          <QueuedTasksOverview :queue="queueResponse.queue" :runners="queueResponse.runners" />
         </div>
       </CardContent>
     </Card>
@@ -45,25 +40,14 @@
 
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { formatDuration, formatTime } from '../lib/utils.ts'
 import PageContainer from '@/components/PageContainer.vue'
+import QueuedTasksOverview from '@/components/QueuedTasksOverview.vue'
+import { formatApproxDuration } from '../lib/utils.ts'
 import { queryQueue } from '@/data/network.ts'
 import { useTimestamp } from '@vueuse/core'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
 
-const currentTime = useTimestamp({ interval: 2500 })
+const currentTime = useTimestamp({ interval: 5000 })
 
-const { data: queue, isFetched, isLoading } = queryQueue()
-
-function formatApproxDuration(currentTime: number, insertTime: number) {
-  return formatDuration(Math.floor((currentTime - insertTime) / 5000) * 5000)
-}
+const { data: queueResponse, isFetched, isLoading } = queryQueue()
 </script>

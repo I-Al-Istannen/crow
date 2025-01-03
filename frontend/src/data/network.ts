@@ -3,6 +3,8 @@ import {
   FinishedCompilerTaskSchema,
   type FinishedCompilerTaskSummary,
   FinishedCompilerTaskSummarySchema,
+  type QueueResponse,
+  QueueResponseSchema,
   type Repo,
   RepoSchema,
   type ShowMyselfResponse,
@@ -16,8 +18,6 @@ import {
   TestSchema,
   type TestSummary,
   TestSummarySchema,
-  type WorkItem,
-  WorkItemSchema,
 } from '@/types.ts'
 import { QueryClient, useMutation, useQuery } from '@tanstack/vue-query'
 import { type Ref, computed, toRef, toValue } from 'vue'
@@ -250,10 +250,10 @@ export function mutateDeleteTest(queryClient: QueryClient) {
   })
 }
 
-export async function fetchQueue(): Promise<WorkItem[]> {
+export async function fetchQueue(): Promise<QueueResponse> {
   const response = await fetchWithAuth('/queue')
   const json = await response.json()
-  return z.array(WorkItemSchema).parse(json)
+  return QueueResponseSchema.parse(json)
 }
 
 export function queryQueue() {

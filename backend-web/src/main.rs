@@ -2,10 +2,9 @@ use crate::auth::{Claims, Keys};
 use crate::config::Config;
 use crate::db::{Database, UserForAuth};
 use crate::endpoints::{
-    delete_test, get_queued_tasks, get_recent_tasks, get_task, get_team_info, get_team_repo,
-    get_test, get_work, get_work_tar, list_task_ids, list_tests, list_users, login,
-    request_revision, runner_done, runner_register, runner_update, set_team_repo, set_test,
-    show_me_myself,
+    delete_test, get_queue, get_recent_tasks, get_task, get_team_info, get_team_repo, get_test,
+    get_work, get_work_tar, list_task_ids, list_tests, list_users, login, request_revision,
+    runner_done, runner_register, runner_update, set_team_repo, set_test, show_me_myself,
 };
 use crate::error::WebError;
 use crate::storage::LocalRepos;
@@ -177,18 +176,18 @@ async fn main_server(
             post(runner_update).layer(authed_runner.clone()),
         )
         .route("/login", post(login))
-        .route("/queue", get(get_queued_tasks))
+        .route("/queue", get(get_queue))
         .route("/queue/rev/:revision", put(request_revision))
         .route("/repo/:team_id", get(get_team_repo))
         .route("/repo/:team_id", put(set_team_repo))
-        .route("/team/recent-tasks", get(get_recent_tasks))
-        .route("/team/info/:team_id", get(get_team_info))
         .route("/tasks", get(list_task_ids))
         .route("/tasks/:task_id", get(get_task))
+        .route("/team/info/:team_id", get(get_team_info))
+        .route("/team/recent-tasks", get(get_recent_tasks))
         .route("/tests", get(list_tests))
-        .route("/tests/:test_id", put(set_test))
-        .route("/tests/:test_id", get(get_test))
         .route("/tests/:test_id", delete(delete_test))
+        .route("/tests/:test_id", get(get_test))
+        .route("/tests/:test_id", put(set_test))
         .route("/users", get(list_users).layer(authed_admin))
         .route("/users/me", get(show_me_myself))
         .layer(prometheus_layer)

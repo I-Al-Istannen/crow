@@ -10,7 +10,7 @@ use axum::response::IntoResponse;
 use serde::Serialize;
 use std::error::Error;
 
-pub use self::execution::get_queued_tasks;
+pub use self::execution::get_queue;
 pub use self::execution::get_task;
 pub use self::execution::get_work;
 pub use self::execution::get_work_tar;

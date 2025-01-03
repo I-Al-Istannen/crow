@@ -39,6 +39,10 @@ export function formatDuration(millis: number): string {
   }
 }
 
+export function formatApproxDuration(currentTime: number, insertTime: number) {
+  return formatDuration(Math.floor((currentTime - insertTime) / 5000) * 5000)
+}
+
 export function statusColor(
   status: 'Finished' | 'Error' | 'Timeout' | 'Aborted',
   prefix: string,

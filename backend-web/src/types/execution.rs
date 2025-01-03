@@ -8,13 +8,35 @@ use shared::{
 };
 use snafu::{ensure, Location, Snafu};
 use std::collections::{HashMap, HashSet};
-use std::time::{Instant, SystemTime};
+use std::time::SystemTime;
 
 #[derive(Debug, Clone)]
 pub struct Runner {
     pub info: RunnerInfo,
     pub working_on: Option<WorkItem>,
-    pub last_ping: Instant,
+    pub last_ping: SystemTime,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunnerForFrontend {
+    pub id: RunnerId,
+    pub info: String,
+    pub working_on: Option<WorkItem>,
+    #[serde(serialize_with = "serialize_system_time")]
+    #[serde(deserialize_with = "deserialize_system_time")]
+    pub last_seen: SystemTime,
+}
+
+impl From<&Runner> for RunnerForFrontend {
+    fn from(value: &Runner) -> Self {
+        Self {
+            id: value.info.id.clone(),
+            info: value.info.info.clone(),
+            working_on: value.working_on.clone(),
+            last_seen: value.last_ping,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -33,10 +55,14 @@ pub enum ExecutorError {
 }
 
 impl Executor {
+    pub fn get_runners(&self) -> Vec<RunnerForFrontend> {
+        self.runners.values().map(|it| it.into()).collect()
+    }
+
     pub fn register_runner(&mut self, runner_info: &RunnerInfo) -> Option<TaskId> {
         if let Some(runner) = self.runners.get_mut(&runner_info.id) {
             runner.info = runner_info.clone();
-            runner.last_ping = Instant::now();
+            runner.last_ping = SystemTime::now();
             return runner.working_on.as_ref().map(|it| it.id.clone());
         }
 
@@ -45,7 +71,7 @@ impl Executor {
             Runner {
                 info: runner_info.clone(),
                 working_on: None,
-                last_ping: Instant::now(),
+                last_ping: SystemTime::now(),
             },
         );
 

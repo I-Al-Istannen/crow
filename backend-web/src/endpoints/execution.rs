@@ -1,13 +1,14 @@
 use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::{Result, WebError};
-use crate::types::{AppState, TaskId, WorkItem};
+use crate::types::{AppState, RunnerForFrontend, TaskId, WorkItem};
 use axum::body::Body;
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
 use axum_extra::headers::authorization::Basic;
 use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
+use serde::Serialize;
 use serde_json::json;
 use shared::{
     CompilerTask, CompilerTest, FinishedCompilerTask, RunnerId, RunnerInfo, RunnerRegisterResponse,
@@ -46,10 +47,13 @@ pub async fn request_revision(
 }
 
 #[instrument(skip_all)]
-pub async fn get_queued_tasks(State(state): State<AppState>) -> Result<Json<Vec<WorkItem>>> {
+pub async fn get_queue(State(state): State<AppState>) -> Result<Json<QueueResponse>> {
     // sleep 1s
     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-    Ok(Json(state.db.get_queued_tasks().await?))
+    let queue = state.db.get_queued_tasks().await?;
+    let runners = state.executor.lock().unwrap().get_runners();
+
+    Ok(Json(QueueResponse { queue, runners }))
 }
 
 #[instrument(skip_all)]
@@ -221,4 +225,10 @@ pub async fn runner_done(
         .finish_task(&auth.username().to_string().into());
 
     Ok(())
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct QueueResponse {
+    pub queue: Vec<WorkItem>,
+    pub runners: Vec<RunnerForFrontend>,
 }
