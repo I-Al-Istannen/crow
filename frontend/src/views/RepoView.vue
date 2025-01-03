@@ -63,7 +63,6 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { LoaderCircle } from 'lucide-vue-next'
 import PageContainer from '@/components/PageContainer.vue'
-import { PatchRepoSchema } from '@/types.ts'
 import { storeToRefs } from 'pinia'
 import { toTypedSchema } from '@vee-validate/zod'
 import { toast } from 'vue-sonner'
@@ -71,6 +70,7 @@ import { useForm } from 'vee-validate'
 import { useQueryClient } from '@tanstack/vue-query'
 import { useUserStore } from '@/stores/user.ts'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
+import { z } from 'zod'
 
 const { team } = storeToRefs(useUserStore())
 const teamId = computed(() => team.value?.id)
@@ -79,7 +79,12 @@ const { data: repo, isFetched, isLoading } = queryRepo(teamId)
 const { mutateAsync, isPending: mutationPending } = mutateRepo(useQueryClient())
 
 const form = useForm({
-  validationSchema: toTypedSchema(PatchRepoSchema),
+  validationSchema: toTypedSchema(
+    z.object({
+      repoUrl: z.string().url('invalid url'),
+      autoFetch: z.boolean(),
+    }),
+  ),
   initialValues: {
     repoUrl: repo.value?.url,
     autoFetch: repo.value?.autoFetch,
