@@ -171,6 +171,11 @@ impl Database {
         let pool = self.read_lock().await;
         test::fetch_test(&mut *pool.acquire().await?, test_id).await
     }
+
+    pub async fn delete_test(&self, test_id: &TestId) -> Result<()> {
+        let pool = self.write_lock().await;
+        test::delete_test(&mut *pool.acquire().await?, test_id).await
+    }
 }
 
 impl From<sqlx::Error> for WebError {

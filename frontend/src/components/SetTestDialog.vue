@@ -50,10 +50,24 @@
               <FormMessage />
             </FormItem>
           </FormField>
-          <Button type="submit" :disabled="mutationPending">
-            <LoaderCircle class="animate-spin mr-2 -ml-2" v-if="mutationPending" />
-            Submit
-          </Button>
+          <div class="flex align-center">
+            <Button type="submit" :disabled="mutationPending">
+              <LoaderCircle class="animate-spin mr-2 -ml-2" v-show="editPending" />
+              Submit
+            </Button>
+            <Button
+              variant="destructive"
+              :disabled="mutationPending"
+              @click.stop.prevent="deleteTest"
+              class="ml-2"
+              v-if="testToEdit"
+              v-auto-animate
+            >
+              <LoaderCircle class="animate-spin mr-2 -ml-2" v-show="deletePending" />
+              <span v-if="!inDeletionProcess">Delete</span>
+              <span v-else>Confirm Deletion</span>
+            </Button>
+          </div>
         </form>
       </div>
     </DialogContent>
@@ -78,8 +92,8 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import type { Test, TestId } from '@/types.ts'
-import { mutateTest, queryTests } from '@/data/network.ts'
-import { toRefs, watch } from 'vue'
+import { computed, ref, toRefs, watch } from 'vue'
+import { mutateDeleteTest, mutateTest, queryTests } from '@/data/network.ts'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LoaderCircle } from 'lucide-vue-next'
@@ -89,12 +103,14 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { toast } from 'vue-sonner'
 import { useForm } from 'vee-validate'
 import { useQueryClient } from '@tanstack/vue-query'
+import { useTimeoutFn } from '@vueuse/core'
 import { useUserStore } from '@/stores/user.ts'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
 import { z } from 'zod'
 
-const dialogOpen = defineModel<boolean>('open')
+const inDeletionProcess = ref(false)
 
+const dialogOpen = defineModel<boolean>('open')
 const props = defineProps<{
   testToEdit?: Test
 }>()
@@ -102,8 +118,18 @@ const { testToEdit } = toRefs(props)
 
 const { team } = storeToRefs(useUserStore())
 
-const { mutateAsync, isPending: mutationPending } = mutateTest(useQueryClient())
+const { mutateAsync: mutateEditTest, isPending: editPending } = mutateTest(useQueryClient())
 const { data: tests } = queryTests()
+const { mutateAsync: mutateDelTest, isPending: deletePending } = mutateDeleteTest(useQueryClient())
+const mutationPending = computed(() => editPending.value || deletePending.value)
+
+const { start: startDeleteResetTimeout } = useTimeoutFn(
+  () => {
+    inDeletionProcess.value = false
+  },
+  2000,
+  { immediate: false },
+)
 
 const form = useForm({
   validationSchema: toTypedSchema(
@@ -144,6 +170,7 @@ watch([dialogOpen, testToEdit], ([open, test]) => {
       },
     })
   }
+  inDeletionProcess.value = false
 })
 
 const idTaken = (id: TestId) => {
@@ -157,7 +184,7 @@ const idTaken = (id: TestId) => {
 }
 
 const onSubmit = form.handleSubmit(async (values) => {
-  await mutateAsync({
+  await mutateEditTest({
     name: values.name,
     id: values.id,
     expectedOutput: values.expectedOutput,
@@ -166,4 +193,19 @@ const onSubmit = form.handleSubmit(async (values) => {
   toast.success(testToEdit?.value !== undefined ? 'Test updated :)' : 'Test created :)')
   dialogOpen.value = false
 })
+
+const deleteTest = async () => {
+  if (!inDeletionProcess.value) {
+    inDeletionProcess.value = true
+    startDeleteResetTimeout()
+    return
+  }
+  if (!testToEdit?.value) {
+    return
+  }
+
+  await mutateDelTest(testToEdit?.value?.id)
+
+  dialogOpen.value = false
+}
 </script>

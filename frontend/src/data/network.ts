@@ -227,3 +227,23 @@ export function mutateTest(queryClient: QueryClient) {
     },
   })
 }
+
+export async function fetchDeleteTest(testId: TestId): Promise<boolean> {
+  const response = await fetchWithAuth(`/tests/${encodeURIComponent(testId)}`, {
+    method: 'DELETE',
+  })
+  return response.ok
+}
+
+export function mutateDeleteTest(queryClient: QueryClient) {
+  return useMutation({
+    mutationFn: (testId: TestId) => fetchDeleteTest(testId),
+    onSuccess: (_, args, __) => {
+      const ___ = queryClient.invalidateQueries({ queryKey: ['tests', args] })
+      const ____ = queryClient.invalidateQueries({ queryKey: ['tests'] })
+    },
+    meta: {
+      purpose: 'deleting a test',
+    },
+  })
+}

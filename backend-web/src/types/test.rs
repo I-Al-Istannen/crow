@@ -21,5 +21,5 @@ pub struct TestSummary {
     pub id: TestId,
     pub name: String,
     pub creator_id: TeamId,
-    pub creator_name: String
+    pub creator_name: String,
 }

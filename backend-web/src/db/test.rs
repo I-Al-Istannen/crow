@@ -1,4 +1,4 @@
-use crate::error::Result;
+use crate::error::{Result, WebError};
 use crate::types::{TeamId, Test, TestId, TestSummary};
 use sqlx::{query, query_as, SqliteConnection};
 use tracing::{info_span, instrument, Instrument};
@@ -103,4 +103,18 @@ pub(super) async fn fetch_test(
     .await?;
 
     Ok(test)
+}
+
+#[instrument(skip_all)]
+pub(super) async fn delete_test(con: &mut SqliteConnection, test_id: &TestId) -> Result<()> {
+    let res = query!(r#"DELETE FROM Tests WHERE id = ?"#, test_id)
+        .execute(con)
+        .instrument(info_span!("sqlx_delete_test"))
+        .await?;
+
+    if res.rows_affected() == 0 {
+        return Err(WebError::NotFound);
+    }
+
+    Ok(())
 }

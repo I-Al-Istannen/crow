@@ -23,6 +23,7 @@ pub use self::team::get_recent_tasks;
 pub use self::team::get_team_info;
 pub use self::team::get_team_repo;
 pub use self::team::set_team_repo;
+pub use self::test::delete_test;
 pub use self::test::get_test;
 pub use self::test::list_tests;
 pub use self::test::set_test;
