@@ -15,14 +15,6 @@ const router = createRouter({
       },
     },
     {
-      path: '/',
-      name: 'foobar',
-      component: HomeView,
-      meta: {
-        name: 'Foobar',
-      },
-    },
-    {
       path: '/repo',
       name: 'repo',
       component: RepoView,
