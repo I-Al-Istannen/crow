@@ -1,5 +1,5 @@
 use crate::error::Result;
-use crate::types::{TeamId, Test, TestId};
+use crate::types::{TeamId, Test, TestId, TestSummary};
 use sqlx::{query, SqliteConnection};
 use tracing::{info_span, instrument, Instrument};
 
@@ -68,6 +68,28 @@ pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>> {
     })
     .fetch_all(con)
     .instrument(info_span!("sqlx_get_tests"))
+    .await?)
+}
+
+#[instrument(skip_all)]
+pub(super) async fn get_tests_summaries(con: &mut SqliteConnection) -> Result<Vec<TestSummary>> {
+    Ok(query!(
+        r#"
+        SELECT
+            Tests.id as "id!: TestId",
+            Tests.name,
+            Teams.display_name as "creator"
+        FROM Tests
+        JOIN Teams ON Tests.owner = Teams.id
+        "#
+    )
+    .map(|it| TestSummary {
+        id: it.id,
+        name: it.name,
+        creator: it.creator,
+    })
+    .fetch_all(con)
+    .instrument(info_span!("sqlx_get_test_summaries"))
     .await?)
 }
 

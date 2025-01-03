@@ -6,6 +6,7 @@ pub use self::repo::Repo;
 pub use self::task::FinishedCompilerTaskSummary;
 pub use self::test::Test;
 pub use self::test::TestId;
+pub use self::test::TestSummary;
 pub use self::user::FullUserForAdmin;
 pub use self::user::OwnUser;
 pub use self::user::Team;

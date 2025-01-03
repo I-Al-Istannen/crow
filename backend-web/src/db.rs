@@ -10,7 +10,7 @@ use crate::config::TeamEntry;
 use crate::error::{Result, WebError};
 use crate::types::{
     FinishedCompilerTaskSummary, FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, TeamInfo,
-    Test, TestId, UserId, WorkItem,
+    Test, TestId, TestSummary, UserId, WorkItem,
 };
 use shared::FinishedCompilerTask;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
@@ -155,6 +155,11 @@ impl Database {
     pub async fn add_test(&self, test: Test) -> Result<Test> {
         let pool = self.write_lock().await;
         test::add_test(&mut *pool.acquire().await?, test).await
+    }
+
+    pub async fn get_test_summaries(&self) -> Result<Vec<TestSummary>> {
+        let pool = self.read_lock().await;
+        test::get_tests_summaries(&mut *pool.acquire().await?).await
     }
 
     pub async fn get_tests(&self) -> Result<Vec<Test>> {

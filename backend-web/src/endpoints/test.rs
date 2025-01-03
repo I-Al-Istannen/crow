@@ -1,7 +1,7 @@
 use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::{Result, WebError};
-use crate::types::{AppState, Test, TestId};
+use crate::types::{AppState, Test, TestId, TestSummary};
 use axum::extract::{Path, State};
 use serde::Deserialize;
 use tracing::instrument;
@@ -10,8 +10,8 @@ use tracing::instrument;
 pub async fn list_tests(
     State(AppState { db, .. }): State<AppState>,
     _claims: Claims,
-) -> Result<Json<Vec<Test>>> {
-    Ok(Json(db.get_tests().await?))
+) -> Result<Json<Vec<TestSummary>>> {
+    Ok(Json(db.get_test_summaries().await?))
 }
 
 #[instrument(skip_all)]

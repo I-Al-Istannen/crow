@@ -14,3 +14,11 @@ pub struct Test {
     pub expected_output: String,
     pub owner: TeamId,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TestSummary {
+    pub id: TestId,
+    pub name: String,
+    pub creator: String,
+}
