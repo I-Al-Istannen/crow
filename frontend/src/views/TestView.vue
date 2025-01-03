@@ -1,9 +1,18 @@
 <template>
   <PageContainer>
     <Card>
-      <CardHeader>
-        <CardTitle>Test all the things</CardTitle>
-        <CardDescription>Browse all tests submitted by you or the course advisors</CardDescription>
+      <CardHeader class="flex flex-row justify-between">
+        <div class="flex flex-col">
+          <CardTitle>Test all the things</CardTitle>
+          <CardDescription>
+            Browse all tests submitted by you or the course advisors
+          </CardDescription>
+        </div>
+        <div>
+          <CreateTestDialog>
+            <Button variant="secondary">Create new test</Button>
+          </CreateTestDialog>
+        </div>
       </CardHeader>
       <CardContent v-auto-animate>
         <div v-if="isLoading">Loading tests...</div>
@@ -84,6 +93,7 @@ import {
 import { PaginationList, PaginationListItem } from 'radix-vue'
 import { computed, ref } from 'vue'
 import { Button } from '@/components/ui/button'
+import CreateTestDialog from '@/components/CreateTestDialog.vue'
 import PageContainer from '@/components/PageContainer.vue'
 import TestDetail from '@/components/TestDetail.vue'
 import { queryTests } from '@/data/network.ts'

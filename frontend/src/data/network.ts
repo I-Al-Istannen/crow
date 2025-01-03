@@ -18,7 +18,7 @@ import {
   TestSummarySchema,
 } from '@/types.ts'
 import { QueryClient, useMutation, useQuery } from '@tanstack/vue-query'
-import { computed, type Ref, toRef, toValue } from 'vue'
+import { type Ref, computed, toRef, toValue } from 'vue'
 import type { MaybeRefOrGetter } from '@vueuse/core'
 import { fetchWithAuth } from '@/data/fetching.ts'
 import { storeToRefs } from 'pinia'
@@ -28,6 +28,12 @@ import { z } from 'zod'
 type RepoPatch = {
   repoUrl: string
   autoFetch: boolean
+}
+
+type TestPatch = {
+  name: string
+  id: TestId
+  expectedOutput: string
 }
 
 async function fetchMyself(): Promise<ShowMyselfResponse> {
@@ -194,6 +200,29 @@ export function queryTest(testId: MaybeRefOrGetter<TestId | undefined>) {
     enabled: computed(() => enabled.value && loggedIn.value),
     meta: {
       purpose: 'fetching test details',
+    },
+  })
+}
+
+export async function fetchSetTest(test: TestPatch): Promise<Test | 'no-permission'> {
+  const response = await fetchWithAuth(`/tests/${encodeURIComponent(test.id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: test.name, expectedOutput: test.expectedOutput }),
+  })
+  const json = await response.json()
+  return TestSchema.parse(json)
+}
+
+export function mutateTest(queryClient: QueryClient) {
+  return useMutation({
+    mutationFn: (test: TestPatch) => fetchSetTest(test),
+    onSuccess: (_, args, __) => {
+      const ___ = queryClient.invalidateQueries({ queryKey: ['tests', args.id] })
+      const ____ = queryClient.invalidateQueries({ queryKey: ['tests'] })
+    },
+    meta: {
+      purpose: 'updating a test',
     },
   })
 }
