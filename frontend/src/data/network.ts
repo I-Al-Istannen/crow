@@ -16,6 +16,8 @@ import {
   TestSchema,
   type TestSummary,
   TestSummarySchema,
+  type WorkItem,
+  WorkItemSchema,
 } from '@/types.ts'
 import { QueryClient, useMutation, useQuery } from '@tanstack/vue-query'
 import { type Ref, computed, toRef, toValue } from 'vue'
@@ -245,5 +247,23 @@ export function mutateDeleteTest(queryClient: QueryClient) {
     meta: {
       purpose: 'deleting a test',
     },
+  })
+}
+
+export async function fetchQueue(): Promise<WorkItem[]> {
+  const response = await fetchWithAuth('/queue')
+  const json = await response.json()
+  return z.array(WorkItemSchema).parse(json)
+}
+
+export function queryQueue() {
+  return useQuery({
+    queryKey: ['queue'],
+    queryFn: fetchQueue,
+    refetchInterval: 2 * 60 * 1000, // 2 minutes
+    meta: {
+      purpose: 'fetching the queue',
+    },
+    enabled: isLoggedIn(),
   })
 }

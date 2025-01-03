@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM Tests WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "cc2660dc84bb296bebff68cbef5ca711ff897ec39eb2a0d5a566a4ffa57f7175"
+}

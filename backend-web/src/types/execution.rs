@@ -2,10 +2,13 @@ use crate::types::test::TestId;
 use crate::types::TeamId;
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
-use shared::{ExecutionOutput, FinishedCompilerTask, FinishedTest, RunnerId, RunnerInfo};
+use shared::{
+    deserialize_system_time, serialize_system_time, ExecutionOutput, FinishedCompilerTask,
+    FinishedTest, RunnerId, RunnerInfo,
+};
 use snafu::{ensure, Location, Snafu};
 use std::collections::{HashMap, HashSet};
-use std::time::Instant;
+use std::time::{Instant, SystemTime};
 
 #[derive(Debug, Clone)]
 pub struct Runner {
@@ -95,10 +98,14 @@ impl Executor {
 pub struct TaskId(String);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct WorkItem {
     pub id: TaskId,
     pub team: TeamId,
     pub revision: String,
+    #[serde(serialize_with = "serialize_system_time")]
+    #[serde(deserialize_with = "deserialize_system_time")]
+    pub insert_time: SystemTime,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

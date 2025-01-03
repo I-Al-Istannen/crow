@@ -165,7 +165,7 @@ pub struct RunnerRegisterResponse {
     pub reset: bool,
 }
 
-fn serialize_system_time<S>(time: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
+pub fn serialize_system_time<S>(time: &SystemTime, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
@@ -175,7 +175,7 @@ where
     serializer.serialize_u64(duration.as_millis() as u64)
 }
 
-fn deserialize_system_time<'de, D>(deserializer: D) -> Result<SystemTime, D::Error>
+pub fn deserialize_system_time<'de, D>(deserializer: D) -> Result<SystemTime, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -183,14 +183,14 @@ where
     Ok(SystemTime::UNIX_EPOCH + Duration::from_millis(millis))
 }
 
-fn serialize_duration<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+pub fn serialize_duration<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
     serializer.serialize_u64(duration.as_millis() as u64)
 }
 
-fn deserialize_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+pub fn deserialize_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
     D: serde::Deserializer<'de>,
 {

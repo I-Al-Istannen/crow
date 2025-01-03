@@ -45,8 +45,9 @@ export default [
             'Select',
             'Separator',
             'Sonner',
+            'Table',
             'Tabs',
-            'Textarea'
+            'Textarea',
           ]
         }
       ]

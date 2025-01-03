@@ -14,6 +14,7 @@ use shared::{
     RunnerUpdate, RunnerWorkResponse,
 };
 use snafu::Report;
+use std::time::SystemTime;
 use tokio_util::io::ReaderStream;
 use tracing::{info, instrument, warn};
 use uuid::Uuid;
@@ -37,6 +38,7 @@ pub async fn request_revision(
         id: task_id.clone(),
         team,
         revision,
+        insert_time: SystemTime::now(),
     };
     state.db.queue_task(task.clone()).await?;
 
@@ -45,6 +47,8 @@ pub async fn request_revision(
 
 #[instrument(skip_all)]
 pub async fn get_queued_tasks(State(state): State<AppState>) -> Result<Json<Vec<WorkItem>>> {
+    // sleep 1s
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     Ok(Json(state.db.get_queued_tasks().await?))
 }
 

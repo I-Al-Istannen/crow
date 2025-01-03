@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
+import QueueView from '@/views/QueueView.vue'
 import RepoView from '@/views/RepoView.vue'
 import TaskDetailView from '@/views/TaskDetailView.vue'
 import TeamInfoView from '@/views/TeamInfoView.vue'
@@ -30,6 +31,14 @@ const router = createRouter({
       component: TestView,
       meta: {
         name: 'Tests',
+      },
+    },
+    {
+      path: '/queue',
+      name: 'queue',
+      component: QueueView,
+      meta: {
+        name: 'Queue',
       },
     },
     {

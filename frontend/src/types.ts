@@ -130,6 +130,13 @@ export const TestSummarySchema = z.object({
   creatorName: z.string(),
 })
 
+export const WorkItemSchema = z.object({
+  id: TaskIdSchema,
+  team: TeamIdSchema,
+  revision: z.string(),
+  insertTime: z.number().transform((ms) => new Date(ms)),
+})
+
 export type AbortedExecution = z.infer<typeof AbortedExecutionSchema>
 export type ExecutionExitStatus = z.infer<typeof ExecutionExitStatusSchema>
 export type ExecutionOutput = z.infer<typeof ExecutionOutputSchema>
@@ -151,3 +158,4 @@ export type TestId = z.infer<typeof TestIdSchema>
 export type TestSummary = z.infer<typeof TestSummarySchema>
 export type User = z.infer<typeof UserSchema>
 export type UserId = z.infer<typeof UserIdSchema>
+export type WorkItem = z.infer<typeof WorkItemSchema>
