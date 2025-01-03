@@ -13,6 +13,13 @@ pub struct Team {
     pub display_name: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TeamInfo {
+    pub team: Team,
+    pub members: Vec<User>,
+}
+
 #[derive(Debug, Clone, Hash, From, PartialEq, Eq, Display, Serialize, Deserialize, sqlx::Type)]
 #[sqlx(transparent)]
 pub struct UserId(String);

@@ -9,9 +9,11 @@ import {
   ShowMyselfResponseSchema,
   type TaskId,
   type TeamId,
+  type TeamInfo,
+  TeamInfoSchema,
 } from '@/types.ts'
 import { QueryClient, useMutation, useQuery } from '@tanstack/vue-query'
-import { computed, type Ref, toRef, toValue } from 'vue'
+import { type Ref, computed, toRef, toValue } from 'vue'
 import type { MaybeRefOrGetter } from '@vueuse/core'
 import { fetchWithAuth } from '@/data/fetching.ts'
 import { storeToRefs } from 'pinia'
@@ -123,6 +125,29 @@ export function queryTask(taskId: MaybeRefOrGetter<TaskId | undefined>) {
     enabled: computed(() => enabled.value && loggedIn.value),
     meta: {
       purpose: 'fetching task details',
+    },
+  })
+}
+
+export async function fetchTeamInfo(teamId: TeamId): Promise<TeamInfo | null> {
+  const response = await fetchWithAuth(`/team/info/${encodeURIComponent(teamId)}`)
+  if (response.status === 404) {
+    return null
+  }
+  const json = await response.json()
+  return TeamInfoSchema.parse(json)
+}
+
+export function queryTeamInfo(teamId: MaybeRefOrGetter<TeamId | undefined>) {
+  const enabled = computed(() => !!toRef(teamId).value)
+  const loggedIn = isLoggedIn()
+
+  return useQuery({
+    queryKey: ['team', teamId],
+    queryFn: () => fetchTeamInfo(toValue(teamId)!),
+    enabled: computed(() => enabled.value && loggedIn.value),
+    meta: {
+      purpose: 'fetching team information',
     },
   })
 }

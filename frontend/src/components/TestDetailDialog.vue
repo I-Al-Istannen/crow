@@ -26,8 +26,8 @@ import {
 } from '@/components/ui/dialog'
 import type { FinishedTest } from '@/types.ts'
 import ProcessOutputDisplay from '@/components/ProcessOutputDisplay.vue'
-import { toRefs } from 'vue'
 import { statusColor } from '@/lib/utils.ts'
+import { toRefs } from 'vue'
 
 const dialogOpen = defineModel<boolean>('dialogOpen')
 

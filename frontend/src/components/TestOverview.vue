@@ -32,10 +32,10 @@
 
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import type { FinishedCompilerTask, FinishedTest } from '@/types.ts'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { LucideCheck, LucideClockAlert, LucideUnplug, LucideX } from 'lucide-vue-next'
 import { computed, ref, toRefs } from 'vue'
+import type { FinishedTest } from '@/types.ts'
 import TestDetailDialog from '@/components/TestDetailDialog.vue'
 import { statusColor } from '@/lib/utils.ts'
 
@@ -43,11 +43,10 @@ const clickedTest = ref<FinishedTest | undefined>(undefined)
 const dialogOpen = ref<boolean>(false)
 
 const props = defineProps<{
-  task: FinishedCompilerTask
   tests: FinishedTest[]
 }>()
 
-const { task, tests } = toRefs(props)
+const { tests } = toRefs(props)
 
 const sortedTests = computed(() =>
   tests.value.slice().sort((a, b) => a.testId.localeCompare(b.testId)),

@@ -9,8 +9,8 @@ pub use self::user::UserForAuth;
 use crate::config::TeamEntry;
 use crate::error::{Result, WebError};
 use crate::types::{
-    FinishedCompilerTaskSummary, FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, Test,
-    TestId, UserId, WorkItem,
+    FinishedCompilerTaskSummary, FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, TeamInfo,
+    Test, TestId, UserId, WorkItem,
 };
 use shared::FinishedCompilerTask;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
@@ -99,6 +99,11 @@ impl Database {
     pub async fn get_team(&self, team_id: &TeamId) -> Result<Team> {
         let pool = self.read_lock().await;
         team::get_team(&mut *pool.acquire().await?, team_id).await
+    }
+
+    pub async fn get_team_info(&self, team_id: &TeamId) -> Result<TeamInfo> {
+        let pool = self.read_lock().await;
+        team::get_team_info(&mut *pool.acquire().await?, team_id).await
     }
 
     pub async fn sync_teams(&self, teams: &[TeamEntry]) -> Result<()> {

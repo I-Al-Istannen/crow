@@ -35,7 +35,16 @@
             <DropdownMenuLabel class="flex flex-col space-y-1">
               {{ userName }}
             </DropdownMenuLabel>
-            <DropdownMenuSeparator></DropdownMenuSeparator>
+            <DropdownMenuSeparator v-if="user && user.team" />
+            <DropdownMenuItem as-child v-if="user && user.team">
+              <router-link
+                :to="{ name: 'team-info', params: { teamId: user.team } }"
+                class="cursor-pointer"
+              >
+                Team
+              </router-link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem>Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

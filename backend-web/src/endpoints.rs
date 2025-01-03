@@ -20,6 +20,7 @@ pub use self::execution::runner_done;
 pub use self::execution::runner_register;
 pub use self::execution::runner_update;
 pub use self::team::get_recent_tasks;
+pub use self::team::get_team_info;
 pub use self::team::get_team_repo;
 pub use self::team::set_team_repo;
 pub use self::test::list_tests;

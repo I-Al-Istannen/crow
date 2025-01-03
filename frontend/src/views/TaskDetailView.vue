@@ -15,7 +15,7 @@
     </Card>
 
     <BuildOutputOverview :task="task" v-if="task" />
-    <TestOverview :task="task" :tests="tests" v-if="tests && task" />
+    <TestOverview :tests="tests" v-if="tests && task" />
   </PageContainer>
 </template>
 

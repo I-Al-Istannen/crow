@@ -149,6 +149,11 @@ export const FinishedCompilerTaskSummarySchema = z.discriminatedUnion('type', [
   }),
 ])
 
+export const TeamInfoSchema = z.object({
+  team: TeamSchema,
+  members: z.array(UserSchema)
+})
+
 export type CompilerTest = z.infer<typeof CompilerTestSchema>
 export type CompilerTask = z.infer<typeof CompilerTaskSchema>
 export type FinishedExecution = z.infer<typeof FinishedExecutionSchema>
@@ -175,3 +180,4 @@ export type ExecutionExitStatus = z.infer<typeof ExecutionExitStatusSchema>
 export type FinishedTaskInfo = z.infer<typeof FinishedTaskInfoSchema>
 export type TaskId = z.infer<typeof TaskIdSchema>
 export type TestId = z.infer<typeof TestIdSchema>
+export type TeamInfo = z.infer<typeof TeamInfoSchema>
