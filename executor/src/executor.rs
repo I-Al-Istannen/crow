@@ -93,7 +93,7 @@ fn execute_task_impl(
         stdout: container.data.stdout.clone(),
         stderr: container.data.stderr.clone(),
         runtime: container.data.runtime,
-        exit_status: None,
+        exit_status: Some(0),
     };
     let _ = message_channel.send(RunnerUpdate::FinishedBuild(build_output.clone()));
 
@@ -129,7 +129,7 @@ fn execute_task_impl(
                     stdout: res.stdout,
                     stderr: res.stderr,
                     runtime: res.runtime,
-                    exit_status: None,
+                    exit_status: Some(0),
                 }),
                 Err(e) => test_run_error_to_output(
                     start_monotonic,
