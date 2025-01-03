@@ -1,10 +1,13 @@
 import {
+  type FinishedCompilerTask,
+  FinishedCompilerTaskSchema,
   type FinishedCompilerTaskSummary,
   FinishedCompilerTaskSummarySchema,
   type Repo,
   RepoSchema,
   type ShowMyselfResponse,
   ShowMyselfResponseSchema,
+  type TaskId,
   type TeamId,
 } from '@/types.ts'
 import { QueryClient, useMutation, useQuery } from '@tanstack/vue-query'
@@ -98,5 +101,28 @@ export function queryRecentTasks() {
       purpose: 'fetching recent tasks',
     },
     enabled: isLoggedIn(),
+  })
+}
+
+export async function fetchTask(taskId: TaskId): Promise<FinishedCompilerTask | null> {
+  const response = await fetchWithAuth(`/tasks/${encodeURIComponent(taskId)}`)
+  if (response.status === 404) {
+    return null
+  }
+  const json = await response.json()
+  return FinishedCompilerTaskSchema.parse(json)
+}
+
+export function queryTask(taskId: MaybeRefOrGetter<TaskId | undefined>) {
+  const enabled = computed(() => !!toRef(taskId).value)
+  const loggedIn = isLoggedIn()
+
+  return useQuery({
+    queryKey: ['task', taskId],
+    queryFn: () => fetchTask(toValue(taskId)!),
+    enabled: computed(() => enabled.value && loggedIn.value),
+    meta: {
+      purpose: 'fetching task details',
+    },
   })
 }

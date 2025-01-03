@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
 import RepoView from '@/views/RepoView.vue'
+import TaskDetailView from '@/views/TaskDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -32,7 +33,7 @@ const router = createRouter({
     {
       path: '/task-detail/:taskId',
       name: 'task-detail',
-      component: RepoView,
+      component: TaskDetailView,
       meta: {
         name: 'Task Detail',
         hidden: true,

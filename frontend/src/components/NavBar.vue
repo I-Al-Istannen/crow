@@ -26,7 +26,7 @@
       </div>
       <div>
         <DropdownMenu>
-          <DropdownMenuTrigger>
+          <DropdownMenuTrigger as-child>
             <Button variant="outline" size="icon">
               <User></User>
             </Button>

@@ -2,6 +2,8 @@ import { z } from 'zod'
 
 export const UserIdSchema = z.string()
 export const TeamIdSchema = z.string()
+export const TaskIdSchema = z.string()
+export const TestIdSchema = z.string()
 
 export const UserSchema = z.object({
   id: UserIdSchema,
@@ -26,7 +28,7 @@ export const RepoSchema = z.object({
 })
 
 export const CompilerTestSchema = z.object({
-  testId: z.string(),
+  testId: TestIdSchema,
   timeout: z.number().describe('duration in ms'),
   runCommand: z.array(z.string()),
   expectedOutput: z.string(),
@@ -58,11 +60,11 @@ export const InternalErrorSchema = z.object({
   runtime: z.number().describe('duration in ms'),
 })
 
-export const ExecutionOutputSchema = z.union([
-  z.object({ Aborted: AbortedExecutionSchema }),
-  z.object({ Error: InternalErrorSchema }),
-  z.object({ Finished: FinishedExecutionSchema }),
-  z.object({ Timeout: FinishedExecutionSchema }),
+export const ExecutionOutputSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('Aborted') }).merge(AbortedExecutionSchema),
+  z.object({ type: z.literal('Error') }).merge(InternalErrorSchema),
+  z.object({ type: z.literal('Finished') }).merge(FinishedExecutionSchema),
+  z.object({ type: z.literal('Timeout') }).merge(FinishedExecutionSchema),
 ])
 
 export const FinishedTestSchema = z.object({
@@ -71,26 +73,24 @@ export const FinishedTestSchema = z.object({
 })
 
 export const FinishedTaskInfoSchema = z.object({
-  taskId: z.string(),
+  taskId: TaskIdSchema,
   start: z.number().transform((ms) => new Date(ms)),
   end: z.number().transform((ms) => new Date(ms)),
   teamId: TeamIdSchema,
   revisionId: z.string(),
 })
 
-export const FinishedCompilerTaskSchema = z.union([
+export const FinishedCompilerTaskSchema = z.discriminatedUnion('type', [
   z.object({
-    BuildFailed: z.object({
-      info: FinishedTaskInfoSchema,
-      build_output: ExecutionOutputSchema,
-    }),
+    type: z.literal('BuildFailed'),
+    info: FinishedTaskInfoSchema,
+    buildOutput: ExecutionOutputSchema,
   }),
   z.object({
-    RanTests: z.object({
-      info: FinishedTaskInfoSchema,
-      buildOutput: FinishedExecutionSchema,
-      tests: z.array(FinishedTestSchema),
-    }),
+    type: z.literal('RanTests'),
+    info: FinishedTaskInfoSchema,
+    buildOutput: FinishedExecutionSchema,
+    tests: z.array(FinishedTestSchema),
   }),
 ])
 
@@ -132,7 +132,7 @@ export const ExecutionExitStatusSchema = z.union([
 ])
 
 export const FinishedTestSummarySchema = z.object({
-  testId: z.string(),
+  testId: TestIdSchema,
   output: ExecutionExitStatusSchema,
 })
 
@@ -140,6 +140,7 @@ export const FinishedCompilerTaskSummarySchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('BuildFailed'),
     info: FinishedTaskInfoSchema,
+    status: ExecutionExitStatusSchema
   }),
   z.object({
     type: z.literal('RanTests'),
@@ -171,3 +172,6 @@ export type Repo = z.infer<typeof RepoSchema>
 export type FinishedCompilerTaskSummary = z.infer<typeof FinishedCompilerTaskSummarySchema>
 export type FinishedTestSummary = z.infer<typeof FinishedTestSummarySchema>
 export type ExecutionExitStatus = z.infer<typeof ExecutionExitStatusSchema>
+export type FinishedTaskInfo = z.infer<typeof FinishedTaskInfoSchema>
+export type TaskId = z.infer<typeof TaskIdSchema>
+export type TestId = z.infer<typeof TestIdSchema>
