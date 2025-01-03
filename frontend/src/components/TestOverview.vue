@@ -5,7 +5,7 @@
       <CardDescription>Information about individual tests</CardDescription>
     </CardHeader>
     <CardContent class="flex flex-row gap-1 flex-wrap">
-      <TestDetailDialog :test="clickedTest" v-model:dialog-open="dialogOpen" />
+      <FinishedTestDetailDialog :test="clickedTest" v-model:dialog-open="dialogOpen" />
       <HoverCard v-for="test in sortedTests" :key="test.testId" :open-delay="0">
         <HoverCardTrigger
           class="w-[2em] h-[2em] flex justify-center items-center text-white rounded cursor-pointer"
@@ -36,7 +36,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { LucideCheck, LucideClockAlert, LucideUnplug, LucideX } from 'lucide-vue-next'
 import { computed, ref, toRefs } from 'vue'
 import type { FinishedTest } from '@/types.ts'
-import TestDetailDialog from '@/components/TestDetailDialog.vue'
+import FinishedTestDetailDialog from '@/components/FinishedTestDetailDialog.vue'
 import { statusColor } from '@/lib/utils.ts'
 
 const clickedTest = ref<FinishedTest | undefined>(undefined)
