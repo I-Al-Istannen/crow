@@ -69,7 +69,8 @@ pub(super) async fn get_tests_summaries(con: &mut SqliteConnection) -> Result<Ve
         SELECT
             Tests.id as "id!: TestId",
             Tests.name,
-            Teams.display_name as "creator"
+            Teams.display_name as "creator_name",
+            Teams.id as "creator_id!: TeamId"
         FROM Tests
         JOIN Teams ON Tests.owner = Teams.id
         "#

@@ -1,9 +1,10 @@
 <template>
   <Dialog v-model:open="dialogOpen">
-    <DialogTrigger>
+    <!-- prevent any outer elements (e.g. accordion) to trigger too -->
+    <DialogTrigger @click.stop>
       <slot />
     </DialogTrigger>
-    <DialogContent class="max-w-[60dvw]">
+    <DialogContent class="max-w-[60dvw] max-h-[80dvh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Create a new test</DialogTitle>
         <DialogDescription>Share a test with the world and break some compilers</DialogDescription>
@@ -24,7 +25,12 @@
             <FormItem v-auto-animate>
               <FormLabel class="text-sm font-medium">Test ID</FormLabel>
               <FormControl>
-                <Input type="text" placeholder="cool-test" v-bind="componentField" />
+                <Input
+                  :disabled="!!testToEdit"
+                  type="text"
+                  placeholder="cool-test"
+                  v-bind="componentField"
+                />
               </FormControl>
               <FormDescription>A unique alpha-numeric identifier for your test</FormDescription>
               <FormMessage />
@@ -71,13 +77,13 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import type { Test, TestId } from '@/types.ts'
 import { mutateTest, queryTests } from '@/data/network.ts'
+import { toRefs, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LoaderCircle } from 'lucide-vue-next'
-import type { TestId } from '@/types.ts'
 import { Textarea } from '@/components/ui/textarea'
-import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { toTypedSchema } from '@vee-validate/zod'
 import { toast } from 'vue-sonner'
@@ -87,7 +93,12 @@ import { useUserStore } from '@/stores/user.ts'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
 import { z } from 'zod'
 
-const dialogOpen = ref(false)
+const dialogOpen = defineModel<boolean>('open')
+
+const props = defineProps<{
+  testToEdit?: Test
+}>()
+const { testToEdit } = toRefs(props)
 
 const { team } = storeToRefs(useUserStore())
 
@@ -105,7 +116,7 @@ const form = useForm({
         .string()
         .min(3, 'Please give the test a descriptive id')
         .max(40, 'That id is a bit long, don’t you think?')
-        .regex(/[a-zA-Z0-9]+/, 'Only alphanumeric characters are allowed')
+        .regex(/^[a-zA-Z0-9]+$/, 'Only alphanumeric characters are allowed')
         .refine((id) => !idTaken(id), 'This test id already exists'),
       expectedOutput: z
         .string()
@@ -115,23 +126,44 @@ const form = useForm({
   ),
 })
 
+watch([dialogOpen, testToEdit], ([open, test]) => {
+  if (open && test) {
+    form.resetForm({
+      values: {
+        name: test.name,
+        id: test.id,
+        expectedOutput: test.expectedOutput,
+      },
+    })
+  } else if (open) {
+    form.resetForm({
+      values: {
+        name: undefined,
+        id: undefined,
+        expectedOutput: undefined,
+      },
+    })
+  }
+})
+
 const idTaken = (id: TestId) => {
   if (tests.value === undefined || !team.value) {
+    return false
+  }
+  if (testToEdit?.value?.id === id) {
     return false
   }
   return !!tests.value.find((it) => it.id === id)
 }
 
 const onSubmit = form.handleSubmit(async (values) => {
-  console.log('submitting', values)
-
   await mutateAsync({
     name: values.name,
     id: values.id,
     expectedOutput: values.expectedOutput,
   })
 
-  toast.success('Test created :)')
+  toast.success(testToEdit?.value !== undefined ? 'Test updated :)' : 'Test created :)')
   dialogOpen.value = false
 })
 </script>

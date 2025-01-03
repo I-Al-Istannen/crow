@@ -126,7 +126,8 @@ export const TeamInfoSchema = z.object({
 export const TestSummarySchema = z.object({
   id: TestIdSchema,
   name: z.string(),
-  creator: z.string(),
+  creatorId: TeamIdSchema,
+  creatorName: z.string(),
 })
 
 export type AbortedExecution = z.infer<typeof AbortedExecutionSchema>

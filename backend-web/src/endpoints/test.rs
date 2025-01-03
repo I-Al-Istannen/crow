@@ -1,3 +1,4 @@
+use std::time::Duration;
 use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::{Result, WebError};
@@ -11,6 +12,8 @@ pub async fn list_tests(
     State(AppState { db, .. }): State<AppState>,
     _claims: Claims,
 ) -> Result<Json<Vec<TestSummary>>> {
+    // sleep 1 sec
+    tokio::time::sleep(Duration::from_secs(1)).await;
     Ok(Json(db.get_test_summaries().await?))
 }
 
@@ -53,6 +56,7 @@ pub async fn get_test(
     let Some(test) = db.fetch_test(&test_id).await? else {
         return Err(WebError::NotFound);
     };
+    tokio::time::sleep(Duration::from_secs(1)).await;
     Ok(Json(test))
 }
 

@@ -20,5 +20,6 @@ pub struct Test {
 pub struct TestSummary {
     pub id: TestId,
     pub name: String,
-    pub creator: String,
+    pub creator_id: TeamId,
+    pub creator_name: String
 }

@@ -9,9 +9,9 @@
           </CardDescription>
         </div>
         <div>
-          <CreateTestDialog>
-            <Button variant="secondary">Create new test</Button>
-          </CreateTestDialog>
+          <SetTestDialog :test-to-edit="testToEdit" v-model:open="testSetDialogOpen">
+            <Button variant="secondary" :disabled="testToEditLoading">Create new test</Button>
+          </SetTestDialog>
         </div>
       </CardHeader>
       <CardContent v-auto-animate>
@@ -23,7 +23,17 @@
               <AccordionTrigger>
                 <span>
                   {{ test.name }}
-                  <span class="text-sm text-muted-foreground ml-2">by {{ test.creator }}</span>
+                  <span class="text-sm text-muted-foreground ml-2">by {{ test.creatorName }}</span>
+                </span>
+                <span class="flex flex-grow justify-end mr-2" v-if="canEdit(test)">
+                  <Button
+                    variant="ghost"
+                    class="h-full p-2 -m-2"
+                    @click.stop="openEditDialog(test)"
+                    :disabled="testToEditLoading"
+                  >
+                    <LucidePencil :size="16" :class="{ 'animate-spin': testToEditLoading }" />
+                  </Button>
                 </span>
               </AccordionTrigger>
               <AccordionContent>
@@ -91,18 +101,27 @@ import {
   PaginationPrev,
 } from '@/components/ui/pagination'
 import { PaginationList, PaginationListItem } from 'radix-vue'
-import { computed, ref } from 'vue'
+import type { Test, TestSummary } from '@/types.ts'
+import { computed, ref, watch } from 'vue'
+import { fetchTestDetail, queryTests } from '@/data/network.ts'
 import { Button } from '@/components/ui/button'
-import CreateTestDialog from '@/components/CreateTestDialog.vue'
+import { LucidePencil } from 'lucide-vue-next'
 import PageContainer from '@/components/PageContainer.vue'
+import SetTestDialog from '@/components/SetTestDialog.vue'
 import TestDetail from '@/components/TestDetail.vue'
-import { queryTests } from '@/data/network.ts'
+import { storeToRefs } from 'pinia'
+import { toast } from 'vue-sonner'
+import { useUserStore } from '@/stores/user.ts'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
 
 const currentPage = ref<number>(1)
 const itemsPerPage = ref<number>(3)
 const expandedTests = ref<string[]>([])
+const testSetDialogOpen = ref(false)
+const testToEdit = ref<Test | undefined>(undefined)
+const testToEditLoading = ref(false)
 
+const { team } = storeToRefs(useUserStore())
 const { data: tests, isFetched, isLoading } = queryTests()
 
 const displayedTests = computed(() => {
@@ -114,4 +133,30 @@ const displayedTests = computed(() => {
 
   return tests.value.slice(start, end)
 })
+
+// Reset the edited test so clicking on new test does not prefill with the last edited test
+watch(testSetDialogOpen, (isOpen) => {
+  if (!isOpen) {
+    testToEdit.value = undefined
+  }
+})
+
+async function openEditDialog(testSummary: TestSummary) {
+  testToEditLoading.value = true
+  try {
+    const test = await fetchTestDetail(testSummary.id)
+    if (test === null) {
+      toast.error('Could not find test')
+    } else {
+      testToEdit.value = test
+      testSetDialogOpen.value = true
+    }
+  } finally {
+    testToEditLoading.value = false
+  }
+}
+
+function canEdit(test: TestSummary): boolean {
+  return test.creatorId === team.value?.id
+}
 </script>

@@ -190,7 +190,7 @@ export async function fetchTestDetail(testId: TestId): Promise<Test | null> {
   return TestSchema.parse(json)
 }
 
-export function queryTest(testId: MaybeRefOrGetter<TestId | undefined>) {
+export function queryTest(testId: MaybeRefOrGetter<TestId | undefined>, refetchOnMount?: boolean) {
   const enabled = computed(() => !!toRef(testId).value)
   const loggedIn = isLoggedIn()
 
@@ -198,6 +198,7 @@ export function queryTest(testId: MaybeRefOrGetter<TestId | undefined>) {
     queryKey: ['tests', testId],
     queryFn: () => fetchTestDetail(toValue(testId)!),
     enabled: computed(() => enabled.value && loggedIn.value),
+    refetchOnMount,
     meta: {
       purpose: 'fetching test details',
     },
