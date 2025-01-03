@@ -1,7 +1,7 @@
 import './assets/index.css'
 import './assets/fonts.css'
 
-import { QueryCache, VueQueryPlugin } from '@tanstack/vue-query'
+import { MutationCache, QueryCache, VueQueryPlugin } from '@tanstack/vue-query'
 import App from './App.vue'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
@@ -21,6 +21,15 @@ app.use(VueQueryPlugin, {
           duration: 5000,
         })
         console.log('Error during request', query, error)
+      },
+    }),
+    mutationCache: new MutationCache({
+      onError: (error, _vars, _context, mutation) => {
+        toast.error('Error ' + (mutation.meta?.purpose || 'during mutation'), {
+          description: error.message,
+          duration: 5000,
+        })
+        console.log('Error during mutation', mutation, error)
       },
     }),
   },
