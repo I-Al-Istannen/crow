@@ -1,6 +1,6 @@
 use crate::error::{Result, WebError};
 use crate::types::{Repo, TeamId};
-use sqlx::{query, Acquire, Sqlite, SqliteConnection};
+use sqlx::{query, query_as, Acquire, Sqlite, SqliteConnection};
 use tracing::{info_span, instrument, Instrument};
 
 #[instrument(skip_all)]
@@ -8,15 +8,12 @@ pub(super) async fn fetch_repo(
     con: &mut SqliteConnection,
     team_id: &TeamId,
 ) -> Result<Option<Repo>> {
-    Ok(query!("SELECT * FROM Repos WHERE team = ?", team_id)
-        .map(|it| Repo {
-            team: team_id.clone(),
-            url: it.url,
-            auto_fetch: it.auto_fetch,
-        })
-        .fetch_optional(con)
-        .instrument(info_span!("sqlx_get_repo"))
-        .await?)
+    Ok(
+        query_as!(Repo, r#"SELECT * FROM Repos WHERE team = ?"#, team_id)
+            .fetch_optional(con)
+            .instrument(info_span!("sqlx_get_repo"))
+            .await?,
+    )
 }
 
 #[instrument(skip_all)]
@@ -56,12 +53,7 @@ pub(super) async fn patch_or_create_repo(
     .instrument(info_span!("sqlx_update_insert_repo"))
     .await?;
 
-    let repo = query!("SELECT * FROM Repos WHERE team = ?", team_id)
-        .map(|it| Repo {
-            team: team_id.clone(),
-            url: it.url,
-            auto_fetch: it.auto_fetch,
-        })
+    let repo = query_as!(Repo, "SELECT * FROM Repos WHERE team = ?", team_id)
         .fetch_one(&mut *con)
         .instrument(info_span!("sqlx_update_get_repo"))
         .await?;

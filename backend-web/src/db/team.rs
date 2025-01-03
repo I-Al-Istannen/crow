@@ -1,20 +1,17 @@
 use crate::config::TeamEntry;
 use crate::error::{Result, WebError};
-use crate::types::{Team, TeamId, TeamInfo, User, UserId};
-use sqlx::{query, Acquire, Sqlite, SqliteConnection};
+use crate::types::{Team, TeamId, TeamInfo, User};
+use sqlx::{query, query_as, Acquire, Sqlite, SqliteConnection};
 use std::collections::HashSet;
 use tracing::{info, info_span, instrument, warn, Instrument};
 
 #[instrument(skip_all)]
 pub(super) async fn get_team(con: &mut SqliteConnection, team_id: &TeamId) -> Result<Team> {
-    let team = query!(
-        r#"SELECT id as "id!: TeamId", display_name FROM Teams WHERE id = ?"#,
+    let team = query_as!(
+        Team,
+        r#"SELECT id as "id!", display_name FROM Teams WHERE id = ?"#,
         team_id
     )
-    .map(|it| Team {
-        id: it.id,
-        display_name: it.display_name,
-    })
     .fetch_optional(con)
     .instrument(info_span!("sqlx_get_team"))
     .await?;
@@ -31,22 +28,11 @@ pub(super) async fn get_team_info(
 ) -> Result<TeamInfo> {
     let team = get_team(con, team_id).await?;
 
-    let members = query!(
-        r#"
-        SELECT
-            id as "id!: UserId",
-            display_name,
-            team as "team?: TeamId"
-        FROM Users
-        WHERE team = ?
-        "#,
+    let members = query_as!(
+        User,
+        r#"SELECT id as "id!", display_name, team as "team!: TeamId" FROM Users WHERE team = ?"#,
         team_id
     )
-    .map(|it| User {
-        id: it.id,
-        display_name: it.display_name,
-        team: it.team,
-    })
     .fetch_all(con)
     .instrument(info_span!("sqlx_get_team_info"))
     .await?;

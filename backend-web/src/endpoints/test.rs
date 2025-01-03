@@ -44,6 +44,18 @@ pub async fn set_test(
     ))
 }
 
+#[instrument(skip_all)]
+pub async fn get_test(
+    State(AppState { db, .. }): State<AppState>,
+    _claims: Claims,
+    Path(test_id): Path<TestId>,
+) -> Result<Json<Test>> {
+    let Some(test) = db.fetch_test(&test_id).await? else {
+        return Err(WebError::NotFound);
+    };
+    Ok(Json(test))
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AddTestPayload {

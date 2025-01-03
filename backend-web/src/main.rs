@@ -2,7 +2,7 @@ use crate::auth::{Claims, Keys};
 use crate::config::Config;
 use crate::db::{Database, UserForAuth};
 use crate::endpoints::{
-    get_queued_tasks, get_recent_tasks, get_task, get_team_info, get_team_repo, get_work,
+    get_queued_tasks, get_recent_tasks, get_task, get_team_info, get_team_repo, get_test, get_work,
     get_work_tar, list_task_ids, list_tests, list_users, login, request_revision, runner_done,
     runner_register, runner_update, set_team_repo, set_test, show_me_myself,
 };
@@ -186,6 +186,7 @@ async fn main_server(
         .route("/tasks/:task_id", get(get_task))
         .route("/tests", get(list_tests))
         .route("/tests/:test_id", put(set_test))
+        .route("/tests/:test_id", get(get_test))
         .route("/users", get(list_users).layer(authed_admin))
         .route("/users/me", get(show_me_myself))
         .layer(prometheus_layer)

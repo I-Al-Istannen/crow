@@ -1,10 +1,10 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: TeamId\", display_name FROM Teams WHERE id = ?",
+  "query": "SELECT id as \"id!\", display_name FROM Teams WHERE id = ?",
   "describe": {
     "columns": [
       {
-        "name": "id!: TeamId",
+        "name": "id!",
         "ordinal": 0,
         "type_info": "Text"
       },
@@ -22,5 +22,5 @@
       false
     ]
   },
-  "hash": "f37baf9df89a200039a7961b1aa10ef6af972f9d91b8cebc65ec89d499d89ff3"
+  "hash": "4a517a81745ff7089a365a0011746212f5ee7c7ee2b2f88447c4ab44b6078682"
 }

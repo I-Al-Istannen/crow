@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT \n            execution_id,\n            stdout,\n            stderr,\n            error,\n            result as \"result!: ExecutionExitStatus\",\n            duration_ms as \"duration_ms!: u64\",\n            exit_code as \"exit_code?: i32\"\n        FROM ExecutionResults\n        WHERE execution_id = ?",
+  "query": "\n        SELECT\n            execution_id,\n            stdout,\n            stderr,\n            error,\n            result as \"result!: ExecutionExitStatus\",\n            duration_ms as \"duration_ms!: u64\",\n            exit_code as \"exit_code?: i32\"\n        FROM ExecutionResults\n        WHERE execution_id = ?",
   "describe": {
     "columns": [
       {
@@ -52,5 +52,5 @@
       true
     ]
   },
-  "hash": "edd73d62b32df7173abd5eea9d7114fc890bfeb1915e704af38f4c70da7a7897"
+  "hash": "db5379fa6fed6d47cd913b2eb96c372cfa7d559950ee9adbd71558b804ce15ec"
 }

@@ -1,6 +1,6 @@
 use crate::error::Result;
 use crate::types::{TeamId, Test, TestId, TestSummary};
-use sqlx::{query, SqliteConnection};
+use sqlx::{query, query_as, SqliteConnection};
 use tracing::{info_span, instrument, Instrument};
 
 #[instrument(skip_all)]
@@ -24,7 +24,8 @@ pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<T
     .instrument(info_span!("sqlx_add_test"))
     .await?;
 
-    let test = query!(
+    let test = query_as!(
+        Test,
         r#"
         SELECT
             id as "id!: TestId",
@@ -35,12 +36,6 @@ pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<T
         WHERE id = ?"#,
         test.id
     )
-    .map(|it| Test {
-        id: it.id,
-        name: it.name,
-        expected_output: it.expected_output,
-        owner: it.owner,
-    })
     .fetch_one(con)
     .instrument(info_span!("sqlx_add_get_test"))
     .await?;
@@ -50,7 +45,8 @@ pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<T
 
 #[instrument(skip_all)]
 pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>> {
-    Ok(query!(
+    Ok(query_as!(
+        Test,
         r#"
         SELECT
             id as "id!: TestId",
@@ -60,12 +56,6 @@ pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>> {
         FROM Tests
         "#
     )
-    .map(|it| Test {
-        id: it.id,
-        name: it.name,
-        expected_output: it.expected_output,
-        owner: it.owner,
-    })
     .fetch_all(con)
     .instrument(info_span!("sqlx_get_tests"))
     .await?)
@@ -73,7 +63,8 @@ pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>> {
 
 #[instrument(skip_all)]
 pub(super) async fn get_tests_summaries(con: &mut SqliteConnection) -> Result<Vec<TestSummary>> {
-    Ok(query!(
+    Ok(query_as!(
+        TestSummary,
         r#"
         SELECT
             Tests.id as "id!: TestId",
@@ -83,11 +74,6 @@ pub(super) async fn get_tests_summaries(con: &mut SqliteConnection) -> Result<Ve
         JOIN Teams ON Tests.owner = Teams.id
         "#
     )
-    .map(|it| TestSummary {
-        id: it.id,
-        name: it.name,
-        creator: it.creator,
-    })
     .fetch_all(con)
     .instrument(info_span!("sqlx_get_test_summaries"))
     .await?)
@@ -98,7 +84,8 @@ pub(super) async fn fetch_test(
     con: &mut SqliteConnection,
     test_id: &TestId,
 ) -> Result<Option<Test>> {
-    let test = query!(
+    let test = query_as!(
+        Test,
         r#"
         SELECT 
             id as "id!: TestId",
@@ -110,12 +97,6 @@ pub(super) async fn fetch_test(
         "#,
         test_id
     )
-    .map(|it| Test {
-        id: it.id,
-        name: it.name,
-        expected_output: it.expected_output,
-        owner: it.owner,
-    })
     .fetch_optional(con)
     .instrument(info_span!("sqlx_fetch_test"))
     .await?;

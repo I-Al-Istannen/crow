@@ -1,6 +1,6 @@
 use crate::error::Result;
 use crate::types::{TaskId, TeamId, WorkItem};
-use sqlx::{query, SqliteConnection};
+use sqlx::{query, query_as, SqliteConnection};
 use tracing::{info_span, instrument, Instrument};
 
 #[instrument(skip_all)]
@@ -30,18 +30,11 @@ pub(super) async fn remove_queued_task(con: &mut SqliteConnection, task: &TaskId
 
 #[instrument(skip_all)]
 pub(super) async fn get_queued_tasks(con: &mut SqliteConnection) -> Result<Vec<WorkItem>> {
-    let tasks =
-        query!(r#"SELECT id as "id!: TaskId", team as "team!: TeamId", revision FROM Queue"#)
-            .fetch_all(con)
-            .instrument(info_span!("sqlx_get_queue"))
-            .await?;
-
-    Ok(tasks
-        .into_iter()
-        .map(|task| WorkItem {
-            id: task.id,
-            team: task.team,
-            revision: task.revision,
-        })
-        .collect())
+    Ok(query_as!(
+        WorkItem,
+        r#"SELECT id as "id!: TaskId", team as "team!: TeamId", revision FROM Queue"#
+    )
+    .fetch_all(con)
+    .instrument(info_span!("sqlx_get_queue"))
+    .await?)
 }

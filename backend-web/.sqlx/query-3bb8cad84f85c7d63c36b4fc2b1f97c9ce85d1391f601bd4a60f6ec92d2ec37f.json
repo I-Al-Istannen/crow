@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            Tests.id as \"id!: TestId\",\n            Tests.name,\n            Teams.display_name as \"creator\"\n        FROM Tests\n        JOIN Teams ON Tests.owner = Teams.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: TestId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "creator",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "3bb8cad84f85c7d63c36b4fc2b1f97c9ce85d1391f601bd4a60f6ec92d2ec37f"
+}
