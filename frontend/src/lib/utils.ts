@@ -44,13 +44,22 @@ export function statusColor(
   prefix: string,
 ): string {
   switch (status) {
+    // comments are here to make tailwind pick up and generate the classes
     case 'Finished':
+      // bg-green-500
+      // text-green-500
       return prefix + '-green-500'
     case 'Error':
+      // bg-red-500
+      // text-red-500
       return prefix + '-red-500'
     case 'Timeout':
+      // bg-orange-500
+      // text-orange-500
       return prefix + '-orange-500'
     case 'Aborted':
+      // bg-gray-500
+      // text-gray-500
       return prefix + '-gray-500'
   }
 }
