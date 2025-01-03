@@ -11,6 +11,11 @@ import {
   type TeamId,
   type TeamInfo,
   TeamInfoSchema,
+  type Test,
+  type TestId,
+  TestSchema,
+  type TestSummary,
+  TestSummarySchema,
 } from '@/types.ts'
 import { QueryClient, useMutation, useQuery } from '@tanstack/vue-query'
 import { type Ref, computed, toRef, toValue } from 'vue'
@@ -148,6 +153,47 @@ export function queryTeamInfo(teamId: MaybeRefOrGetter<TeamId | undefined>) {
     enabled: computed(() => enabled.value && loggedIn.value),
     meta: {
       purpose: 'fetching team information',
+    },
+  })
+}
+
+export async function fetchTests(): Promise<TestSummary[]> {
+  const response = await fetchWithAuth('/tests')
+  const json = await response.json()
+  return z.array(TestSummarySchema).parse(json)
+}
+
+export function queryTests() {
+  return useQuery({
+    queryKey: ['tests'],
+    queryFn: fetchTests,
+    refetchInterval: 2 * 60 * 1000, // 2 minutes
+    meta: {
+      purpose: 'fetching test summaries',
+    },
+    enabled: isLoggedIn(),
+  })
+}
+
+export async function fetchTestDetail(testId: TestId): Promise<Test | null> {
+  const response = await fetchWithAuth(`/tests/${encodeURIComponent(testId)}`)
+  if (response.status === 404) {
+    return null
+  }
+  const json = await response.json()
+  return TestSchema.parse(json)
+}
+
+export function queryTest(testId: MaybeRefOrGetter<TestId | undefined>) {
+  const enabled = computed(() => !!toRef(testId).value)
+  const loggedIn = isLoggedIn()
+
+  return useQuery({
+    queryKey: ['tests', testId],
+    queryFn: () => fetchTestDetail(toValue(testId)!),
+    enabled: computed(() => enabled.value && loggedIn.value),
+    meta: {
+      purpose: 'fetching test details',
     },
   })
 }

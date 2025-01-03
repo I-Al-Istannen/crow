@@ -7,7 +7,7 @@
       <span class="font-mono font-bold">{{ buildOutput.exitStatus }} </span>.
       <span v-if="buildOutput.exitStatus === 0">This is a good sign.</span>
     </span>
-    <Accordion type="multiple" collapsible>
+    <Accordion type="multiple">
       <AccordionItem value="stdout" v-if="buildOutput.stdout.length > 0">
         <AccordionTrigger>Stdout</AccordionTrigger>
         <AccordionContent>

@@ -11,21 +11,6 @@ export const AbortedExecutionSchema = z.object({
   runtime: z.number().describe('duration in ms'),
 })
 
-export const CompilerTestSchema = z.object({
-  testId: TestIdSchema,
-  timeout: z.number().describe('duration in ms'),
-  runCommand: z.array(z.string()),
-  expectedOutput: z.string(),
-})
-
-export const CompilerTaskSchema = z.object({
-  taskId: z.string(),
-  image: z.string(),
-  buildCommand: z.array(z.string()),
-  buildTimeout: z.number().describe('duration in ms'),
-  tests: z.array(CompilerTestSchema),
-})
-
 export const ExecutionExitStatusSchema = z.union([
   z.literal('Aborted'),
   z.literal('Error'),
@@ -126,6 +111,22 @@ export const ShowMyselfResponseSchema = z.object({
   team: TeamSchema,
 })
 
+// Out of order due to dependencies
+export const TestSchema = z.object({
+  testId: TestIdSchema,
+  timeout: z.number().describe('duration in ms'),
+  runCommand: z.array(z.string()),
+  expectedOutput: z.string(),
+})
+
+export const TaskSchema = z.object({
+  taskId: z.string(),
+  image: z.string(),
+  buildCommand: z.array(z.string()),
+  buildTimeout: z.number().describe('duration in ms'),
+  tests: z.array(TestSchema),
+})
+
 export const TeamInfoSchema = z.object({
   team: TeamSchema,
   members: z.array(UserSchema),
@@ -138,8 +139,6 @@ export const TestSummarySchema = z.object({
 })
 
 export type AbortedExecution = z.infer<typeof AbortedExecutionSchema>
-export type CompilerTask = z.infer<typeof CompilerTaskSchema>
-export type CompilerTest = z.infer<typeof CompilerTestSchema>
 export type ExecutionExitStatus = z.infer<typeof ExecutionExitStatusSchema>
 export type ExecutionOutput = z.infer<typeof ExecutionOutputSchema>
 export type FinishedCompilerTask = z.infer<typeof FinishedCompilerTaskSchema>
@@ -151,10 +150,12 @@ export type FinishedTestSummary = z.infer<typeof FinishedTestSummarySchema>
 export type InternalError = z.infer<typeof InternalErrorSchema>
 export type Repo = z.infer<typeof RepoSchema>
 export type ShowMyselfResponse = z.infer<typeof ShowMyselfResponseSchema>
+export type Task = z.infer<typeof TaskSchema>
 export type TaskId = z.infer<typeof TaskIdSchema>
 export type Team = z.infer<typeof TeamSchema>
 export type TeamId = z.infer<typeof TeamIdSchema>
 export type TeamInfo = z.infer<typeof TeamInfoSchema>
+export type Test = z.infer<typeof TestSchema>
 export type TestId = z.infer<typeof TestIdSchema>
 export type TestSummary = z.infer<typeof TestSummarySchema>
 export type User = z.infer<typeof UserSchema>

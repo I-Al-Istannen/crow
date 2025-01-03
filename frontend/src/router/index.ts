@@ -3,6 +3,7 @@ import HomeView from '@/views/HomeView.vue'
 import RepoView from '@/views/RepoView.vue'
 import TaskDetailView from '@/views/TaskDetailView.vue'
 import TeamInfoView from '@/views/TeamInfoView.vue'
+import TestView from '@/views/TestView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -21,6 +22,14 @@ const router = createRouter({
       component: RepoView,
       meta: {
         name: 'Repository',
+      },
+    },
+    {
+      path: '/tests',
+      name: 'tests',
+      component: TestView,
+      meta: {
+        name: 'Tests',
       },
     },
     {
