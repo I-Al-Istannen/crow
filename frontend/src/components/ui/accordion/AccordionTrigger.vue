@@ -1,9 +1,5 @@
 <script setup lang="ts">
-import {
-  AccordionHeader,
-  AccordionTrigger,
-  type AccordionTriggerProps,
-} from 'radix-vue'
+import { AccordionHeader, AccordionTrigger, type AccordionTriggerProps } from 'radix-vue'
 import { type HTMLAttributes, computed } from 'vue'
 import { ChevronDownIcon } from '@radix-icons/vue'
 import { cn } from '@/lib/utils'

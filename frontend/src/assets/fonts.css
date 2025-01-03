@@ -2,13 +2,13 @@
   @font-face {
     font-family: 'Figtree';
     font-style: normal;
-    src: url('./fonts/Figtree-VariableFont_wght.ttf') format("truetype-variations");
+    src: url('./fonts/Figtree-VariableFont_wght.ttf') format('truetype-variations');
     font-weight: 1 999;
   }
   @font-face {
     font-family: 'Figtree';
     font-style: italic;
-    src: url('./fonts/Figtree-Italic-VariableFont_wght.ttf') format("truetype-variations");
+    src: url('./fonts/Figtree-Italic-VariableFont_wght.ttf') format('truetype-variations');
     font-weight: 1 999;
   }
 }

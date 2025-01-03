@@ -140,7 +140,7 @@ export const FinishedCompilerTaskSummarySchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('BuildFailed'),
     info: FinishedTaskInfoSchema,
-    status: ExecutionExitStatusSchema
+    status: ExecutionExitStatusSchema,
   }),
   z.object({
     type: z.literal('RanTests'),
@@ -151,7 +151,7 @@ export const FinishedCompilerTaskSummarySchema = z.discriminatedUnion('type', [
 
 export const TeamInfoSchema = z.object({
   team: TeamSchema,
-  members: z.array(UserSchema)
+  members: z.array(UserSchema),
 })
 
 export type CompilerTest = z.infer<typeof CompilerTestSchema>

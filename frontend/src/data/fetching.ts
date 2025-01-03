@@ -23,11 +23,11 @@ export async function fetchWithError(url: string, init?: RequestInit): Promise<R
 }
 
 export async function fetchWithAuth(url: string, init?: RequestInit): Promise<Response> {
-  const token = useUserStore()?.token;
-  const requestConfig = init || {};
+  const token = useUserStore()?.token
+  const requestConfig = init || {}
   requestConfig.headers = {
     ...requestConfig.headers,
-    'Authorization': `Bearer ${token}`
+    Authorization: `Bearer ${token}`,
   }
 
   return fetchWithError(url, requestConfig)
