@@ -5,56 +5,61 @@
         <CardTitle>Test all the things</CardTitle>
         <CardDescription>Browse all tests submitted by you or the course advisors</CardDescription>
       </CardHeader>
-      <CardContent v-if="isLoading">Loading tests..</CardContent>
-      <CardContent v-if="isFetched && tests !== undefined">
-        <Accordion type="multiple">
-          <AccordionItem v-for="test in displayedTests" :key="test.id" :value="test.id">
-            <AccordionTrigger>
-              <span>
-                {{ test.name }}
-                <span class="text-sm text-muted-foreground ml-2">by {{ test.creator }}</span>
-              </span>
-            </AccordionTrigger>
-            <AccordionContent>
-              {{ test }}
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+      <CardContent v-auto-animate>
+        <div v-if="isLoading">Loading tests...</div>
+        <div v-if="isFetched && tests === undefined">Loading failed</div>
+        <div v-if="isFetched && tests !== undefined">
+          <Accordion type="multiple" v-model="expandedTests">
+            <AccordionItem v-for="test in displayedTests" :key="test.id" :value="test.id">
+              <AccordionTrigger>
+                <span>
+                  {{ test.name }}
+                  <span class="text-sm text-muted-foreground ml-2">by {{ test.creator }}</span>
+                </span>
+              </AccordionTrigger>
+              <AccordionContent>
+                <TestDetail :test-id="test.id" />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
-        <Pagination
-          v-slot="{ page }"
-          v-model:page="currentPage"
-          :default-page="1"
-          :items-per-page="itemsPerPage"
-          :sibling-count="1"
-          :total="tests.length"
-          show-edges
-        >
-          <PaginationList v-slot="{ items }" class="flex items-center gap-1">
-            <PaginationFirst />
-            <PaginationPrev />
+          <Pagination
+            class="mt-6"
+            v-slot="{ page }"
+            v-model:page="currentPage"
+            :default-page="1"
+            :items-per-page="itemsPerPage"
+            :sibling-count="1"
+            :total="tests.length"
+            show-edges
+            @update:page="expandedTests = []"
+          >
+            <PaginationList v-slot="{ items }" class="flex items-center gap-1">
+              <PaginationFirst />
+              <PaginationPrev />
 
-            <template v-for="(item, index) in items">
-              <PaginationListItem
-                v-if="item.type === 'page'"
-                :key="index"
-                :value="item.value"
-                as-child
-              >
-                <Button
-                  class="w-10 h-10 p-0"
-                  :variant="item.value === page ? 'default' : 'outline'"
+              <template v-for="(item, index) in items">
+                <PaginationListItem
+                  v-if="item.type === 'page'"
+                  :key="index"
+                  :value="item.value"
+                  as-child
                 >
-                  {{ item.value }}
-                </Button>
-              </PaginationListItem>
-              <PaginationEllipsis v-else :key="item.type" :index="index" />
-            </template>
+                  <Button
+                    class="w-10 h-10 p-0"
+                    :variant="item.value === page ? 'default' : 'outline'"
+                  >
+                    {{ item.value }}
+                  </Button>
+                </PaginationListItem>
+                <PaginationEllipsis v-else :key="item.type" :index="index" />
+              </template>
 
-            <PaginationNext />
-            <PaginationLast />
-          </PaginationList>
-        </Pagination>
+              <PaginationNext />
+              <PaginationLast />
+            </PaginationList>
+          </Pagination>
+        </div>
       </CardContent>
     </Card>
   </PageContainer>
@@ -80,10 +85,13 @@ import { PaginationList, PaginationListItem } from 'radix-vue'
 import { computed, ref } from 'vue'
 import { Button } from '@/components/ui/button'
 import PageContainer from '@/components/PageContainer.vue'
+import TestDetail from '@/components/TestDetail.vue'
 import { queryTests } from '@/data/network.ts'
+import { vAutoAnimate } from '@formkit/auto-animate/vue'
 
 const currentPage = ref<number>(1)
 const itemsPerPage = ref<number>(3)
+const expandedTests = ref<string[]>([])
 
 const { data: tests, isFetched, isLoading } = queryTests()
 

@@ -111,20 +111,11 @@ export const ShowMyselfResponseSchema = z.object({
   team: TeamSchema,
 })
 
-// Out of order due to dependencies
 export const TestSchema = z.object({
-  testId: TestIdSchema,
-  timeout: z.number().describe('duration in ms'),
-  runCommand: z.array(z.string()),
+  id: TestIdSchema,
+  name: z.string(),
   expectedOutput: z.string(),
-})
-
-export const TaskSchema = z.object({
-  taskId: z.string(),
-  image: z.string(),
-  buildCommand: z.array(z.string()),
-  buildTimeout: z.number().describe('duration in ms'),
-  tests: z.array(TestSchema),
+  owner: TeamIdSchema,
 })
 
 export const TeamInfoSchema = z.object({
@@ -150,7 +141,6 @@ export type FinishedTestSummary = z.infer<typeof FinishedTestSummarySchema>
 export type InternalError = z.infer<typeof InternalErrorSchema>
 export type Repo = z.infer<typeof RepoSchema>
 export type ShowMyselfResponse = z.infer<typeof ShowMyselfResponseSchema>
-export type Task = z.infer<typeof TaskSchema>
 export type TaskId = z.infer<typeof TaskIdSchema>
 export type Team = z.infer<typeof TeamSchema>
 export type TeamId = z.infer<typeof TeamIdSchema>
