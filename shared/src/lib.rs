@@ -59,6 +59,7 @@ pub struct InternalError {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum ExecutionOutput {
     Aborted(AbortedExecution),
     Error(InternalError),
@@ -107,16 +108,15 @@ pub struct FinishedTaskInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum FinishedCompilerTask {
     #[serde(rename_all = "camelCase")]
     BuildFailed {
-        #[serde(flatten)]
         info: FinishedTaskInfo,
         build_output: ExecutionOutput,
     },
     #[serde(rename_all = "camelCase")]
     RanTests {
-        #[serde(flatten)]
         info: FinishedTaskInfo,
         build_output: FinishedExecution,
         tests: Vec<FinishedTest>,

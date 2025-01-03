@@ -22,7 +22,10 @@ impl From<FinishedTest> for FinishedTestSummary {
 #[serde(tag = "type")]
 pub enum FinishedCompilerTaskSummary {
     #[serde(rename_all = "camelCase")]
-    BuildFailed { info: FinishedTaskInfo },
+    BuildFailed {
+        info: FinishedTaskInfo,
+        status: ExecutionExitStatus,
+    },
     #[serde(rename_all = "camelCase")]
     RanTests {
         info: FinishedTaskInfo,
@@ -33,7 +36,10 @@ pub enum FinishedCompilerTaskSummary {
 impl From<FinishedCompilerTask> for FinishedCompilerTaskSummary {
     fn from(value: FinishedCompilerTask) -> Self {
         match value {
-            FinishedCompilerTask::BuildFailed { info, .. } => Self::BuildFailed { info },
+            FinishedCompilerTask::BuildFailed { info, build_output } => Self::BuildFailed {
+                info,
+                status: (&build_output).into(),
+            },
             FinishedCompilerTask::RanTests { info, tests, .. } => Self::RanTests {
                 info,
                 tests: tests.into_iter().map(Into::into).collect(),
