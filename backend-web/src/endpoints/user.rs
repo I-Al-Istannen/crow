@@ -41,11 +41,8 @@ pub async fn login(
     State(state): State<AppState>,
     Json(payload): Json<LoginPayload>,
 ) -> Result<Json<LoginResponse>> {
-    let user = state.db.get_user_for_login(&payload.username).await?;
-
-    let auth_user = match user {
-        Some(user) => user,
-        None => return Err(WebError::NotFound),
+    let Some(auth_user) = state.db.get_user_for_login(&payload.username).await? else {
+        return Err(WebError::NotFound);
     };
 
     let user = auth_user.user;
