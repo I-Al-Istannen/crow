@@ -260,7 +260,7 @@ export function queryQueue() {
   return useQuery({
     queryKey: ['queue'],
     queryFn: fetchQueue,
-    refetchInterval: 2 * 60 * 1000, // 2 minutes
+    refetchInterval: 30 * 1000, // 30 seconds
     meta: {
       purpose: 'fetching the queue',
     },
