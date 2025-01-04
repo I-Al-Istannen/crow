@@ -88,21 +88,23 @@ struct Args {
 }
 
 struct Endpoints {
-    work: String,
-    tar: String,
     done: String,
+    ping: String,
     register: String,
+    tar: String,
     update: String,
+    work: String,
 }
 
 impl Endpoints {
     pub fn new(base: &str) -> Self {
         Self {
-            work: format!("{}/executor/request-work", base),
-            tar: format!("{}/executor/request-tar", base),
             done: format!("{}/executor/done", base),
+            ping: format!("{}/executor/ping", base),
             register: format!("{}/executor/register", base),
+            tar: format!("{}/executor/request-tar", base),
             update: format!("{}/executor/update", base),
+            work: format!("{}/executor/request-work", base),
         }
     }
 }
@@ -128,6 +130,7 @@ fn main() -> Report<AnyError> {
         let shutdown_requested = Arc::new(AtomicBool::new(false));
 
         register_termination_handler(&shutdown_requested);
+        start_periodic_pings(&endpoints, &args);
 
         let client = ClientBuilder::new().build().context(ReqwestSnafu)?;
 
@@ -156,6 +159,23 @@ fn main() -> Report<AnyError> {
 
         Ok(())
     })
+}
+
+fn start_periodic_pings(endpoints: &Endpoints, args: &Args) {
+    let id = args.id.clone();
+    let token = args.token.clone();
+    let url = endpoints.ping.clone();
+    thread::spawn(move || {
+        let client = Client::new();
+        loop {
+            thread::sleep(Duration::from_secs(15));
+            let _ = client
+                .post(&url)
+                .basic_auth(&id, Some(&token))
+                .send()
+                .context(ReqwestSnafu);
+        }
+    });
 }
 
 fn iteration(

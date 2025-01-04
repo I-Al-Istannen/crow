@@ -4,7 +4,8 @@ use crate::db::{Database, UserForAuth};
 use crate::endpoints::{
     delete_test, get_queue, get_recent_tasks, get_task, get_team_info, get_team_repo, get_test,
     get_work, get_work_tar, list_task_ids, list_tests, list_users, login, request_revision,
-    runner_done, runner_register, runner_update, set_team_repo, set_test, show_me_myself,
+    runner_done, runner_ping, runner_register, runner_update, set_team_repo, set_test,
+    show_me_myself,
 };
 use crate::error::WebError;
 use crate::storage::LocalRepos;
@@ -158,6 +159,10 @@ async fn main_server(
         .route(
             "/executor/done",
             post(runner_done).layer(authed_runner.clone()),
+        )
+        .route(
+            "/executor/ping",
+            post(runner_ping).layer(authed_runner.clone()),
         )
         .route(
             "/executor/register",

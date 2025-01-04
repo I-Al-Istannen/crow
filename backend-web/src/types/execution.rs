@@ -59,6 +59,12 @@ impl Executor {
         self.runners.values().map(|it| it.into()).collect()
     }
 
+    pub fn runner_pinged(&mut self, runner_id: &RunnerId) {
+        if let Some(runner) = self.runners.get_mut(runner_id) {
+            runner.last_ping = SystemTime::now();
+        }
+    }
+
     pub fn register_runner(&mut self, runner_info: &RunnerInfo) -> Option<TaskId> {
         if let Some(runner) = self.runners.get_mut(&runner_info.id) {
             runner.info = runner_info.clone();

@@ -109,6 +109,19 @@ pub async fn runner_update(
 }
 
 #[instrument(skip_all)]
+pub async fn runner_ping(
+    State(state): State<AppState>,
+    TypedHeader(auth): TypedHeader<Authorization<Basic>>,
+) -> Result<()> {
+    state
+        .executor
+        .lock()
+        .unwrap()
+        .runner_pinged(&auth.username().to_string().into());
+    Ok(())
+}
+
+#[instrument(skip_all)]
 pub async fn get_work(
     State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,

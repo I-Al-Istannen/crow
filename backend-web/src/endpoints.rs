@@ -17,6 +17,7 @@ pub use self::execution::get_work_tar;
 pub use self::execution::list_task_ids;
 pub use self::execution::request_revision;
 pub use self::execution::runner_done;
+pub use self::execution::runner_ping;
 pub use self::execution::runner_register;
 pub use self::execution::runner_update;
 pub use self::team::get_recent_tasks;
