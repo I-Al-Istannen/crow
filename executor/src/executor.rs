@@ -95,7 +95,9 @@ fn execute_task_impl(
         runtime: container.data.runtime,
         exit_status: Some(0),
     };
-    let _ = message_channel.send(RunnerUpdate::FinishedBuild(build_output.clone()));
+    let _ = message_channel.send(RunnerUpdate::FinishedBuild {
+        result: build_output.clone(),
+    });
 
     let test_results = pool.scope(|s| {
         let (tx, rx) = mpsc::channel();
@@ -106,7 +108,9 @@ fn execute_task_impl(
             let aborted = aborted.clone();
             let message_channel = message_channel.clone();
             s.spawn(move |_| {
-                let _ = message_channel.send(RunnerUpdate::StartedTest(test.test_id.clone()));
+                let _ = message_channel.send(RunnerUpdate::StartedTest {
+                    test_id: test.test_id.clone(),
+                });
                 let res = container.run_test(&test.run_command, test.timeout, aborted);
                 let res = tx.send((test.test_id.clone(), res));
                 if let Err(e) = res {
@@ -140,7 +144,9 @@ fn execute_task_impl(
             };
             let finished_test = FinishedTest { test_id, output };
             results.push(finished_test.clone());
-            let _ = message_channel.send(RunnerUpdate::FinishedTest(finished_test));
+            let _ = message_channel.send(RunnerUpdate::FinishedTest {
+                result: finished_test,
+            });
         }
         results
     });

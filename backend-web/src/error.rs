@@ -2,6 +2,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde_json::json;
+use std::error::Error;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
@@ -29,6 +30,8 @@ impl WebError {
         }
     }
 }
+
+impl Error for WebError {}
 
 impl Display for WebError {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {

@@ -30,16 +30,7 @@ impl FromRequestParts<AppState> for Claims {
             .await
             .map_err(|_| WebError::InvalidCredentials)?;
 
-        let mut claims = validate_jwt(bearer.token(), &state.jwt_keys)?;
-
-        // Update claims from DB to instantly process role changes (yes, this kind of
-        // defeats normal stateless JWT flows)
-        let Some(user) = state.db.get_user_for_login(&claims.sub).await? else {
-            return Err(WebError::InvalidCredentials);
-        };
-        claims.role = user.role;
-
-        Ok(claims)
+        Self::from_token(state, bearer.token()).await
     }
 }
 
@@ -50,5 +41,18 @@ impl Claims {
 
     pub fn is_admin_opt(claims: &Option<Claims>) -> bool {
         claims.as_ref().map(|x| x.role).unwrap_or(UserRole::Regular) == UserRole::Admin
+    }
+
+    pub async fn from_token(state: &AppState, token: &str) -> Result<Claims, WebError> {
+        let mut claims = validate_jwt(token, &state.jwt_keys)?;
+
+        // Update claims from DB to instantly process role changes (yes, this kind of
+        // defeats normal stateless JWT flows)
+        let Some(user) = state.db.get_user_for_login(&claims.sub).await? else {
+            return Err(WebError::InvalidCredentials);
+        };
+        claims.role = user.role;
+
+        Ok(claims)
     }
 }

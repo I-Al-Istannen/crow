@@ -287,13 +287,20 @@ fn start_update_listener(args: &Args, endpoints: &Endpoints, rx: Receiver<Runner
     thread::spawn(move || {
         let client = Client::new();
         while let Ok(event) = rx.recv() {
-            client
+            let res = client
                 .post(&update_endpoint)
                 .json(&event)
                 .basic_auth(&id, Some(&token))
                 .send()
-                .context(ReqwestSnafu)
-                .ok();
+                .context(ReqwestSnafu);
+            if let Err(e) = res {
+                warn!(
+                    error = ?Report::from_error(e),
+                    event = ?event,
+                    endpoint = %update_endpoint,
+                    "Failed to send update"
+                );
+            }
         }
     });
 }

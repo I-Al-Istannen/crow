@@ -143,12 +143,14 @@ pub struct RunnerInfo {
     pub current_task: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum RunnerUpdate {
     StartedBuild,
-    FinishedBuild(FinishedExecution),
-    StartedTest(String),
-    FinishedTest(FinishedTest),
+    FinishedBuild { result: FinishedExecution },
+    #[serde(rename_all = "camelCase")]
+    StartedTest { test_id: String },
+    FinishedTest { result: FinishedTest },
     Done,
 }
 

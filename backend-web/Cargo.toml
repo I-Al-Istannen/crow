@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = { version = "0.7.9", features = ["macros"] }
+axum = { version = "0.7.9", features = ["macros", "ws"] }
 clap = { version = "4.5.23", features = ["derive"] }
 derive_more = { version = "1.0.0", features = ["full"] }
 jsonwebtoken = "9.3.0"
@@ -25,3 +25,4 @@ parse_duration = "2.1.1"
 uuid = { version = "1.11.0", features = ["v4"] }
 tempfile = "3.14.0"
 tokio-util = { version = "0.7.13", features = ["io"] }
+futures-util = "0.3.31"

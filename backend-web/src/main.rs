@@ -2,10 +2,10 @@ use crate::auth::{Claims, Keys};
 use crate::config::Config;
 use crate::db::{Database, UserForAuth};
 use crate::endpoints::{
-    delete_test, get_queue, get_recent_tasks, get_task, get_team_info, get_team_repo, get_test,
-    get_work, get_work_tar, list_task_ids, list_tests, list_users, login, request_revision,
-    runner_done, runner_ping, runner_register, runner_update, set_team_repo, set_test,
-    show_me_myself,
+    delete_test, executor_info, get_queue, get_recent_tasks, get_running_task_info, get_task,
+    get_team_info, get_team_repo, get_test, get_work, get_work_tar, head_running_task_info,
+    list_task_ids, list_tests, list_users, login, request_revision, runner_done, runner_ping,
+    runner_register, runner_update, set_team_repo, set_test, show_me_myself,
 };
 use crate::error::WebError;
 use crate::storage::LocalRepos;
@@ -13,7 +13,7 @@ use crate::types::{AppState, User, UserRole};
 use axum::extract::{Request, State};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
-use axum::routing::{delete, get, post, put};
+use axum::routing::{delete, get, head, post, put};
 use axum::{middleware, Router};
 use axum_extra::headers::authorization::Basic;
 use axum_extra::headers::Authorization;
@@ -161,6 +161,10 @@ async fn main_server(
             post(runner_done).layer(authed_runner.clone()),
         )
         .route(
+            "/executor/info",
+            get(executor_info).layer(authed_admin.clone()),
+        )
+        .route(
             "/executor/ping",
             post(runner_ping).layer(authed_runner.clone()),
         )
@@ -183,6 +187,8 @@ async fn main_server(
         .route("/login", post(login))
         .route("/queue", get(get_queue))
         .route("/queue/rev/:revision", put(request_revision))
+        .route("/queue/task/:task_id", get(get_running_task_info))
+        .route("/queue/task/:task_id", head(head_running_task_info))
         .route("/repo/:team_id", get(get_team_repo))
         .route("/repo/:team_id", put(set_team_repo))
         .route("/tasks", get(list_task_ids))

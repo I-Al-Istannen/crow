@@ -1,7 +1,7 @@
 use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::{Result, WebError};
-use crate::types::{AppState, RunnerForFrontend, TaskId, WorkItem};
+use crate::types::{AppState, ExecutorInfo, RunnerForFrontend, TaskId, WorkItem};
 use axum::body::Body;
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
@@ -15,7 +15,8 @@ use shared::{
     RunnerUpdate, RunnerWorkResponse,
 };
 use snafu::Report;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
+use tokio::time;
 use tokio_util::io::ReaderStream;
 use tracing::{info, instrument, warn};
 use uuid::Uuid;
@@ -49,7 +50,7 @@ pub async fn request_revision(
 #[instrument(skip_all)]
 pub async fn get_queue(State(state): State<AppState>) -> Result<Json<QueueResponse>> {
     // sleep 1s
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    time::sleep(Duration::from_secs(1)).await;
     let queue = state.db.get_queued_tasks().await?;
     let runners = state.executor.lock().unwrap().get_runners();
 
@@ -97,13 +98,37 @@ pub async fn runner_register(
 
 #[instrument(skip_all)]
 pub async fn runner_update(
+    State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
     Json(update): Json<RunnerUpdate>,
 ) -> Result<()> {
     let runner_id: RunnerId = auth.username().to_string().into();
 
-    // TODO: Handle update
+    // TODO: Think about protocol errors more
     info!(runner = %runner_id, update = ?update, "Runner update");
+    state
+        .executor
+        .lock()
+        .unwrap()
+        .update_task(&runner_id, update);
+
+    Ok(())
+}
+
+#[instrument(skip_all)]
+pub async fn runner_done(
+    State(state): State<AppState>,
+    TypedHeader(auth): TypedHeader<Authorization<Basic>>,
+    Json(task): Json<FinishedCompilerTask>,
+) -> Result<()> {
+    println!("{}", serde_json::to_string(&task).unwrap());
+
+    state.db.add_finished_task(&task).await?;
+    state
+        .executor
+        .lock()
+        .unwrap()
+        .finish_task(&auth.username().to_string().into());
 
     Ok(())
 }
@@ -119,6 +144,14 @@ pub async fn runner_ping(
         .unwrap()
         .runner_pinged(&auth.username().to_string().into());
     Ok(())
+}
+
+#[instrument(skip_all)]
+pub async fn executor_info(
+    State(state): State<AppState>,
+    _claims: Claims,
+) -> Result<Json<ExecutorInfo>> {
+    Ok(Json(state.executor.lock().unwrap().info()))
 }
 
 #[instrument(skip_all)]
@@ -220,24 +253,6 @@ pub async fn get_work_tar(
     drop(temp_file);
 
     Ok(Body::from_stream(ReaderStream::new(file)).into_response())
-}
-
-#[instrument(skip_all)]
-pub async fn runner_done(
-    State(state): State<AppState>,
-    TypedHeader(auth): TypedHeader<Authorization<Basic>>,
-    Json(task): Json<FinishedCompilerTask>,
-) -> Result<()> {
-    println!("{}", serde_json::to_string(&task).unwrap());
-
-    state.db.add_finished_task(&task).await?;
-    state
-        .executor
-        .lock()
-        .unwrap()
-        .finish_task(&auth.username().to_string().into());
-
-    Ok(())
 }
 
 #[derive(Debug, Clone, Serialize)]

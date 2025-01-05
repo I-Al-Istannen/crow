@@ -1,14 +1,15 @@
-use crate::types::test::TestId;
 use crate::types::TeamId;
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
 use shared::{
-    deserialize_system_time, serialize_system_time, ExecutionOutput, FinishedCompilerTask,
-    FinishedTest, RunnerId, RunnerInfo,
+    deserialize_system_time, serialize_system_time, ExecutionOutput, RunnerId, RunnerInfo,
+    RunnerUpdate,
 };
 use snafu::{ensure, Location, Snafu};
 use std::collections::{HashMap, HashSet};
 use std::time::SystemTime;
+use tokio::sync::broadcast;
+use tracing::warn;
 
 #[derive(Debug, Clone)]
 pub struct Runner {
@@ -39,9 +40,36 @@ impl From<&Runner> for RunnerForFrontend {
     }
 }
 
+struct InternalRunningTaskState {
+    so_far: Vec<RunnerUpdateForFrontend>,
+    sender: broadcast::Sender<RunnerUpdateForFrontend>,
+}
+
+pub struct RunningTaskState {
+    pub so_far: Vec<RunnerUpdateForFrontend>,
+    pub receiver: broadcast::Receiver<RunnerUpdateForFrontend>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RunnerUpdateForFrontend {
+    update: RunnerUpdate,
+    #[serde(serialize_with = "serialize_system_time")]
+    time: SystemTime,
+}
+
+impl From<RunnerUpdate> for RunnerUpdateForFrontend {
+    fn from(value: RunnerUpdate) -> Self {
+        Self {
+            update: value,
+            time: SystemTime::now(),
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct Executor {
     runners: HashMap<RunnerId, Runner>,
+    in_progress: HashMap<TaskId, InternalRunningTaskState>,
 }
 
 #[derive(Debug, Snafu)]
@@ -54,9 +82,26 @@ pub enum ExecutorError {
     },
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutorInfo {
+    pub runners: Vec<RunnerForFrontend>,
+    pub in_progress: Vec<(TaskId, usize)>,
+}
+
 impl Executor {
     pub fn get_runners(&self) -> Vec<RunnerForFrontend> {
         self.runners.values().map(|it| it.into()).collect()
+    }
+
+    pub fn info(&self) -> ExecutorInfo {
+        ExecutorInfo {
+            runners: self.get_runners(),
+            in_progress: self
+                .in_progress
+                .iter()
+                .map(|(k, v)| (k.clone(), v.sender.receiver_count()))
+                .collect(),
+        }
     }
 
     pub fn runner_pinged(&mut self, runner_id: &RunnerId) {
@@ -82,6 +127,37 @@ impl Executor {
         );
 
         None
+    }
+
+    pub fn get_running_task(&self, id: &TaskId) -> Option<RunningTaskState> {
+        self.in_progress.get(id).map(|it| RunningTaskState {
+            so_far: it.so_far.clone(),
+            receiver: it.sender.subscribe(),
+        })
+    }
+
+    pub fn update_task(&mut self, runner_id: &RunnerId, update: RunnerUpdate) {
+        let Some(runner) = self.runners.get(runner_id) else {
+            return;
+        };
+        let Some(task) = runner.working_on.as_ref() else {
+            return;
+        };
+        let Some(state) = self.in_progress.get_mut(&task.id) else {
+            return;
+        };
+
+        let update: RunnerUpdateForFrontend = update.into();
+        state.so_far.push(update.clone());
+
+        if let Err(e) = state.sender.send(update) {
+            warn!(
+                runner = %runner_id,
+                task = %task.id,
+                error = ?e,
+                "Failed to send update to task"
+            );
+        }
     }
 
     pub fn assign_work(
@@ -111,6 +187,21 @@ impl Executor {
         let runner = self.runners.get_mut(&runner_id).unwrap();
         runner.working_on = task.clone();
 
+        if let Some(task) = &task {
+            let (sender, mut rx) = broadcast::channel(100);
+
+            // Drain dummy receiver so sending will always work
+            tokio::spawn(async move { while rx.recv().await.is_ok() {} });
+
+            self.in_progress.insert(
+                task.id.clone(),
+                InternalRunningTaskState {
+                    so_far: Vec::new(),
+                    sender,
+                },
+            );
+        }
+
         Ok(task)
     }
 
@@ -120,6 +211,9 @@ impl Executor {
 
     pub fn finish_task(&mut self, runner: &RunnerId) {
         if let Some(runner) = self.runners.get_mut(runner) {
+            if let Some(task) = &runner.working_on {
+                self.in_progress.remove(&task.id);
+            }
             runner.working_on = None;
         }
     }
@@ -138,18 +232,6 @@ pub struct WorkItem {
     #[serde(serialize_with = "serialize_system_time")]
     #[serde(deserialize_with = "deserialize_system_time")]
     pub insert_time: SystemTime,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum WorkMessage {
-    TestStarted(TestId),
-    TestFinished(FinishedTest),
-    TestUpdate {
-        id: TestId,
-        stdout: String,
-        stderr: String,
-    },
-    TaskFinished(FinishedCompilerTask),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, From, sqlx::Type)]

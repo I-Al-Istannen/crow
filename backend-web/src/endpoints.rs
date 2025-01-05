@@ -1,4 +1,5 @@
 mod execution;
+mod streaming;
 mod team;
 mod test;
 mod user;
@@ -10,6 +11,7 @@ use axum::response::IntoResponse;
 use serde::Serialize;
 use std::error::Error;
 
+pub use self::execution::executor_info;
 pub use self::execution::get_queue;
 pub use self::execution::get_task;
 pub use self::execution::get_work;
@@ -20,6 +22,8 @@ pub use self::execution::runner_done;
 pub use self::execution::runner_ping;
 pub use self::execution::runner_register;
 pub use self::execution::runner_update;
+pub use self::streaming::get_running_task_info;
+pub use self::streaming::head_running_task_info;
 pub use self::team::get_recent_tasks;
 pub use self::team::get_team_info;
 pub use self::team::get_team_repo;
