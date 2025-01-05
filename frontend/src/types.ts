@@ -12,6 +12,11 @@ export const AbortedExecutionSchema = z.object({
   runtime: z.number().describe('duration in ms'),
 })
 
+export const ExecutingTestSchema = z.object({
+  testId: TestIdSchema,
+  status: z.union([z.literal('Queued'), z.literal('Started')]),
+})
+
 export const ExecutionExitStatusSchema = z.union([
   z.literal('Aborted'),
   z.literal('Error'),
@@ -128,6 +133,19 @@ export const TeamSchema = z.object({
   displayName: z.string(),
 })
 
+export const RunnerUpdateSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('StartedBuild') }),
+  z.object({ type: z.literal('FinishedBuild'), result: FinishedExecutionSchema }),
+  z.object({ type: z.literal('StartedTest'), testId: TestIdSchema }),
+  z.object({ type: z.literal('FinishedTest'), result: FinishedTestSchema }),
+  z.object({ type: z.literal('Done') }),
+])
+
+export const RunnerUpdateMessageSchema = z.object({
+  update: RunnerUpdateSchema,
+  time: z.number().transform((ms) => new Date(ms)),
+})
+
 export const ShowMyselfResponseSchema = z.object({
   user: UserSchema,
   team: TeamSchema,
@@ -153,6 +171,7 @@ export const TestSummarySchema = z.object({
 })
 
 export type AbortedExecution = z.infer<typeof AbortedExecutionSchema>
+export type ExecutingTest = z.infer<typeof ExecutingTestSchema>
 export type ExecutionExitStatus = z.infer<typeof ExecutionExitStatusSchema>
 export type ExecutionOutput = z.infer<typeof ExecutionOutputSchema>
 export type FinishedCompilerTask = z.infer<typeof FinishedCompilerTaskSchema>
@@ -165,6 +184,8 @@ export type InternalError = z.infer<typeof InternalErrorSchema>
 export type QueueResponse = z.infer<typeof QueueResponseSchema>
 export type Repo = z.infer<typeof RepoSchema>
 export type Runner = z.infer<typeof RunnerSchema>
+export type RunnerUpdate = z.infer<typeof RunnerUpdateSchema>
+export type RunnerUpdateMessage = z.infer<typeof RunnerUpdateMessageSchema>
 export type ShowMyselfResponse = z.infer<typeof ShowMyselfResponseSchema>
 export type TaskId = z.infer<typeof TaskIdSchema>
 export type Team = z.infer<typeof TeamSchema>

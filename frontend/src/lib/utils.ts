@@ -44,7 +44,7 @@ export function formatApproxDuration(currentTime: number, insertTime: number) {
 }
 
 export function statusColor(
-  status: 'Finished' | 'Error' | 'Timeout' | 'Aborted',
+  status: 'Finished' | 'Error' | 'Timeout' | 'Aborted' | 'Queued' | 'Started',
   prefix: string,
 ): string {
   switch (status) {
@@ -65,5 +65,13 @@ export function statusColor(
       // bg-gray-500
       // text-gray-500
       return prefix + '-gray-500'
+    case 'Queued':
+      // bg-gray-500
+      // text-gray-500
+      return prefix + '-gray-500'
+    case 'Started':
+      // bg-blue-500
+      // text-blue-500
+      return prefix + '-blue-500'
   }
 }

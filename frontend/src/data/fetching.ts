@@ -2,7 +2,7 @@ import { useUserStore } from '@/stores/user.ts'
 
 export const BACKEND_URL = 'http://localhost:3000'
 
-class FetchError extends Error {
+export class FetchError extends Error {
   readonly status: number
 
   constructor(message: string, status: number) {
@@ -11,18 +11,30 @@ class FetchError extends Error {
   }
 }
 
-export async function fetchWithError(url: string, init?: RequestInit): Promise<Response> {
+export async function fetchWithError(
+  url: string,
+  init?: RequestInit,
+  extra?: {
+    notFoundIsSuccess: boolean
+  },
+): Promise<Response> {
   if (!url.startsWith('http')) {
     url = BACKEND_URL + (url.startsWith('/') ? '' : '/') + url
   }
   const response = await fetch(url, init)
-  if (!response.ok) {
+  if (!response.ok && !(extra?.notFoundIsSuccess && response.status === 404)) {
     throw new FetchError(`Failed to fetch: ${response.status}`, response.status)
   }
   return response
 }
 
-export async function fetchWithAuth(url: string, init?: RequestInit): Promise<Response> {
+export async function fetchWithAuth(
+  url: string,
+  init?: RequestInit,
+  extra?: {
+    notFoundIsSuccess: boolean
+  },
+): Promise<Response> {
   const token = useUserStore()?.token
   const requestConfig = init || {}
   requestConfig.headers = {
@@ -30,7 +42,7 @@ export async function fetchWithAuth(url: string, init?: RequestInit): Promise<Re
     Authorization: `Bearer ${token}`,
   }
 
-  return fetchWithError(url, requestConfig)
+  return fetchWithError(url, requestConfig, extra)
 }
 
 const MAX_RETRIES = 3

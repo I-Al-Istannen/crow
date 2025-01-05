@@ -12,9 +12,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, toRefs } from 'vue'
 import type { TestId } from '@/types.ts'
 import { queryTest } from '@/data/network.ts'
+import { toRefs } from 'vue'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
 
 const props = defineProps<{
@@ -23,8 +23,4 @@ const props = defineProps<{
 const { testId } = toRefs(props)
 
 const { data: test, isFetched, isFetching } = queryTest(testId.value)
-
-onMounted(() => {
-  console.log('MOUNTED ME ', testId.value)
-})
 </script>

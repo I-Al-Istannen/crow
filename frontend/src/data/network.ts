@@ -18,6 +18,8 @@ import {
   TestSchema,
   type TestSummary,
   TestSummarySchema,
+  type WorkItem,
+  WorkItemSchema,
 } from '@/types.ts'
 import { QueryClient, useMutation, useQuery } from '@tanstack/vue-query'
 import { type Ref, computed, toRef, toValue } from 'vue'
@@ -120,7 +122,9 @@ export function queryRecentTasks() {
 }
 
 export async function fetchTask(taskId: TaskId): Promise<FinishedCompilerTask | null> {
-  const response = await fetchWithAuth(`/tasks/${encodeURIComponent(taskId)}`)
+  const response = await fetchWithAuth(`/tasks/${encodeURIComponent(taskId)}`, undefined, {
+    notFoundIsSuccess: true,
+  })
   if (response.status === 404) {
     return null
   }
@@ -266,4 +270,37 @@ export function queryQueue() {
     },
     enabled: isLoggedIn(),
   })
+}
+
+export async function fetchRunningTaskExists(taskId: TaskId): Promise<boolean> {
+  const response = await fetchWithAuth(
+    `/tasks/${encodeURIComponent(taskId)}/stream`,
+    {
+      method: 'HEAD',
+    },
+    { notFoundIsSuccess: true },
+  )
+  return response.status === 200
+}
+
+export async function fetchTaskExists(taskId: TaskId): Promise<boolean> {
+  const response = await fetchWithAuth(
+    `/tasks/${encodeURIComponent(taskId)}`,
+    {
+      method: 'HEAD',
+    },
+    { notFoundIsSuccess: true },
+  )
+  return response.status === 200
+}
+
+export async function fetchQueuedTask(taskId: TaskId): Promise<WorkItem | null> {
+  const response = await fetchWithAuth(`/queue/task/${encodeURIComponent(taskId)}`, undefined, {
+    notFoundIsSuccess: true,
+  })
+  if (response.status === 404) {
+    return null
+  }
+  const json = await response.json()
+  return WorkItemSchema.parse(json)
 }

@@ -17,12 +17,14 @@ import { computed, toRefs } from 'vue'
 import ProcessOutputDisplay from '@/components/ProcessOutputDisplay.vue'
 
 const props = defineProps<{
-  task: FinishedCompilerTask
+  taskOrOutput: FinishedCompilerTask | ExecutionOutput
 }>()
 
-const { task } = toRefs(props)
+const { taskOrOutput } = toRefs(props)
 
-const buildOutput = computed(() => getBuildOutput(task.value))
+const buildOutput = computed(() =>
+  'info' in taskOrOutput.value ? getBuildOutput(taskOrOutput.value) : taskOrOutput.value,
+)
 
 function getBuildOutput(task: FinishedCompilerTask): ExecutionOutput {
   if (task.type === 'BuildFailed') {
