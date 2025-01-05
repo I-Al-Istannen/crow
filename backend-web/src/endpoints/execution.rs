@@ -135,7 +135,7 @@ pub async fn runner_update(
         .executor
         .lock()
         .unwrap()
-        .update_task(&runner_id, update);
+        .update_task(&runner_id, update.into());
 
     Ok(())
 }
@@ -197,8 +197,30 @@ pub async fn get_work(
     }
 
     let queue = state.db.get_queued_tasks().await?;
+    let tests: Vec<CompilerTest> = state
+        .db
+        .get_tests()
+        .await?
+        .into_iter()
+        .map(|test| CompilerTest {
+            test_id: test.id.to_string(),
+            timeout: state.execution_config.test_timeout,
+            run_command: state.execution_config.test_command.clone(),
+            expected_output: test.expected_output,
+        })
+        .collect();
 
-    let task = match state.executor.lock().unwrap().assign_work(&runner, &queue) {
+    let test_ids = tests
+        .iter()
+        .map(|it| it.test_id.clone().into())
+        .collect::<Vec<_>>();
+
+    let task = match state
+        .executor
+        .lock()
+        .unwrap()
+        .assign_work(&runner, &queue, test_ids)
+    {
         Err(e) => {
             warn!(
                 error = %Report::from_error(e),
@@ -219,19 +241,6 @@ pub async fn get_work(
             reset: false,
         }));
     };
-
-    let tests = state
-        .db
-        .get_tests()
-        .await?
-        .into_iter()
-        .map(|test| CompilerTest {
-            test_id: test.id.to_string(),
-            timeout: state.execution_config.test_timeout,
-            run_command: state.execution_config.test_command.clone(),
-            expected_output: test.expected_output,
-        })
-        .collect();
 
     // FIXME: Replace
     let task = CompilerTask {

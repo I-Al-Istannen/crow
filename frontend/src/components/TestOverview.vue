@@ -16,7 +16,10 @@
           <LucideX v-else-if="testType(test) === 'Error'" />
           <LucideUnplug v-else-if="testType(test) === 'Aborted'" />
           <LucideClockAlert v-else-if="testType(test) === 'Timeout'" />
-          <LucideClipboard v-else-if="testType(test) === 'Queued'" />
+          <LucideLoaderCircle
+            class="animate-[spin_10s_linear_infinite]"
+            v-else-if="testType(test) === 'Queued'"
+          />
           <RocketIcon class="animate-pulse" v-else-if="testType(test) === 'Started'" />
         </HoverCardTrigger>
         <HoverCardContent class="w-96">
@@ -41,8 +44,8 @@ import type { ExecutingTest, FinishedTest } from '@/types.ts'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import {
   LucideCheck,
-  LucideClipboard,
   LucideClockAlert,
+  LucideLoaderCircle,
   LucideUnplug,
   LucideX,
 } from 'lucide-vue-next'

@@ -11,7 +11,7 @@
         <li>Your data is being transferred to a runner</li>
         <li v-if="buildStatus !== null">The build has started</li>
         <li v-if="buildStatus && buildStatus !== 'Started'">The build has finished</li>
-        <li v-if="tests.length > 0">Testing has started</li>
+        <li v-if="testingStarted">Testing has started</li>
       </ol>
     </CardContent>
   </Card>
@@ -19,7 +19,7 @@
     v-if="status === 'OPEN' && buildExecutionOutput"
     :task-or-output="buildExecutionOutput"
   />
-  <TestOverview v-if="status === 'OPEN' && tests.length > 0" :tests="tests" />
+  <TestOverview v-if="status === 'OPEN' && testingStarted" :tests="tests" />
 </template>
 
 <script setup lang="ts">
@@ -43,6 +43,7 @@ import { useWebSocket } from '@vueuse/core'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
 
 const buildStatus = ref<'Started' | FinishedExecution | null>(null)
+const testingStarted = ref(false)
 const tests = ref<(FinishedTest | ExecutingTest)[]>([])
 
 const props = defineProps<{
@@ -97,11 +98,30 @@ const { status } = useWebSocket(websocketUrl, {
         buildStatus.value = update.result
         break
       }
+      case 'AllTests': {
+        for (const newTestId of update.tests) {
+          tests.value.push({
+            testId: newTestId,
+            status: 'Queued',
+          })
+        }
+        break
+      }
       case 'StartedTest': {
-        tests.value.push({
-          status: 'Started',
-          testId: update.testId,
-        })
+        testingStarted.value = true
+
+        const existing = tests.value.findIndex((test) => test.testId === update.testId)
+        if (existing !== -1) {
+          tests.value[existing] = {
+            status: 'Started',
+            testId: update.testId,
+          }
+        } else {
+          tests.value.push({
+            status: 'Started',
+            testId: update.testId,
+          })
+        }
         break
       }
       case 'FinishedTest': {

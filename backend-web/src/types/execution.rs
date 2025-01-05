@@ -1,9 +1,9 @@
-use crate::types::TeamId;
+use crate::types::{TeamId, TestId};
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
 use shared::{
-    deserialize_system_time, serialize_system_time, ExecutionOutput, RunnerId, RunnerInfo,
-    RunnerUpdate,
+    deserialize_system_time, serialize_system_time, ExecutionOutput, FinishedExecution,
+    FinishedTest, RunnerId, RunnerInfo,
 };
 use snafu::{ensure, Location, Snafu};
 use std::collections::{HashMap, HashSet};
@@ -48,6 +48,38 @@ struct InternalRunningTaskState {
 pub struct RunningTaskState {
     pub so_far: Vec<RunnerUpdateForFrontend>,
     pub receiver: broadcast::Receiver<RunnerUpdateForFrontend>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum RunnerUpdate {
+    AllTests {
+        tests: Vec<TestId>,
+    },
+    StartedBuild,
+    FinishedBuild {
+        result: FinishedExecution,
+    },
+    #[serde(rename_all = "camelCase")]
+    StartedTest {
+        test_id: String,
+    },
+    FinishedTest {
+        result: FinishedTest,
+    },
+    Done,
+}
+
+impl From<shared::RunnerUpdate> for RunnerUpdate {
+    fn from(value: shared::RunnerUpdate) -> Self {
+        match value {
+            shared::RunnerUpdate::StartedBuild => Self::StartedBuild,
+            shared::RunnerUpdate::FinishedBuild { result } => Self::FinishedBuild { result },
+            shared::RunnerUpdate::StartedTest { test_id } => Self::StartedTest { test_id },
+            shared::RunnerUpdate::FinishedTest { result } => Self::FinishedTest { result },
+            shared::RunnerUpdate::Done => Self::Done,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -164,6 +196,7 @@ impl Executor {
         &mut self,
         runner_info: &RunnerInfo,
         queue: &[WorkItem],
+        test_ids: Vec<TestId>,
     ) -> Result<Option<WorkItem>, ExecutorError> {
         ensure!(
             self.runners.contains_key(&runner_info.id),
@@ -196,7 +229,7 @@ impl Executor {
             self.in_progress.insert(
                 task.id.clone(),
                 InternalRunningTaskState {
-                    so_far: Vec::new(),
+                    so_far: vec![RunnerUpdate::AllTests { tests: test_ids }.into()],
                     sender,
                 },
             );
