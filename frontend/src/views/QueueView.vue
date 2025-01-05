@@ -47,7 +47,7 @@ import { queryQueue } from '@/data/network.ts'
 import { useTimestamp } from '@vueuse/core'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
 
-const currentTime = useTimestamp({ interval: 5000 })
+const currentTime = useTimestamp({ interval: 500 })
 
 const { data: queueResponse, isFetched, isLoading } = queryQueue()
 </script>

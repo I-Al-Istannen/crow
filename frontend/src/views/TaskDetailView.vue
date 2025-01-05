@@ -16,7 +16,7 @@
           It looks like no task with this ID exists. Maybe it isn't running or finished yet?
         </div>
         <div v-if="taskStatus === 'queued' && queuedTask">
-          This task is queued since
+          This task has been queued since
           <span class="font-medium">
             {{ formatTime(queuedTask.insertTime) }}
           </span>
@@ -26,9 +26,7 @@
         </div>
         <div v-if="taskStatus === 'queued' && queuedTask && lastUpdate">
           The last update of this page was at
-          <span class="font-medium">
-            {{ formatTime(lastUpdate) }}
-          </span>.
+          <span class="font-medium"> {{ formatTime(lastUpdate) }} </span>.
         </div>
         <div v-if="isFetching && !hasTriedFetching">Loading data...</div>
       </CardContent>
