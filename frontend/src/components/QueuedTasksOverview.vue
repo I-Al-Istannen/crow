@@ -12,11 +12,10 @@
       <TableRow
         v-for="(item, index) in queue"
         :key="item.id"
-        :class="[
-          team?.id == item.team
-            ? 'animate-gradient-x bg-gradient-to-r from-blue-500 via-violet-500 to-rose-600 bg-clip-text text-transparent'
-            : '',
-        ]"
+        class="cursor-pointer hover:bg-accent"
+        @click.left="openDetails(item, false)"
+        @click.middle="openDetails(item, true)"
+        @click.ctrl.left.capture.stop="openDetails(item, true)"
       >
         <TableCell class="font-medium">
           {{ index + 1 }}
@@ -53,10 +52,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { formatApproxDuration, formatTime } from '@/lib/utils.ts'
-import { storeToRefs } from 'pinia'
 import { toRefs } from 'vue'
+import { useRouter } from 'vue-router'
 import { useTimestamp } from '@vueuse/core'
-import { useUserStore } from '@/stores/user.ts'
 
 const props = defineProps<{
   queue: WorkItem[]
@@ -64,10 +62,21 @@ const props = defineProps<{
 }>()
 const { queue, runners } = toRefs(props)
 
-const { team } = storeToRefs(useUserStore())
+const router = useRouter()
+
 const currentTime = useTimestamp({ interval: 2500 })
 
 function getRunner(runners: Runner[], taskId: TaskId) {
   return runners.find((it) => it.workingOn?.id === taskId)
+}
+
+// Sadly table rows can not be wrapped in `<a>` tags, so we need to emulate links using JS...
+function openDetails(item: WorkItem, newTab: boolean) {
+  const data = { name: 'task-detail', params: { taskId: item.id } }
+  if (!newTab) {
+    router.push(data)
+  } else {
+    window.open(router.resolve(data).href, '_blank')
+  }
 }
 </script>

@@ -134,6 +134,7 @@ export const TeamSchema = z.object({
 })
 
 export const RunnerUpdateSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('AllTests'), tests: z.array(TestIdSchema) }),
   z.object({ type: z.literal('StartedBuild') }),
   z.object({ type: z.literal('FinishedBuild'), result: FinishedExecutionSchema }),
   z.object({ type: z.literal('StartedTest'), testId: TestIdSchema }),
