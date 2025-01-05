@@ -2,10 +2,11 @@ use crate::auth::{Claims, Keys};
 use crate::config::Config;
 use crate::db::{Database, UserForAuth};
 use crate::endpoints::{
-    delete_test, executor_info, get_queue, get_recent_tasks, get_running_task_info, get_task,
-    get_team_info, get_team_repo, get_test, get_work, get_work_tar, head_running_task_info,
-    list_task_ids, list_tests, list_users, login, request_revision, runner_done, runner_ping,
-    runner_register, runner_update, set_team_repo, set_test, show_me_myself,
+    delete_test, executor_info, get_queue, get_queued_task, get_recent_tasks,
+    get_running_task_info, get_task, get_team_info, get_team_repo, get_test, get_work,
+    get_work_tar, head_running_task_info, list_task_ids, list_tests, list_users, login,
+    request_revision, runner_done, runner_ping, runner_register, runner_update, set_team_repo,
+    set_test, show_me_myself,
 };
 use crate::error::WebError;
 use crate::storage::LocalRepos;
@@ -187,12 +188,13 @@ async fn main_server(
         .route("/login", post(login))
         .route("/queue", get(get_queue))
         .route("/queue/rev/:revision", put(request_revision))
-        .route("/queue/task/:task_id", get(get_running_task_info))
-        .route("/queue/task/:task_id", head(head_running_task_info))
+        .route("/queue/task/:task_id", get(get_queued_task))
         .route("/repo/:team_id", get(get_team_repo))
         .route("/repo/:team_id", put(set_team_repo))
         .route("/tasks", get(list_task_ids))
         .route("/tasks/:task_id", get(get_task))
+        .route("/tasks/:task_id/stream", get(get_running_task_info))
+        .route("/tasks/:task_id/stream", head(head_running_task_info))
         .route("/team/info/:team_id", get(get_team_info))
         .route("/team/recent-tasks", get(get_recent_tasks))
         .route("/tests", get(list_tests))

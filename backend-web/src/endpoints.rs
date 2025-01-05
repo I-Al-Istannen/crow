@@ -13,6 +13,7 @@ use std::error::Error;
 
 pub use self::execution::executor_info;
 pub use self::execution::get_queue;
+pub use self::execution::get_queued_task;
 pub use self::execution::get_task;
 pub use self::execution::get_work;
 pub use self::execution::get_work_tar;

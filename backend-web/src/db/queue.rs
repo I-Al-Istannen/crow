@@ -58,3 +58,31 @@ pub(super) async fn get_queued_tasks(con: &mut SqliteConnection) -> Result<Vec<W
     .instrument(info_span!("sqlx_get_queue"))
     .await?)
 }
+
+#[instrument(skip_all)]
+pub(super) async fn fetch_queued_task(
+    con: &mut SqliteConnection,
+    task_id: &TaskId,
+) -> Result<Option<WorkItem>> {
+    Ok(query!(
+        r#"
+        SELECT
+            id as "id!: TaskId",
+            team as "team!: TeamId",
+            revision,
+            insert_time as "insert_time!: u64"
+        FROM Queue
+        WHERE id = ?
+        "#,
+        task_id
+    )
+    .map(|row| WorkItem {
+        id: row.id,
+        team: row.team,
+        revision: row.revision,
+        insert_time: SystemTime::UNIX_EPOCH.add(Duration::from_millis(row.insert_time)),
+    })
+    .fetch_optional(con)
+    .instrument(info_span!("sqlx_get_queued_task"))
+    .await?)
+}

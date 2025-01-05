@@ -120,6 +120,10 @@ impl Database {
         let pool = self.read_lock().await;
         queue::get_queued_tasks(&mut *pool.acquire().await?).await
     }
+    pub async fn fetch_queued_task(&self, task_id: &TaskId) -> Result<Option<WorkItem>> {
+        let pool = self.read_lock().await;
+        queue::fetch_queued_task(&mut *pool.acquire().await?, task_id).await
+    }
 
     pub async fn add_finished_task(&self, result: &FinishedCompilerTask) -> Result<()> {
         let pool = self.write_lock().await;

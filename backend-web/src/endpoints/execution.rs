@@ -48,13 +48,38 @@ pub async fn request_revision(
 }
 
 #[instrument(skip_all)]
-pub async fn get_queue(State(state): State<AppState>) -> Result<Json<QueueResponse>> {
+pub async fn get_queue(
+    State(state): State<AppState>,
+    _claims: Claims,
+) -> Result<Json<QueueResponse>> {
     // sleep 1s
     time::sleep(Duration::from_secs(1)).await;
     let queue = state.db.get_queued_tasks().await?;
     let runners = state.executor.lock().unwrap().get_runners();
 
     Ok(Json(QueueResponse { queue, runners }))
+}
+
+#[instrument(skip_all)]
+pub async fn get_queued_task(
+    State(state): State<AppState>,
+    _claims: Claims,
+    Path(task_id): Path<TaskId>,
+) -> Result<Json<WorkItem>> {
+    if state
+        .executor
+        .lock()
+        .unwrap()
+        .get_running_task(&task_id)
+        .is_some()
+    {
+        return Err(WebError::NotFound);
+    }
+    let Some(item) = state.db.fetch_queued_task(&task_id).await? else {
+        return Err(WebError::NotFound);
+    };
+
+    Ok(Json(item))
 }
 
 #[instrument(skip_all)]

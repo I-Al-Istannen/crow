@@ -147,10 +147,16 @@ pub struct RunnerInfo {
 #[serde(tag = "type")]
 pub enum RunnerUpdate {
     StartedBuild,
-    FinishedBuild { result: FinishedExecution },
+    FinishedBuild {
+        result: FinishedExecution,
+    },
     #[serde(rename_all = "camelCase")]
-    StartedTest { test_id: String },
-    FinishedTest { result: FinishedTest },
+    StartedTest {
+        test_id: String,
+    },
+    FinishedTest {
+        result: FinishedTest,
+    },
     Done,
 }
 
