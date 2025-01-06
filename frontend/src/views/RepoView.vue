@@ -1,5 +1,5 @@
 <template>
-  <PageContainer>
+  <PageContainer :class="{ 'flex-col-reverse': !!repo }" v-auto-animate>
     <Card>
       <CardHeader>
         <CardTitle>Repository settings</CardTitle>
@@ -10,7 +10,7 @@
         <SetupRepo v-show="isFetched" :repo="repo" />
       </CardContent>
     </Card>
-    <Card>
+    <Card v-if="repo">
       <CardHeader>
         <CardTitle>Submit a revision</CardTitle>
         <CardDescription>Add a specific commit of your repository to the queue</CardDescription>
@@ -31,6 +31,8 @@ import { computed } from 'vue'
 import { queryRepo } from '@/data/network.ts'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user.ts'
+import { vAutoAnimate } from '@formkit/auto-animate/vue'
+
 
 const { team } = storeToRefs(useUserStore())
 const teamId = computed(() => team.value?.id)
