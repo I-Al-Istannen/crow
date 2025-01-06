@@ -112,9 +112,17 @@ const emit = defineEmits<{
 
 watch(
   [currentPage, itemsPerPage, data],
-  ([currentPage, itemsPerPage, data]) => {
-    const start = Math.max(0, currentPage - 1) * itemsPerPage
-    const end = Math.min(data.length, currentPage * itemsPerPage)
+  ([newPage, itemsPerPage, data], [oldPage, oldItemsPerPage, oldData]) => {
+    if (newPage == oldPage && data == oldData && itemsPerPage != oldItemsPerPage) {
+      // User changed the items per page. We probably want to keep displaying the same data...
+      // To do this, we fix the first item. It will always appear in the resulting list.
+      const oldFirstItem = (oldPage - 1) * oldItemsPerPage!
+      currentPage.value = Math.floor(oldFirstItem / itemsPerPage) + 1
+      return
+    }
+
+    const start = Math.max(0, newPage - 1) * itemsPerPage
+    const end = Math.min(data.length, newPage * itemsPerPage)
     const slice = data.slice(start, end)
 
     emit('change', start, end, slice)
