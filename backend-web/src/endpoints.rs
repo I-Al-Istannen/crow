@@ -25,6 +25,7 @@ pub use self::execution::runner_register;
 pub use self::execution::runner_update;
 pub use self::streaming::get_running_task_info;
 pub use self::streaming::head_running_task_info;
+pub use self::team::get_n_recent_tasks;
 pub use self::team::get_recent_tasks;
 pub use self::team::get_team_info;
 pub use self::team::get_team_repo;

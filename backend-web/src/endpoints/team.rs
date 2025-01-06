@@ -59,6 +59,21 @@ pub async fn get_team_repo(
 }
 
 #[instrument(skip_all)]
+pub async fn get_n_recent_tasks(
+    State(AppState { db, .. }): State<AppState>,
+    claims: Claims,
+    Path(count): Path<u32>,
+) -> Result<Json<Vec<FinishedCompilerTaskSummary>>> {
+    let user = db.get_user(&claims.sub).await?;
+    let Some(team) = user.user.team else {
+        return Err(WebError::NotInTeam);
+    };
+    let count = if count == 0 { u32::MAX } else { count };
+
+    Ok(Json(db.get_recent_tasks(&team, count).await?))
+}
+
+#[instrument(skip_all)]
 pub async fn get_recent_tasks(
     State(AppState { db, .. }): State<AppState>,
     claims: Claims,
@@ -68,7 +83,7 @@ pub async fn get_recent_tasks(
         return Err(WebError::NotInTeam);
     };
 
-    Ok(Json(db.get_recent_tasks(&team, 20).await?))
+    Ok(Json(db.get_recent_tasks(&team, 10).await?))
 }
 
 #[instrument(skip_all)]
