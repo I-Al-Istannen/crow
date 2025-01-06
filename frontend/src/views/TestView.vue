@@ -2,7 +2,7 @@
   <PageContainer>
     <Card>
       <CardHeader class="flex flex-row justify-between">
-        <div class="flex flex-col">
+        <div class="flex flex-col gap-y-1.5">
           <CardTitle>Test all the things</CardTitle>
           <CardDescription>
             Browse all tests submitted by you or the course advisors
@@ -42,42 +42,10 @@
             </AccordionItem>
           </Accordion>
 
-          <Pagination
-            class="mt-6"
-            v-slot="{ page }"
-            v-model:page="currentPage"
-            :default-page="1"
-            :items-per-page="itemsPerPage"
-            :sibling-count="1"
-            :total="tests.length"
-            show-edges
-            @update:page="expandedTests = []"
-          >
-            <PaginationList v-slot="{ items }" class="flex items-center gap-1">
-              <PaginationFirst />
-              <PaginationPrev />
-
-              <template v-for="(item, index) in items">
-                <PaginationListItem
-                  v-if="item.type === 'page'"
-                  :key="index"
-                  :value="item.value"
-                  as-child
-                >
-                  <Button
-                    class="w-10 h-10 p-0"
-                    :variant="item.value === page ? 'default' : 'outline'"
-                  >
-                    {{ item.value }}
-                  </Button>
-                </PaginationListItem>
-                <PaginationEllipsis v-else :key="item.type" :index="index" />
-              </template>
-
-              <PaginationNext />
-              <PaginationLast />
-            </PaginationList>
-          </Pagination>
+          <PaginationControls
+            :data="tests"
+            @change="(_start, _end, slice) => (displayedTests = slice)"
+          />
         </div>
       </CardContent>
     </Card>
@@ -92,21 +60,13 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Pagination,
-  PaginationEllipsis,
-  PaginationFirst,
-  PaginationLast,
-  PaginationNext,
-  PaginationPrev,
-} from '@/components/ui/pagination'
-import { PaginationList, PaginationListItem } from 'radix-vue'
 import type { Test, TestSummary } from '@/types.ts'
-import { computed, ref, watch } from 'vue'
 import { fetchTestDetail, queryTests } from '@/data/network.ts'
+import { ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { LucidePencil } from 'lucide-vue-next'
 import PageContainer from '@/components/PageContainer.vue'
+import PaginationControls from '@/components/PaginationControls.vue'
 import SetTestDialog from '@/components/SetTestDialog.vue'
 import TestDetail from '@/components/TestDetail.vue'
 import { storeToRefs } from 'pinia'
@@ -114,25 +74,14 @@ import { toast } from 'vue-sonner'
 import { useUserStore } from '@/stores/user.ts'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
 
-const currentPage = ref<number>(1)
-const itemsPerPage = ref<number>(3)
 const expandedTests = ref<string[]>([])
 const testSetDialogOpen = ref(false)
 const testToEdit = ref<Test | undefined>(undefined)
 const testToEditLoading = ref(false)
+const displayedTests = ref<TestSummary[]>([])
 
 const { team } = storeToRefs(useUserStore())
 const { data: tests, isFetched, isLoading } = queryTests()
-
-const displayedTests = computed(() => {
-  if (tests.value === undefined) {
-    return undefined
-  }
-  const start = Math.max(0, currentPage.value - 1) * itemsPerPage.value
-  const end = Math.min(tests.value.length, currentPage.value * itemsPerPage.value)
-
-  return tests.value.slice(start, end)
-})
 
 // Reset the edited test so clicking on new test does not prefill with the last edited test
 watch(testSetDialogOpen, (isOpen) => {
