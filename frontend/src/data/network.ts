@@ -7,6 +7,8 @@ import {
   QueueResponseSchema,
   type Repo,
   RepoSchema,
+  type RequestRevision,
+  RequestRevisionSchema,
   type ShowMyselfResponse,
   ShowMyselfResponseSchema,
   type TaskId,
@@ -22,7 +24,7 @@ import {
   WorkItemSchema,
 } from '@/types.ts'
 import { QueryClient, useMutation, useQuery } from '@tanstack/vue-query'
-import { type Ref, computed, toRef, toValue } from 'vue'
+import { computed, type Ref, toRef, toValue } from 'vue'
 import type { MaybeRefOrGetter } from '@vueuse/core'
 import { fetchWithAuth } from '@/data/fetching.ts'
 import { storeToRefs } from 'pinia'
@@ -304,4 +306,30 @@ export async function fetchQueuedTask(taskId: TaskId): Promise<WorkItem | null> 
   }
   const json = await response.json()
   return WorkItemSchema.parse(json)
+}
+
+export async function fetchRequestRevision(revision: string): Promise<RequestRevision | null> {
+  const response = await fetchWithAuth(
+    `/queue/rev/${encodeURIComponent(revision)}`,
+    {
+      method: 'PUT',
+    },
+    { notFoundIsSuccess: true },
+  )
+  if (response.status === 404) {
+    return null
+  }
+  return RequestRevisionSchema.parse(await response.json())
+}
+
+export function mutateRequestRevision(queryClient: QueryClient) {
+  return useMutation({
+    mutationFn: (revision: string) => fetchRequestRevision(revision),
+    onSuccess: (_, __, ___) => {
+      const ____ = queryClient.invalidateQueries({ queryKey: ['queue'] })
+    },
+    meta: {
+      purpose: 'requesting a revision',
+    },
+  })
 }

@@ -50,7 +50,7 @@
               <FormMessage />
             </FormItem>
           </FormField>
-          <div class="flex align-center">
+          <div class="flex items-center">
             <Button type="submit" :disabled="mutationPending">
               <LoaderCircle class="animate-spin mr-2 -ml-2" v-show="editPending" />
               Submit

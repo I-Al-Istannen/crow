@@ -99,6 +99,10 @@ export const RepoSchema = z.object({
   autoFetch: z.boolean(),
 })
 
+export const RequestRevisionSchema = z.object({
+  taskId: TaskIdSchema,
+})
+
 // Out of order due to dependencies
 export const WorkItemSchema = z.object({
   id: TaskIdSchema,
@@ -184,6 +188,7 @@ export type FinishedTestSummary = z.infer<typeof FinishedTestSummarySchema>
 export type InternalError = z.infer<typeof InternalErrorSchema>
 export type QueueResponse = z.infer<typeof QueueResponseSchema>
 export type Repo = z.infer<typeof RepoSchema>
+export type RequestRevision = z.infer<typeof RequestRevisionSchema>
 export type Runner = z.infer<typeof RunnerSchema>
 export type RunnerUpdate = z.infer<typeof RunnerUpdateSchema>
 export type RunnerUpdateMessage = z.infer<typeof RunnerUpdateMessageSchema>

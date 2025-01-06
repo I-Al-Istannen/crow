@@ -43,6 +43,15 @@
         </form>
       </CardContent>
     </Card>
+    <Card>
+      <CardHeader>
+        <CardTitle>Submit a revision</CardTitle>
+        <CardDescription>Add a specific commit of your repository to the queue</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <SubmitRevision />
+      </CardContent>
+    </Card>
   </PageContainer>
 </template>
 
@@ -63,6 +72,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { LoaderCircle } from 'lucide-vue-next'
 import PageContainer from '@/components/PageContainer.vue'
+import SubmitRevision from '@/components/SubmitRevision.vue'
 import { storeToRefs } from 'pinia'
 import { toTypedSchema } from '@vee-validate/zod'
 import { toast } from 'vue-sonner'
