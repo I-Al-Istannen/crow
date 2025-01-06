@@ -1,7 +1,7 @@
 <template>
-  <PageContainer v-auto-animate>
+  <PageContainer>
     <FinishedTask v-if="taskStatus === 'finished' && taskId" :task-id="taskId" />
-    <RunningTaskOverview
+    <RunningTask
       v-else-if="taskStatus === 'running' && taskId"
       :task-id="taskId"
       @connection-lost="resume"
@@ -11,7 +11,7 @@
         <CardTitle>Task detail</CardTitle>
         <CardDescription>View information about running or finished tasks</CardDescription>
       </CardHeader>
-      <CardContent v-auto-animate>
+      <CardContent>
         <div v-if="hasTriedFetching && taskStatus === null">
           It looks like no task with this ID exists. Maybe it isn't running or finished yet?
         </div>
@@ -43,11 +43,10 @@ import { formatDurationBetween, formatTime } from '../lib/utils.ts'
 import { useIntervalFn, useTimestamp } from '@vueuse/core'
 import FinishedTask from '@/components/FinishedTask.vue'
 import PageContainer from '@/components/PageContainer.vue'
-import RunningTaskOverview from '@/components/RunningTask.vue'
+import RunningTask from '@/components/RunningTask.vue'
 import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user.ts'
-import { vAutoAnimate } from '@formkit/auto-animate/vue'
 
 const route = useRoute()
 const taskId = computed(() => (route.params?.taskId ? (route.params.taskId as TaskId) : undefined))

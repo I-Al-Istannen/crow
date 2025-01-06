@@ -1,25 +1,27 @@
 <template>
-  <Card>
-    <CardHeader class="pb-2">
-      <CardTitle>Task in progress</CardTitle>
-      <CardDescription>Watch the live output of a running task</CardDescription>
-    </CardHeader>
-    <CardContent v-auto-animate>
-      <div v-if="status === 'CONNECTING'">Trying to connect to data stream...</div>
-      <div v-if="status === 'CLOSED'">Connection lost. Will retry periodically...</div>
-      <ol class="list-inside list-decimal">
-        <li>Your data is being transferred to a runner</li>
-        <li v-if="buildStatus !== null">The build has started</li>
-        <li v-if="buildStatus && buildStatus !== 'Started'">The build has finished</li>
-        <li v-if="testingStarted">Testing has started</li>
-      </ol>
-    </CardContent>
-  </Card>
-  <BuildOutputOverview
-    v-if="status === 'OPEN' && buildExecutionOutput"
-    :task-or-output="buildExecutionOutput"
-  />
-  <TestOverview v-if="status === 'OPEN' && testingStarted" :tests="tests" />
+  <div v-auto-animate class="space-y-2">
+    <Card>
+      <CardHeader class="pb-2">
+        <CardTitle>Task in progress</CardTitle>
+        <CardDescription>Watch the live output of a running task</CardDescription>
+      </CardHeader>
+      <CardContent v-auto-animate>
+        <div v-if="status === 'CONNECTING'">Trying to connect to data stream...</div>
+        <div v-if="status === 'CLOSED'">Connection lost. Will retry periodically...</div>
+        <ol class="list-inside list-decimal">
+          <li>Your data is being transferred to a runner</li>
+          <li v-if="buildStatus !== null">The build has started</li>
+          <li v-if="buildStatus && buildStatus !== 'Started'">The build has finished</li>
+          <li v-if="testingStarted">Testing has started</li>
+        </ol>
+      </CardContent>
+    </Card>
+    <BuildOutputOverview
+      v-if="status === 'OPEN' && buildExecutionOutput"
+      :task-or-output="buildExecutionOutput"
+    />
+    <TestOverview v-if="status === 'OPEN' && testingStarted" :tests="tests" />
+  </div>
 </template>
 
 <script setup lang="ts">
