@@ -34,12 +34,15 @@ pub async fn request_revision(
     // Update repo to ensure revision is present
     let repo = state.db.get_repo(&team).await?;
     state.local_repos.update_repo(&repo).await?;
+    let Some(revision) = state.local_repos.get_revision(&repo, &revision).await? else {
+        return Err(WebError::NotFound);
+    };
 
     let task_id: TaskId = Uuid::new_v4().to_string().into();
     let task = WorkItem {
         id: task_id.clone(),
         team,
-        revision,
+        revision: revision.to_string(),
         insert_time: SystemTime::now(),
     };
     state.db.queue_task(task.clone()).await?;
@@ -148,6 +151,21 @@ pub async fn runner_done(
 ) -> Result<()> {
     println!("{}", serde_json::to_string(&task).unwrap());
 
+    if state
+        .executor
+        .lock()
+        .unwrap()
+        .get_running_task(&task.info().task_id.clone().into())
+        .is_none()
+    {
+        warn!(
+            task = %task.info().task_id,
+            runner_id = %auth.username(),
+            "Runner submitted unknown task for completion"
+        );
+        return Err(WebError::NotFound);
+    }
+
     state.db.add_finished_task(&task).await?;
     state
         .executor
@@ -246,7 +264,7 @@ pub async fn get_work(
     let task = CompilerTask {
         task_id: task.id.to_string(),
         team_id: task.team.to_string(),
-        revision_id: task.revision,
+        revision_id: task.revision.to_string(),
         image: "alpine:latest".to_string(),
         build_command: state.execution_config.build_command.clone(),
         build_timeout: state.execution_config.build_timeout,
@@ -272,11 +290,25 @@ pub async fn get_work_tar(
         .ok_or(WebError::NotFound)?;
 
     let repo = state.db.get_repo(&task.team).await?;
+    let Some(revision) = state
+        .local_repos
+        .get_revision(&repo, &task.revision)
+        .await?
+    else {
+        let runner_name = auth.username().to_string();
+        warn!(
+            task = %task.id,
+            revision = %task.revision,
+            runner_id = %runner_name,
+            "Requested unknown revision"
+        );
+        return Err(WebError::NotFound);
+    };
 
     let temp_file = tempfile::NamedTempFile::with_suffix(".tar.gz").unwrap();
     state
         .local_repos
-        .export_repo(&repo, temp_file.path(), &task.revision)
+        .export_repo(&repo, temp_file.path(), &revision)
         .await?;
 
     let file = tokio::fs::File::open(temp_file.path())

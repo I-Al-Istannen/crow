@@ -1,5 +1,7 @@
 use crate::error::WebError;
 use crate::types::{Repo, TeamId};
+use derive_more::Display;
+use serde::{Deserialize, Serialize};
 use snafu::{Location, Snafu};
 use snafu::{Report, ResultExt};
 use std::path::{Path, PathBuf};
@@ -23,7 +25,7 @@ pub enum GitError {
     NotCheckedOut {
         source: std::io::Error,
         team: TeamId,
-        revision: String,
+        revision: RevisionId,
         #[snafu(implicit)]
         location: Location,
     },
@@ -33,7 +35,7 @@ pub enum GitError {
     SubmodulesNotUpdated {
         source: std::io::Error,
         team: TeamId,
-        revision: String,
+        revision: RevisionId,
         #[snafu(implicit)]
         location: Location,
     },
@@ -43,7 +45,7 @@ pub enum GitError {
     NotCleaned {
         source: std::io::Error,
         team: TeamId,
-        revision: String,
+        revision: RevisionId,
         #[snafu(implicit)]
         location: Location,
     },
@@ -51,7 +53,7 @@ pub enum GitError {
     TempDirCreation {
         source: std::io::Error,
         team: TeamId,
-        revision: String,
+        revision: RevisionId,
         #[snafu(implicit)]
         location: Location,
     },
@@ -61,7 +63,7 @@ pub enum GitError {
     NotTared {
         source: std::io::Error,
         team: TeamId,
-        revision: String,
+        revision: RevisionId,
         #[snafu(implicit)]
         location: Location,
     },
@@ -87,6 +89,13 @@ pub enum GitError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display("Failed to look up commit revision `{revision}` at {location}"))]
+    LookupCommitRev {
+        source: std::io::Error,
+        revision: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
 }
 
 impl From<GitError> for WebError {
@@ -95,6 +104,9 @@ impl From<GitError> for WebError {
         WebError::InternalServerError(Report::from_error(&value).to_string())
     }
 }
+
+#[derive(Debug, Clone, Display, Serialize, Deserialize)]
+pub struct RevisionId(String);
 
 #[derive(Debug, Clone)]
 pub struct LocalRepos {
@@ -133,17 +145,44 @@ impl LocalRepos {
         })?
     }
 
+    pub async fn get_revision(
+        &self,
+        repo: &Repo,
+        revision: &str,
+    ) -> Result<Option<RevisionId>, GitError> {
+        let path = self.get_repo_path(&repo.team);
+        let output = Command::new("git")
+            .arg("rev-parse")
+            .arg("--verify")
+            .arg("--end-of-options")
+            .arg(format!("{revision}^{{commit}}"))
+            .current_dir(&path)
+            .output()
+            .await
+            .context(LookupCommitRevSnafu {
+                revision: revision.to_string(),
+            })?;
+
+        if output.status.success() {
+            Ok(Some(RevisionId(
+                String::from_utf8_lossy(&output.stdout).trim().to_string(),
+            )))
+        } else {
+            Ok(None)
+        }
+    }
+
     pub async fn export_repo(
         &self,
         repo: &Repo,
         target: &Path,
-        revision: &str,
+        revision: &RevisionId,
     ) -> Result<(), GitError> {
         let path = self.get_repo_path(&repo.team);
 
         let tempdir = tempfile::tempdir().context(TempDirCreationSnafu {
             team: repo.team.clone(),
-            revision,
+            revision: revision.clone(),
         })?;
 
         handle_exitcode(
@@ -163,14 +202,14 @@ impl LocalRepos {
         handle_exitcode(
             Command::new("git")
                 .arg("checkout")
-                .arg(revision)
+                .arg(revision.to_string())
                 .current_dir(tempdir.path())
                 .output()
                 .await,
         )
         .context(NotCheckedOutSnafu {
             team: repo.team.clone(),
-            revision,
+            revision: revision.clone(),
         })?;
 
         handle_exitcode(
@@ -186,21 +225,21 @@ impl LocalRepos {
         )
         .context(SubmodulesNotUpdatedSnafu {
             team: repo.team.clone(),
-            revision,
+            revision: revision.clone(),
         })?;
 
         handle_exitcode(
             Command::new("git")
                 .arg("clean")
                 .arg("-fdx")
-                .arg(revision)
+                .arg(revision.to_string())
                 .current_dir(tempdir.path())
                 .output()
                 .await,
         )
         .context(NotCleanedSnafu {
             team: repo.team.clone(),
-            revision,
+            revision: revision.clone(),
         })?;
 
         handle_exitcode(
@@ -214,7 +253,7 @@ impl LocalRepos {
         )
         .context(NotTaredSnafu {
             team: repo.team.clone(),
-            revision,
+            revision: revision.clone(),
         })?;
 
         // Make it explicit that we clean up the tempdir here
