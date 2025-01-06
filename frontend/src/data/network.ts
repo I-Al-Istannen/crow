@@ -103,16 +103,16 @@ export function mutateRepo(queryClient: QueryClient) {
   })
 }
 
-export async function fetchGetRecentTasks(): Promise<FinishedCompilerTaskSummary[]> {
-  const response = await fetchWithAuth('/team/recent-tasks')
+export async function fetchGetRecentTasks(count: number): Promise<FinishedCompilerTaskSummary[]> {
+  const response = await fetchWithAuth(`/team/recent-tasks/${count}`)
   const json = await response.json()
   return z.array(FinishedCompilerTaskSummarySchema).parse(json)
 }
 
-export function queryRecentTasks() {
+export function queryRecentTasks(count?: number) {
   return useQuery({
     queryKey: ['recent-tasks'],
-    queryFn: fetchGetRecentTasks,
+    queryFn: () => fetchGetRecentTasks(count == undefined ? 10 : count),
     refetchInterval: 2 * 60 * 1000, // 2 minutes
     meta: {
       purpose: 'fetching recent tasks',

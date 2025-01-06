@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import AllTasksView from '@/views/AllTasksView.vue'
 import HomeView from '@/views/HomeView.vue'
 import QueueView from '@/views/QueueView.vue'
 import RepoView from '@/views/RepoView.vue'
@@ -39,6 +40,15 @@ const router = createRouter({
       component: QueueView,
       meta: {
         name: 'Queue',
+      },
+    },
+    {
+      path: '/all-tasks',
+      name: 'all-tasks',
+      component: AllTasksView,
+      meta: {
+        name: 'All Tasks',
+        hidden: true,
       },
     },
     {

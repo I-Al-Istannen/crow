@@ -43,8 +43,9 @@ import { ref, toRefs, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 
 const currentPage = ref<number>(1)
-const itemsPerPage = ref<number>(3)
 const expandedTests = ref<string[]>([])
+
+const itemsPerPage = defineModel<number>('itemsPerPage', { default: 3 })
 
 const props = defineProps<{
   data: T[]

@@ -1,9 +1,14 @@
 <template>
   <PageContainer>
     <Card>
-      <CardHeader>
-        <CardTitle>Recent runs</CardTitle>
-        <CardDescription>View your recent submissions</CardDescription>
+      <CardHeader class="flex flex-row justify-between items-center">
+        <div class="flex flex-col gap-y-1.5">
+          <CardTitle>Recent runs</CardTitle>
+          <CardDescription>View your recent submissions</CardDescription>
+        </div>
+        <div class="mr-2 hover:underline">
+          <RouterLink :to="{ name: 'all-tasks' }">View all results</RouterLink>
+        </div>
       </CardHeader>
       <CardContent class="space-y-1" v-if="isFetched">
         <FinishedTaskOverview v-for="task in data" :task="task" :key="task.info.taskId" />
