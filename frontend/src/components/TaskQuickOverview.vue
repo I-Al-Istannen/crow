@@ -15,7 +15,9 @@
     </span>
   </span>
   <span v-else-if="task.type === 'BuildFailed'" :class="[statusColor(task.status, 'text')]">
-    Build did not succeed. {{ task.status }}
+    Build did not succeed.
+    <span v-if="task.status === 'Aborted'">It was aborted.</span>
+    <span v-if="task.status === 'Error'">It ran into an internal error.</span>
   </span>
 </template>
 

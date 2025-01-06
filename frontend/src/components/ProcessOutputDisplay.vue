@@ -7,7 +7,18 @@
       <span class="font-mono font-bold">{{ buildOutput.exitStatus }} </span>.
       <span v-if="buildOutput.exitStatus === 0">This is a good sign.</span>
     </span>
+    <span v-if="buildOutput.error !== undefined">
+      Unfortunately, crow encountered an internal error.
+    </span>
     <Accordion type="multiple">
+      <AccordionItem value="error" v-if="buildOutput.error !== undefined">
+        <AccordionTrigger>Internal error</AccordionTrigger>
+        <AccordionContent>
+          <pre class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto">{{
+            buildOutput.error
+          }}</pre>
+        </AccordionContent>
+      </AccordionItem>
       <AccordionItem value="stdout" v-if="buildOutput.stdout.length > 0">
         <AccordionTrigger>Stdout</AccordionTrigger>
         <AccordionContent>
@@ -48,16 +59,20 @@ const { output, subject } = toRefs(props)
 
 const buildOutput = computed(() => getBuildOutput(output.value))
 
-function getBuildOutput(task: ExecutionOutput):
-  | {
-      stdout: string
-      stderr: string
-      runtime: number
-      exitStatus?: number | null
-    }
-  | undefined {
+function getBuildOutput(task: ExecutionOutput): {
+  stdout: string
+  stderr: string
+  runtime: number
+  exitStatus?: number | null
+  error?: string
+} {
   if (task.type === 'Error') {
-    return undefined
+    return {
+      stdout: '',
+      stderr: '',
+      runtime: task.runtime,
+      error: task.message,
+    }
   }
   return task
 }
