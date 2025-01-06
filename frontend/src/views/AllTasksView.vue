@@ -12,8 +12,14 @@
           </Command>
         </div>
       </CardHeader>
-      <CardContent class="space-y-1" v-if="isFetched && data">
-        <FinishedTaskOverview v-for="task in displayedTasks" :task="task" :key="task.info.taskId" />
+      <CardContent v-if="isFetched && data">
+        <div class="space-y-1">
+          <FinishedTaskOverview
+            v-for="task in displayedTasks"
+            :task="task"
+            :key="task.info.taskId"
+          />
+        </div>
 
         <div v-if="displayedTasks.length === 0" class="text-muted-foreground text-sm mb-2">
           <span v-if="searchTerm.length === 0">No tasks found to display</span>
@@ -21,9 +27,8 @@
         </div>
 
         <PaginationControls
+          class="mt-4"
           :data="data"
-          :items-per-page="15"
-          v-show="displayedTasks.length !== data.length"
           @change="(_start, _end, slice) => (displayedTasks = slice)"
         />
       </CardContent>

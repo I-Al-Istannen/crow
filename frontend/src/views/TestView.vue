@@ -43,6 +43,7 @@
           </Accordion>
 
           <PaginationControls
+            class="mt-4"
             :data="tests"
             @change="(_start, _end, slice) => (displayedTests = slice)"
           />
