@@ -260,11 +260,12 @@ export async function fetchQueue(): Promise<QueueResponse> {
   return QueueResponseSchema.parse(json)
 }
 
-export function queryQueue() {
+export function queryQueue(refetchIntervalMs: number) {
   return useQuery({
     queryKey: ['queue'],
     queryFn: fetchQueue,
-    refetchInterval: 30 * 1000, // 30 seconds
+    refetchInterval: refetchIntervalMs,
+    staleTime: 1000,
     meta: {
       purpose: 'fetching the queue',
     },

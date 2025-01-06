@@ -1,9 +1,15 @@
 <template>
   <PageContainer>
     <Card>
-      <CardHeader>
-        <CardTitle>Queue</CardTitle>
-        <CardDescription>Everything you are waiting for</CardDescription>
+      <CardHeader class="flex flex-row justify-between items-center">
+        <div class="flex flex-col gap-y-1.5">
+          <CardTitle>Queue</CardTitle>
+          <CardDescription>Everything you are waiting for</CardDescription>
+        </div>
+        <div class="mr-2">
+          <span v-if="!isFetching && nextRefetchTime">{{ nextRefetchTime }}</span>
+          <LucideLoaderCircle v-if="isFetching" class="animate-spin" />
+        </div>
       </CardHeader>
       <CardContent v-auto-animate>
         <div v-if="isLoading">Loading data...</div>
@@ -40,14 +46,31 @@
 
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { computed, ref, watch } from 'vue'
+import { formatApproxDuration, formatDuration } from '../lib/utils.ts'
+import { LucideLoaderCircle } from 'lucide-vue-next'
 import PageContainer from '@/components/PageContainer.vue'
 import QueuedTasksOverview from '@/components/QueuedTasksOverview.vue'
-import { formatApproxDuration } from '../lib/utils.ts'
 import { queryQueue } from '@/data/network.ts'
 import { useTimestamp } from '@vueuse/core'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
 
 const currentTime = useTimestamp({ interval: 500 })
+const nextRefetch = ref(Date.now())
 
-const { data: queueResponse, isFetched, isLoading } = queryQueue()
+const { data: queueResponse, isFetched, isLoading, isFetching } = queryQueue(15 * 1000)
+
+const nextRefetchTime = computed(() => {
+  const delta = nextRefetch.value - currentTime.value
+  if (delta < 1000) {
+    return '0s'
+  }
+  return formatDuration(delta)
+})
+
+watch(isFetching, (val) => {
+  if (!val) {
+    nextRefetch.value = Date.now() + 15 * 1000
+  }
+})
 </script>
