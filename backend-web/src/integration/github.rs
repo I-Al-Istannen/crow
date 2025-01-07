@@ -2,14 +2,21 @@ use crate::config::GithubConfig;
 use crate::error::WebError;
 use crate::types::{
     AppState, CreatedExternalRun, ExternalRunId, ExternalRunStatus, QueuedTaskStatus, TaskId,
+    TeamIntegrationToken,
 };
+use base64::{engine::general_purpose::STANDARD as B64, Engine};
+use crypto_box::PublicKey;
 use jsonwebtoken::EncodingKey;
+use octocrab::models::repos::secrets::CreateRepositorySecret;
 use octocrab::models::{
     AppId, Installation, InstallationRepositories, InstallationToken, Repository,
 };
 use octocrab::params::apps::CreateInstallationAccessToken;
 use octocrab::params::checks::{CheckRunConclusion, CheckRunStatus};
+use octocrab::params::repos::Reference;
+use octocrab::repos::RepoHandler;
 use octocrab::Octocrab;
+use rand::rngs::OsRng;
 use snafu::{IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::collections::HashMap;
 use std::fmt;
@@ -223,6 +230,209 @@ impl ClientCrab {
         Ok(())
     }
 
+    async fn init_workflow(
+        &mut self,
+        repo_name: &RepoFullName,
+        workflow_path: &str,
+        workflow_template: &str,
+        team_integration_token: &TeamIntegrationToken,
+    ) -> Result<(), GitHubError> {
+        let crab = self.get_crab().await?;
+        let handler = crab.repos(&repo_name.owner, &repo_name.repo);
+
+        let repo = handler.get().await.context(OctocrabSnafu)?;
+
+        let Some(default_branch) = repo.default_branch else {
+            return Ok(());
+        };
+
+        Self::create_integration_token_secret(&handler, repo_name, team_integration_token).await?;
+
+        let existing = handler
+            .get_content()
+            .path(workflow_path)
+            .r#ref(&default_branch)
+            .send()
+            .await
+            .context(OctocrabSnafu)?;
+        let mut existing_sha = None;
+
+        // Verify we actually need to change anything
+        if !existing.items.is_empty() {
+            info!(
+                owner = repo_name.owner,
+                repo = repo_name.repo,
+                workflow_file = workflow_path,
+                "Workflow file already exists"
+            );
+            let existing = &existing.items[0];
+
+            let existing_content = existing
+                .content
+                .as_ref()
+                .map(|it| it.to_string())
+                .unwrap_or_default();
+            let existing_content = B64.decode(existing_content.trim()).unwrap();
+            let existing_content = String::from_utf8_lossy(&existing_content);
+
+            if existing_content == workflow_template {
+                info!(
+                    owner = repo_name.owner,
+                    repo = repo_name.repo,
+                    workflow_file = workflow_path,
+                    "Workflow already exists and is identical, skipping setup"
+                );
+                return Ok(());
+            }
+
+            info!(
+                owner = repo_name.owner,
+                repo = repo_name.repo,
+                workflow_file = workflow_path,
+                "Workflow already exists and is different, updating"
+            );
+            existing_sha = Some(existing.sha.clone());
+        }
+
+        info!(
+            owner = repo_name.owner,
+            repo = repo_name.repo,
+            workflow_file = workflow_path,
+            "Creating workflow"
+        );
+
+        // Delete potentially existing branch
+        let _ = handler
+            .delete_ref(&Reference::Branch("crow-init".to_string()))
+            .await;
+
+        debug!(
+            owner = repo_name.owner,
+            repo = repo_name.repo,
+            workflow_file = workflow_path,
+            "Deleted potentially existing branch"
+        );
+
+        let current_commit = crab
+            .commits(&repo_name.owner, &repo_name.repo)
+            .get(&default_branch)
+            .await
+            .context(OctocrabSnafu)?;
+
+        debug!(
+            owner = repo_name.owner,
+            repo = repo_name.repo,
+            workflow_file = workflow_path,
+            current_commit = %current_commit.sha,
+            "Got current commit"
+        );
+
+        handler
+            .create_ref(
+                &Reference::Branch("crow-init".to_string()),
+                current_commit.sha,
+            )
+            .await
+            .context(OctocrabSnafu)?;
+
+        debug!(
+            owner = repo_name.owner,
+            repo = repo_name.repo,
+            workflow_file = workflow_path,
+            "Created branch"
+        );
+
+        let update_file_builder = match existing_sha {
+            Some(sha) => handler.update_file(
+                workflow_path,
+                "Update crow workflow integration",
+                workflow_template,
+                &sha,
+            ),
+            None => handler.create_file(
+                workflow_path,
+                "Add crow workflow integration",
+                workflow_template,
+            ),
+        };
+
+        update_file_builder
+            .branch("crow-init")
+            .send()
+            .await
+            .context(OctocrabSnafu)?;
+
+        debug!(
+            owner = repo_name.owner,
+            repo = repo_name.repo,
+            workflow_file = workflow_path,
+            "Created workflow file"
+        );
+
+        let pr = crab
+            .pulls(&repo_name.owner, &repo_name.repo)
+            .create(
+                "Add crow workflow integration",
+                "crow-init",
+                &default_branch,
+            )
+            .send()
+            .await
+            .context(OctocrabSnafu)?;
+
+        debug!(
+            owner = repo_name.owner,
+            repo = repo_name.repo,
+            workflow_file = workflow_path,
+            url = pr
+                .html_url
+                .map(|it| it.to_string())
+                .unwrap_or("unknown url?".to_string()),
+            "Created pull request"
+        );
+
+        Ok(())
+    }
+
+    async fn create_integration_token_secret(
+        handler: &RepoHandler<'_>,
+        repo_name: &RepoFullName,
+        team_integration_token: &TeamIntegrationToken,
+    ) -> Result<(), GitHubError> {
+        info!(
+            owner = repo_name.owner,
+            repo = repo_name.repo,
+            "Creating or updating integration token secret"
+        );
+        let secrets_handler = handler.secrets();
+        let public_key = secrets_handler
+            .get_public_key()
+            .await
+            .context(OctocrabSnafu)?;
+
+        let crypto_pk = {
+            let pk_bytes = B64.decode(public_key.key).unwrap();
+            let pk_array: [u8; crypto_box::KEY_SIZE] = pk_bytes.try_into().unwrap();
+            PublicKey::from(pk_array)
+        };
+        let encrypted_value = crypto_pk
+            .seal(&mut OsRng, team_integration_token.to_string().as_bytes())
+            .unwrap();
+
+        secrets_handler
+            .create_or_update_secret(
+                "CROW_INTEGRATION_TOKEN",
+                &CreateRepositorySecret {
+                    encrypted_value: &B64.encode(&encrypted_value),
+                    key_id: &public_key.key_id,
+                },
+            )
+            .await
+            .context(OctocrabSnafu)?;
+
+        Ok(())
+    }
+
     async fn get_crab(&mut self) -> Result<&Octocrab, GitHubError> {
         if OffsetDateTime::now_utc() > self.expires {
             let (crab, expires) = Self::login(&self.installation, &self.master_crab).await?;
@@ -277,6 +487,24 @@ impl GitHub {
         self.get_client_crab(&data.repo_name)
             .await?
             .finish_check(data)
+            .await
+    }
+
+    pub async fn init_workflow(
+        &mut self,
+        repo_name: &RepoFullName,
+        workflow_path: &str,
+        workflow_template: &str,
+        team_integration_token: &TeamIntegrationToken,
+    ) -> Result<(), GitHubError> {
+        self.get_client_crab(repo_name)
+            .await?
+            .init_workflow(
+                repo_name,
+                workflow_path,
+                workflow_template,
+                team_integration_token,
+            )
             .await
     }
 
@@ -582,7 +810,19 @@ async fn github_iteration(
 
 pub async fn run_github_app(config: GithubConfig, state: AppState) -> Result<(), GitHubError> {
     let check_interval = config.check_interval;
-    let github = GitHub::new(config).await?;
+    let mut github = GitHub::new(config).await?;
+
+    github
+        .init_workflow(
+            &RepoFullName {
+                owner: "I-Al-Istannen".to_string(),
+                repo: "github-app-tests".to_string(),
+            },
+            ".github/workflow/crow.yml",
+            "hello, world!\n",
+            &TeamIntegrationToken::from("hello, world".to_string()),
+        )
+        .await?;
 
     let (tx, rx) = mpsc::channel(10);
 
