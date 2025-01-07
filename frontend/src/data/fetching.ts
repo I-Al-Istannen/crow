@@ -15,14 +15,17 @@ export async function fetchWithError(
   url: string,
   init?: RequestInit,
   extra?: {
-    notFoundIsSuccess: boolean
+    extraSuccessStatus: number[]
   },
 ): Promise<Response> {
   if (!url.startsWith('http')) {
     url = BACKEND_URL + (url.startsWith('/') ? '' : '/') + url
   }
   const response = await fetch(url, init)
-  if (!response.ok && !(extra?.notFoundIsSuccess && response.status === 404)) {
+  if (
+    !response.ok &&
+    !(extra?.extraSuccessStatus && extra.extraSuccessStatus.includes(response.status))
+  ) {
     throw new FetchError(`Failed to fetch: ${response.status}`, response.status)
   }
   return response
@@ -32,7 +35,7 @@ export async function fetchWithAuth(
   url: string,
   init?: RequestInit,
   extra?: {
-    notFoundIsSuccess: boolean
+    extraSuccessStatus: number[]
   },
 ): Promise<Response> {
   const token = useUserStore()?.token

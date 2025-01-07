@@ -16,7 +16,22 @@
         <CardDescription>Add a specific commit of your repository to the queue</CardDescription>
       </CardHeader>
       <CardContent>
-        <SubmitRevision />
+        <Tabs default-value="manual">
+          <TabsList>
+            <TabsTrigger value="manual">Manually</TabsTrigger>
+            <TabsTrigger value="token">By Token</TabsTrigger>
+          </TabsList>
+          <TabsContent value="manual">
+            <SubmitRevision />
+          </TabsContent>
+          <TabsContent value="token">
+            <TeamIntegrationToken
+              v-if="integrationStatus"
+              :team-integration-token="integrationStatus?.token"
+            />
+            <span v-else class="text-muted-foreground text-sm">Not in a team</span>
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   </PageContainer>
@@ -24,18 +39,21 @@
 
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { queryIntegrationStatus, queryRepo } from '@/data/network.ts'
 import PageContainer from '@/components/PageContainer.vue'
 import SetupRepo from '@/components/SetupRepo.vue'
 import SubmitRevision from '@/components/SubmitRevision.vue'
+import TeamIntegrationToken from '@/components/TeamIntegrationToken.vue'
 import { computed } from 'vue'
-import { queryRepo } from '@/data/network.ts'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user.ts'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
-
 
 const { team } = storeToRefs(useUserStore())
 const teamId = computed(() => team.value?.id)
 
 const { data: repo, isFetched, isLoading } = queryRepo(teamId)
+
+const { data: integrationStatus } = queryIntegrationStatus(teamId)
 </script>

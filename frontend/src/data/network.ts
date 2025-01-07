@@ -3,6 +3,8 @@ import {
   FinishedCompilerTaskSchema,
   type FinishedCompilerTaskSummary,
   FinishedCompilerTaskSummarySchema,
+  type IntegrationInfoResponse,
+  IntegrationInfoResponseSchema,
   type QueueResponse,
   QueueResponseSchema,
   type Repo,
@@ -24,7 +26,7 @@ import {
   WorkItemSchema,
 } from '@/types.ts'
 import { QueryClient, useMutation, useQuery } from '@tanstack/vue-query'
-import { computed, type Ref, toRef, toValue } from 'vue'
+import { type Ref, computed, toRef, toValue } from 'vue'
 import type { MaybeRefOrGetter } from '@vueuse/core'
 import { fetchWithAuth } from '@/data/fetching.ts'
 import { storeToRefs } from 'pinia'
@@ -67,7 +69,7 @@ export function queryMyself() {
 
 async function fetchRepo(team: TeamId): Promise<Repo | null> {
   const response = await fetchWithAuth(`/repo/${encodeURIComponent(team)}`, undefined, {
-    notFoundIsSuccess: true,
+    extraSuccessStatus: [404],
   })
   if (response.status === 404) {
     return null
@@ -130,7 +132,7 @@ export function queryRecentTasks(count?: number) {
 
 export async function fetchTask(taskId: TaskId): Promise<FinishedCompilerTask | null> {
   const response = await fetchWithAuth(`/tasks/${encodeURIComponent(taskId)}`, undefined, {
-    notFoundIsSuccess: true,
+    extraSuccessStatus: [404],
   })
   if (response.status === 404) {
     return null
@@ -286,7 +288,7 @@ export async function fetchRunningTaskExists(taskId: TaskId): Promise<boolean> {
     {
       method: 'HEAD',
     },
-    { notFoundIsSuccess: true },
+    { extraSuccessStatus: [404] },
   )
   return response.status === 200
 }
@@ -297,14 +299,14 @@ export async function fetchTaskExists(taskId: TaskId): Promise<boolean> {
     {
       method: 'HEAD',
     },
-    { notFoundIsSuccess: true },
+    { extraSuccessStatus: [404] },
   )
   return response.status === 200
 }
 
 export async function fetchQueuedTask(taskId: TaskId): Promise<WorkItem | null> {
   const response = await fetchWithAuth(`/queue/task/${encodeURIComponent(taskId)}`, undefined, {
-    notFoundIsSuccess: true,
+    extraSuccessStatus: [404],
   })
   if (response.status === 404) {
     return null
@@ -319,7 +321,7 @@ export async function fetchRequestRevision(revision: string): Promise<RequestRev
     {
       method: 'PUT',
     },
-    { notFoundIsSuccess: true },
+    { extraSuccessStatus: [404] },
   )
   if (response.status === 404) {
     return null
@@ -336,5 +338,24 @@ export function mutateRequestRevision(queryClient: QueryClient) {
     meta: {
       purpose: 'requesting a revision',
     },
+  })
+}
+
+export async function fetchIntegrationStatus(): Promise<IntegrationInfoResponse> {
+  const response = await fetchWithAuth('/users/me/integrations', undefined)
+  return IntegrationInfoResponseSchema.parse(await response.json())
+}
+
+export function queryIntegrationStatus(_teamId: MaybeRefOrGetter<TeamId | undefined>) {
+  const enabled = computed(() => !!toRef(_teamId).value)
+  const loggedIn = isLoggedIn()
+
+  return useQuery({
+    queryKey: ['integrations', _teamId],
+    queryFn: fetchIntegrationStatus,
+    meta: {
+      purpose: 'fetching integration status',
+    },
+    enabled: computed(() => enabled.value && loggedIn.value),
   })
 }

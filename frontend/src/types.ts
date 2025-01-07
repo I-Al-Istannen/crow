@@ -3,6 +3,7 @@ import { z } from 'zod'
 export const RunnerIdSchema = z.string()
 export const TaskIdSchema = z.string()
 export const TeamIdSchema = z.string()
+export const TeamIntegrationTokenSchema = z.string()
 export const TestIdSchema = z.string()
 export const UserIdSchema = z.string()
 
@@ -92,6 +93,16 @@ export const FinishedCompilerTaskSummarySchema = z.discriminatedUnion('type', [
     tests: z.array(FinishedTestSummarySchema),
   }),
 ])
+
+// Out of order due to dependencies
+export const GithubIntegrationInfoResponse = z.object({
+  url: z.string().url('Not a valid url'),
+})
+
+export const IntegrationInfoResponseSchema = z.object({
+  token: TeamIntegrationTokenSchema,
+  github: GithubIntegrationInfoResponse,
+})
 
 export const RepoSchema = z.object({
   team: TeamIdSchema,
@@ -185,6 +196,8 @@ export type FinishedExecution = z.infer<typeof FinishedExecutionSchema>
 export type FinishedTaskInfo = z.infer<typeof FinishedTaskInfoSchema>
 export type FinishedTest = z.infer<typeof FinishedTestSchema>
 export type FinishedTestSummary = z.infer<typeof FinishedTestSummarySchema>
+export type GithubIntegrationInfoResponse = z.infer<typeof GithubIntegrationInfoResponse>
+export type IntegrationInfoResponse = z.infer<typeof IntegrationInfoResponseSchema>
 export type InternalError = z.infer<typeof InternalErrorSchema>
 export type QueueResponse = z.infer<typeof QueueResponseSchema>
 export type Repo = z.infer<typeof RepoSchema>
@@ -197,6 +210,7 @@ export type TaskId = z.infer<typeof TaskIdSchema>
 export type Team = z.infer<typeof TeamSchema>
 export type TeamId = z.infer<typeof TeamIdSchema>
 export type TeamInfo = z.infer<typeof TeamInfoSchema>
+export type TeamIntegrationToken = z.infer<typeof TeamIntegrationTokenSchema>
 export type Test = z.infer<typeof TestSchema>
 export type TestId = z.infer<typeof TestIdSchema>
 export type TestSummary = z.infer<typeof TestSummarySchema>
