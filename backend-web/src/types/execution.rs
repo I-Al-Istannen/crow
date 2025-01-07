@@ -267,7 +267,7 @@ pub struct WorkItem {
     pub insert_time: SystemTime,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, From, sqlx::Type)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, From, sqlx::Type)]
 pub enum ExecutionExitStatus {
     Aborted,
     Error,

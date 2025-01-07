@@ -3,11 +3,44 @@ jwt_secret = "A very cool JWT secret."
 
 [execution]
 runner_token = "correct horse battery staple"
-build_command = ["sh", "-c", "echo 'Hello world!'"]
-test_command = ["sh", "-c", "echo 'Hello test!'"]
+build_command = ["sh", "-c", "echo 'Hello world!' && sleep 10"]
+test_command = ["sh", "-c", "echo 'Hello test!' && sleep 10"]
 build_timeout = "5m"
 test_timeout = "10m"
 local_repo_path = "target/repos"
+
+[github]
+check_interval = "10s"
+app_id = 1104229
+app_private_key = """
+-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEAutmm0O0hnOR0GMKUhRHvkAWWCXwwKNxB6emoVCw+25Pgp36B
+5hR7CvXwDM50HzHSoQ9gCa0sggJ/C0CimVpaVzMqkpwujaXsNq54K+pPlhRSrzNy
+Jh5SO3rqnCJufGUcFe0bsYevpR5A14ldw2b/mNWRXuRRYGJB7hDfbdqeiwt3ZkKi
+9uIzUcuTVAjiFb9Tyy/ntEhQgTyKE2m/ytlXBMwL+AFgrHX/IngXzX7roMTIMvCl
+NXV/YySfyQKqhhEx9m1uwf7Nyt8COevLii03fHB0FPTAHSh5J4mAA/61jvFObSvK
+dL+4iOe79vxnNZKGO6DcKndsR4oZ+raN7HWKyQIDAQABAoIBAQCpxPxWtD5oKQJ7
+RMBhL+y0tP6f26B+X7Hb8Jsq75ClPXVPehhYjp9FVDQpzqOffEteX3PpFtlrvwzj
+knSqVXfj5u91ikaaGPnIrTku3ZQ2TnzaBypeDAq3VHU6K+arS8r6+RbCdQBYTGap
+73usATeXC+UrjNOLeXth7R6014BZ4B8uSgB5SynH9CfBDMUDtQ4d1oJhip7cH+ga
+h2/JaZ+3aVtLdUHT76UYEw45wgbLvaUJ5d0vrcCDO5TYiGmbyPkYTZueEdbYohHz
+zF6gjK7h5UqbRMg9AkbAC5gzdV7APMpsrkQhmIk4VMtVyZCp1/KHryD6GR+51+u/
+WwWu3wshAoGBAPU/PzEu4QvWywElkreqXI8bvCqX/QwHGJKIcTp5rT5NSGFgJspa
+THia+RWJacFSHVqBkaCIVvVjzFl15VhcsI+u+YVNdyndHBolcqsFAX3OVi+ZbDDy
+tpIDbEMtidupAtJIeDNvxL64JfUe3IELP5WwDmDH3wbrtKjXVFtam3t1AoGBAMMK
+70LARq9QKB3FcERVPqFILJGg00rYZsIgtIgrCEVSJKsUbM5TZOA0AUyNddWqZ9TX
+VnmzzggN5JU9gFkZhQBXDkvkGKpgIh0zkEWnGCzNL1/ZTTKzFqHI+EFAtWplWDU8
+E9zWyXRFItqinxxCp6HYfrG4wmZcTuViDdEosuuFAoGBAI+p4CO4mX5s8fiXAQ50
+TspKbfzpkgOUuJFGOkYN9y1y6j6Yq8CICxnvdpBmMbxclPNqyVsn4wDW2GNji9kq
+WwegcWzkRzUP4KF0ZGrIgOookBZMIrO9yrNYK/hiWcqChDOY3kkLZU5v41RnIra5
+VyMhwhpxmzWbp/XsRe9J8aDtAoGAUowZMT4hbGdXYypB1pnhdO8P9d6ELoQiEX04
+Cv1zdatLW6C8YCKJah54gkbInVKOuVUeA0onI9+FY+hwnsUfNkKiCVqTWeBv7734
+DJKot6VrrHxSoOeM55IgB7X0UgBscbNokKnS/0OXecMj5hkLy4LONDeHBz2AIrL6
+OBCqkOUCgYBFfJJs/SVbroZIwtkxm5/7kBo+dEa+cVMpFgP/3bC4YpNxsZnpqZb8
+86gg1ExXn8k83gNjfqDw7CHWC+AfSrtnUdEKNCuP8o84oX7HB6n8x/8YEpRKpqs1
+bukK+MRHv3pM81N/3Ju+Ds43WsLGoNwsl66IFN8doGxA7LGVPLEIwQ==
+-----END RSA PRIVATE KEY-----
+"""
 
 [[teams]]
 id = "admin_team"

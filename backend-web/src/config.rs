@@ -9,6 +9,7 @@ pub struct Config {
     pub jwt_secret: String,
     pub teams: Vec<TeamEntry>,
     pub execution: ExecutionConfig,
+    pub github: Option<GithubConfig>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -29,6 +30,14 @@ pub struct ExecutionConfig {
     pub test_timeout: Duration,
 
     pub local_repo_path: PathBuf,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GithubConfig {
+    pub app_id: u64,
+    pub app_private_key: String,
+    #[serde(deserialize_with = "parse_duration")]
+    pub check_interval: Duration,
 }
 
 fn parse_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>

@@ -1,3 +1,4 @@
+mod external;
 mod queue;
 mod repo;
 mod task;
@@ -9,8 +10,9 @@ pub use self::user::UserForAuth;
 use crate::config::TeamEntry;
 use crate::error::{Result, WebError};
 use crate::types::{
-    FinishedCompilerTaskSummary, FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, TeamInfo,
-    Test, TestId, TestSummary, UserId, WorkItem,
+    CreatedExternalRun, ExternalRunId, ExternalRunStatus, FinishedCompilerTaskSummary,
+    FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, TeamInfo, Test, TestId, TestSummary,
+    UserId, WorkItem,
 };
 use shared::FinishedCompilerTask;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
@@ -96,6 +98,11 @@ impl Database {
         repo::get_repo(&mut *pool.acquire().await?, team_id).await
     }
 
+    pub async fn get_repos(&self) -> Result<Vec<Repo>> {
+        let pool = self.read_lock().await;
+        repo::get_repos(&mut *pool.acquire().await?).await
+    }
+
     pub async fn get_team(&self, team_id: &TeamId) -> Result<Team> {
         let pool = self.read_lock().await;
         team::get_team(&mut *pool.acquire().await?, team_id).await
@@ -179,6 +186,30 @@ impl Database {
     pub async fn delete_test(&self, test_id: &TestId) -> Result<()> {
         let pool = self.write_lock().await;
         test::delete_test(&mut *pool.acquire().await?, test_id).await
+    }
+
+    pub async fn add_external_run(&self, run: &CreatedExternalRun) -> Result<()> {
+        let pool = self.write_lock().await;
+        external::add_external_run(&mut *pool.acquire().await?, run).await
+    }
+
+    pub async fn get_external_runs(&self, platform: &str) -> Result<Vec<CreatedExternalRun>> {
+        let pool = self.read_lock().await;
+        external::get_external_runs(&mut *pool.acquire().await?, platform).await
+    }
+
+    pub async fn update_external_run_status(
+        &self,
+        run_id: &ExternalRunId,
+        status: ExternalRunStatus,
+    ) -> Result<bool> {
+        let pool = self.write_lock().await;
+        external::update_external_run_status(&mut *pool.acquire().await?, run_id, status).await
+    }
+
+    pub async fn delete_external_run(&self, run_id: &ExternalRunId) -> Result<bool> {
+        let pool = self.write_lock().await;
+        external::delete_external_run(&mut *pool.acquire().await?, run_id).await
     }
 }
 

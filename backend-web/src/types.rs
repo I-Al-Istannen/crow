@@ -5,6 +5,9 @@ pub use self::execution::RunnerForFrontend;
 pub use self::execution::RunningTaskState;
 pub use self::execution::TaskId;
 pub use self::execution::WorkItem;
+pub use self::external::CreatedExternalRun;
+pub use self::external::ExternalRunId;
+pub use self::external::ExternalRunStatus;
 pub use self::repo::Repo;
 pub use self::task::FinishedCompilerTaskSummary;
 pub use self::test::Test;
@@ -26,6 +29,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
 mod execution;
+mod external;
 mod repo;
 mod task;
 mod test;

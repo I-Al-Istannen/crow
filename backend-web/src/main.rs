@@ -24,6 +24,7 @@ use axum_prometheus::{GenericMetricLayer, Handle, PrometheusMetricLayerBuilder};
 use clap::builder::styling::AnsiColor;
 use clap::builder::Styles;
 use clap::Parser;
+use snafu::Report;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::{env, fs};
@@ -31,7 +32,7 @@ use tokio::select;
 use tokio::signal::unix::{signal, SignalKind};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
-use tracing::{instrument, warn, Instrument, Span};
+use tracing::{error, instrument, warn, Instrument, Span};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{Layer, Registry};
@@ -41,6 +42,7 @@ mod config;
 mod db;
 mod endpoints;
 mod error;
+mod integration;
 mod storage;
 mod types;
 
@@ -115,6 +117,18 @@ async fn main() {
         config.execution,
         LocalRepos::new(local_repo_path),
     );
+
+    if let Some(github_config) = config.github.clone() {
+        let state = state.clone();
+        tokio::spawn(async move {
+            if let Err(e) = integration::run_github_app(github_config, state).await {
+                error!(
+                    error = %Report::from_error(e),
+                    "Fatal error in github handler, functionality disabled"
+                );
+            }
+        });
+    }
 
     let (prometheus_layer, metric_handle) = PrometheusMetricLayerBuilder::new()
         .with_prefix("compilers-backend")

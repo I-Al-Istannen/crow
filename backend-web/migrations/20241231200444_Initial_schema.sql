@@ -53,7 +53,7 @@ CREATE TABLE ExecutionResults
     stdout       TEXT        NOT NULL,
     stderr       TEXT        NOT NULL,
     error        TEXT,
-    result       VARCHAR(30) NOT NULL CHECK (result IN ('Aborted', 'Error', 'Finished', 'Timeout')),
+    result       VARCHAR(30) NOT NULL,
     duration_ms  INTEGER     NOT NULL,
     exit_code    INTEGER
 );
@@ -64,4 +64,17 @@ CREATE TABLE Tests
     name            VARCHAR(255) NOT NULL,
     expected_output TEXT         NOT NULL,
     owner           VARCHAR(36)  NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE ExternalRuns
+(
+    task_id  VARCHAR(36)  NOT NULL,
+    run_id   INTEGER      NOT NULL,
+    platform VARCHAR(30)  NOT NULL,
+    repo     VARCHAR(255) NOT NULL,
+    owner    VARCHAR(255) NOT NULL,
+    revision VARCHAR(40)  NOT NULL,
+    status   VARCHAR(30)  NOT NULL,
+
+    PRIMARY KEY (run_id, platform)
 );

@@ -105,7 +105,8 @@ impl From<GitError> for WebError {
     }
 }
 
-#[derive(Debug, Clone, Display, Serialize, Deserialize)]
+#[derive(Debug, Clone, Display, Serialize, Deserialize, sqlx::Type)]
+#[sqlx(transparent)]
 pub struct RevisionId(String);
 
 #[derive(Debug, Clone)]
