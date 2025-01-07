@@ -65,8 +65,13 @@ export function queryMyself() {
   })
 }
 
-async function fetchRepo(team: TeamId): Promise<Repo> {
-  const response = await fetchWithAuth(`/repo/${encodeURIComponent(team)}`)
+async function fetchRepo(team: TeamId): Promise<Repo | null> {
+  const response = await fetchWithAuth(`/repo/${encodeURIComponent(team)}`, undefined, {
+    notFoundIsSuccess: true,
+  })
+  if (response.status === 404) {
+    return null
+  }
   const json = await response.json()
   return RepoSchema.parse(json)
 }

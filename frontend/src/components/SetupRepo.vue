@@ -66,7 +66,7 @@ const teamId = computed(() => team.value?.id)
 const { mutateAsync, isPending: mutationPending } = mutateRepo(useQueryClient())
 
 const props = defineProps<{
-  repo?: Repo
+  repo?: Repo | null
 }>()
 const { repo } = toRefs(props)
 
