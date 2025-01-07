@@ -1,6 +1,6 @@
 use crate::config::TeamEntry;
 use crate::error::{Result, WebError};
-use crate::types::{Team, TeamId, TeamInfo, User};
+use crate::types::{Team, TeamId, TeamInfo, TeamIntegrationToken, User};
 use sqlx::{query, query_as, Acquire, Sqlite, SqliteConnection};
 use std::collections::HashSet;
 use tracing::{info, info_span, instrument, warn, Instrument};
@@ -38,6 +38,35 @@ pub(super) async fn get_team_info(
     .await?;
 
     Ok(TeamInfo { team, members })
+}
+
+#[instrument(skip_all)]
+pub(super) async fn get_team_integration_token(
+    con: &mut SqliteConnection,
+    team_id: &TeamId,
+) -> Result<TeamIntegrationToken> {
+    Ok(query!(
+        "SELECT token FROM TeamIntegrationTokens WHERE team_id = ?",
+        team_id
+    )
+    .map(|it| it.token.into())
+    .fetch_one(con)
+    .instrument(info_span!("sqlx_get_team_integration_token"))
+    .await?)
+}
+
+#[instrument(skip_all)]
+pub(super) async fn fetch_team_by_integration_token(
+    con: &mut SqliteConnection,
+    token: &TeamIntegrationToken,
+) -> Result<Option<TeamId>> {
+    Ok(query!(
+        r#"SELECT team_id as "team_id!: TeamId" FROM TeamIntegrationTokens WHERE token = ?"#,
+        token
+    )
+    .map(|it| it.team_id)
+    .fetch_optional(con)
+    .await?)
 }
 
 #[instrument(skip_all)]
@@ -79,6 +108,21 @@ pub(super) async fn sync_teams(
                 warn!(user = ?member, team = ?team.id, "User not found when adding to team");
             }
         }
+
+        let new_integration_token = uuid::Uuid::new_v4().to_string();
+        query!(
+            r#"
+            INSERT INTO TeamIntegrationTokens
+                (team_id, token)
+            VALUES
+                (?, ?)
+            ON CONFLICT DO NOTHING
+            "#,
+            team.id,
+            new_integration_token
+        )
+        .execute(&mut *con)
+        .await?;
     }
 
     let existing_teams = query!(r#"SELECT id as "id!" FROM Teams"#)

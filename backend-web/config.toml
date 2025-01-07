@@ -11,6 +11,7 @@ local_repo_path = "target/repos"
 
 [github]
 check_interval = "10s"
+app_name = "crow-test"
 app_id = 1104229
 app_private_key = """
 -----BEGIN RSA PRIVATE KEY-----

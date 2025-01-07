@@ -2,7 +2,7 @@ use crate::auth;
 use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::{Result, WebError};
-use crate::types::{AppState, FullUserForAdmin, OwnUser, Team, User, UserId};
+use crate::types::{AppState, FullUserForAdmin, OwnUser, Team, TeamIntegrationToken, User, UserId};
 use axum::extract::State;
 use serde::{Deserialize, Serialize};
 use tracing::{info, instrument};
@@ -19,6 +19,23 @@ pub async fn show_me_myself(
     };
 
     Ok(Json(MeResponse { user, team }))
+}
+
+#[instrument(skip_all)]
+pub async fn get_integration_status(
+    State(state): State<AppState>,
+    claims: Claims,
+) -> Result<Json<IntegrationInfoResponse>> {
+    let user = state.db.get_user(&claims.sub).await?;
+    let Some(team) = user.user.team else {
+        return Err(WebError::NotInTeam);
+    };
+    let token = state.db.get_team_integration_token(&team).await?;
+    let github = state
+        .github_app_name
+        .map(GithubIntegrationInfoResponse::from_app_name);
+
+    Ok(Json(IntegrationInfoResponse { token, github }))
 }
 
 #[instrument(skip_all)]
@@ -54,6 +71,7 @@ pub async fn login(
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MeResponse {
     pub user: OwnUser,
     pub team: Option<Team>,
@@ -85,4 +103,23 @@ impl UserInfoResponse {
             Some(Self::User(user.into_user()))
         }
     }
+}
+
+#[derive(Debug, Serialize)]
+pub struct GithubIntegrationInfoResponse {
+    pub url: String,
+}
+
+impl GithubIntegrationInfoResponse {
+    pub fn from_app_name(app_name: String) -> Self {
+        Self {
+            url: format!("https://github.com/apps/{app_name}/installations/new"),
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct IntegrationInfoResponse {
+    pub token: TeamIntegrationToken,
+    pub github: Option<GithubIntegrationInfoResponse>,
 }

@@ -1,7 +1,7 @@
 use crate::config::GithubConfig;
 use crate::error::WebError;
 use crate::types::{
-    AppState, CreatedExternalRun, ExecutionExitStatus, ExternalRunId, ExternalRunStatus, TaskId,
+    AppState, CreatedExternalRun, ExternalRunId, ExternalRunStatus, QueuedTaskStatus, TaskId,
 };
 use jsonwebtoken::EncodingKey;
 use octocrab::models::{
@@ -10,7 +10,6 @@ use octocrab::models::{
 use octocrab::params::apps::CreateInstallationAccessToken;
 use octocrab::params::checks::{CheckRunConclusion, CheckRunStatus};
 use octocrab::Octocrab;
-use shared::{ExecutionOutput, FinishedCompilerTask};
 use snafu::{IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::collections::HashMap;
 use std::fmt;
@@ -388,20 +387,6 @@ async fn start_check(
     Ok(())
 }
 
-fn check_run_conclusion_from_output(outputs: Vec<ExecutionOutput>) -> CheckRunConclusion {
-    let status: Vec<ExecutionExitStatus> = outputs.into_iter().map(|it| (&it).into()).collect();
-    if status.iter().any(|it| *it == ExecutionExitStatus::Aborted) {
-        return CheckRunConclusion::Cancelled;
-    }
-    if status.iter().any(|it| *it == ExecutionExitStatus::Error) {
-        return CheckRunConclusion::Failure;
-    }
-    if status.iter().any(|it| *it == ExecutionExitStatus::Timeout) {
-        return CheckRunConclusion::Failure;
-    }
-    CheckRunConclusion::Success
-}
-
 async fn finish_check(
     github: &mut GitHub,
     state: &AppState,
@@ -417,16 +402,14 @@ async fn finish_check(
         Err(WebError::NotFound) => CheckRunConclusion::Stale,
         Err(e) => return Err(OurBackendSnafu.into_error(e)),
         Ok(task) => {
-            let output = match task {
-                FinishedCompilerTask::BuildFailed { build_output, .. } => {
-                    vec![build_output]
-                }
-                FinishedCompilerTask::RanTests { tests, .. } => {
-                    tests.into_iter().map(|it| it.output).collect()
-                }
-            };
-
-            check_run_conclusion_from_output(output)
+            let status: QueuedTaskStatus = task.into();
+            match status {
+                QueuedTaskStatus::Error => CheckRunConclusion::Failure,
+                QueuedTaskStatus::Timeout => CheckRunConclusion::TimedOut,
+                QueuedTaskStatus::Aborted => CheckRunConclusion::Cancelled,
+                QueuedTaskStatus::Success => CheckRunConclusion::Success,
+                _ => CheckRunConclusion::Neutral,
+            }
         }
     };
 

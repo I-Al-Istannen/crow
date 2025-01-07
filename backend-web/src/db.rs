@@ -11,8 +11,8 @@ use crate::config::TeamEntry;
 use crate::error::{Result, WebError};
 use crate::types::{
     CreatedExternalRun, ExternalRunId, ExternalRunStatus, FinishedCompilerTaskSummary,
-    FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, TeamInfo, Test, TestId, TestSummary,
-    UserId, WorkItem,
+    FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, TeamInfo, TeamIntegrationToken, Test,
+    TestId, TestSummary, UserId, WorkItem,
 };
 use shared::FinishedCompilerTask;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
@@ -111,6 +111,22 @@ impl Database {
     pub async fn get_team_info(&self, team_id: &TeamId) -> Result<TeamInfo> {
         let pool = self.read_lock().await;
         team::get_team_info(&mut *pool.acquire().await?, team_id).await
+    }
+
+    pub async fn get_team_integration_token(
+        &self,
+        team_id: &TeamId,
+    ) -> Result<TeamIntegrationToken> {
+        let pool = self.read_lock().await;
+        team::get_team_integration_token(&mut *pool.acquire().await?, team_id).await
+    }
+
+    pub async fn fetch_team_by_integration_token(
+        &self,
+        token: &TeamIntegrationToken,
+    ) -> Result<Option<TeamId>> {
+        let pool = self.read_lock().await;
+        team::fetch_team_by_integration_token(&mut *pool.acquire().await?, token).await
     }
 
     pub async fn sync_teams(&self, teams: &[TeamEntry]) -> Result<()> {

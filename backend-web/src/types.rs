@@ -1,6 +1,7 @@
 pub use self::execution::ExecutionExitStatus;
 pub use self::execution::Executor;
 pub use self::execution::ExecutorInfo;
+pub use self::execution::QueuedTaskStatus;
 pub use self::execution::RunnerForFrontend;
 pub use self::execution::RunningTaskState;
 pub use self::execution::TaskId;
@@ -18,6 +19,7 @@ pub use self::user::OwnUser;
 pub use self::user::Team;
 pub use self::user::TeamId;
 pub use self::user::TeamInfo;
+pub use self::user::TeamIntegrationToken;
 pub use self::user::User;
 pub use self::user::UserId;
 pub use self::user::UserRole;
@@ -45,12 +47,14 @@ pub struct AppState {
     pub execution_config: ExecutionConfig,
     pub executor: Arc<Mutex<Executor>>,
     pub local_repos: LocalRepos,
+    pub github_app_name: Option<String>,
 }
 
 impl AppState {
     pub fn new(
         db: Database,
         jwt_secret: Keys,
+        github_app_name: Option<String>,
         runner_config: ExecutionConfig,
         local_repos: LocalRepos,
     ) -> Self {
@@ -60,6 +64,7 @@ impl AppState {
             execution_config: runner_config,
             executor: Arc::new(Mutex::new(Executor::default())),
             local_repos,
+            github_app_name,
         }
     }
 }

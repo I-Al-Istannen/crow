@@ -2,8 +2,8 @@ use crate::types::{TeamId, TestId};
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
 use shared::{
-    deserialize_system_time, serialize_system_time, ExecutionOutput, FinishedExecution,
-    FinishedTest, RunnerId, RunnerInfo,
+    deserialize_system_time, serialize_system_time, ExecutionOutput, FinishedCompilerTask,
+    FinishedExecution, FinishedTest, RunnerId, RunnerInfo,
 };
 use snafu::{ensure, Location, Snafu};
 use std::collections::{HashMap, HashSet};
@@ -283,5 +283,40 @@ impl From<&ExecutionOutput> for ExecutionExitStatus {
             ExecutionOutput::Finished(_) => Self::Finished,
             ExecutionOutput::Timeout(_) => Self::Timeout,
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum QueuedTaskStatus {
+    Queued,
+    Running,
+    Error,
+    Timeout,
+    Aborted,
+    Success,
+}
+
+impl From<FinishedCompilerTask> for QueuedTaskStatus {
+    fn from(value: FinishedCompilerTask) -> Self {
+        let outputs = match value {
+            FinishedCompilerTask::BuildFailed { build_output, .. } => {
+                vec![build_output]
+            }
+            FinishedCompilerTask::RanTests { tests, .. } => {
+                tests.into_iter().map(|it| it.output).collect()
+            }
+        };
+
+        let status: Vec<ExecutionExitStatus> = outputs.into_iter().map(|it| (&it).into()).collect();
+        if status.iter().any(|it| *it == ExecutionExitStatus::Aborted) {
+            return Self::Aborted;
+        }
+        if status.iter().any(|it| *it == ExecutionExitStatus::Error) {
+            return Self::Error;
+        }
+        if status.iter().any(|it| *it == ExecutionExitStatus::Timeout) {
+            return Self::Error;
+        }
+        Self::Success
     }
 }

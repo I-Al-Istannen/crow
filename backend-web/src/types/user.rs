@@ -6,6 +6,10 @@ use sqlx::FromRow;
 #[sqlx(transparent)]
 pub struct TeamId(String);
 
+#[derive(Debug, Clone, Hash, From, PartialEq, Eq, Display, Serialize, Deserialize, sqlx::Type)]
+#[sqlx(transparent)]
+pub struct TeamIntegrationToken(String);
+
 #[derive(Debug, Clone, Serialize, FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct Team {

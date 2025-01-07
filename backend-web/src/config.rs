@@ -35,6 +35,7 @@ pub struct ExecutionConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct GithubConfig {
     pub app_id: u64,
+    pub app_name: String,
     pub app_private_key: String,
     #[serde(deserialize_with = "parse_duration")]
     pub check_interval: Duration,

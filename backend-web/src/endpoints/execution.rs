@@ -1,11 +1,13 @@
 use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::{Result, WebError};
-use crate::types::{AppState, ExecutorInfo, RunnerForFrontend, TaskId, WorkItem};
+use crate::types::{
+    AppState, ExecutorInfo, QueuedTaskStatus, RunnerForFrontend, TaskId, TeamId, WorkItem,
+};
 use axum::body::Body;
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
-use axum_extra::headers::authorization::Basic;
+use axum_extra::headers::authorization::{Basic, Bearer};
 use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
 use serde::Serialize;
@@ -22,6 +24,60 @@ use tracing::{info, instrument, warn};
 use uuid::Uuid;
 
 #[instrument(skip_all)]
+pub async fn integration_request_revision(
+    State(state): State<AppState>,
+    TypedHeader(Authorization(auth)): TypedHeader<Authorization<Bearer>>,
+    Path(revision): Path<String>,
+) -> Result<Response> {
+    let token = auth.token().to_string().into();
+    let Some(team_id) = state.db.fetch_team_by_integration_token(&token).await? else {
+        return Err(WebError::InvalidCredentials);
+    };
+
+    queue_task(state, &revision, team_id).await
+}
+
+#[instrument(skip_all)]
+pub async fn integration_get_task_status(
+    State(state): State<AppState>,
+    TypedHeader(Authorization(auth)): TypedHeader<Authorization<Bearer>>,
+    Path(task_id): Path<TaskId>,
+) -> Result<Json<IntegrationTaskStatusResponse>> {
+    let token = auth.token().to_string().into();
+    if state
+        .db
+        .fetch_team_by_integration_token(&token)
+        .await?
+        .is_none()
+    {
+        return Err(WebError::InvalidCredentials);
+    };
+
+    if state
+        .executor
+        .lock()
+        .unwrap()
+        .get_running_task(&task_id)
+        .is_some()
+    {
+        return Ok(Json(IntegrationTaskStatusResponse {
+            status: QueuedTaskStatus::Running,
+        }));
+    }
+
+    if state.db.fetch_queued_task(&task_id).await?.is_some() {
+        return Ok(Json(IntegrationTaskStatusResponse {
+            status: QueuedTaskStatus::Queued,
+        }));
+    }
+
+    let task = state.db.get_task(&task_id).await?;
+    Ok(Json(IntegrationTaskStatusResponse {
+        status: task.into(),
+    }))
+}
+
+#[instrument(skip_all)]
 pub async fn request_revision(
     State(state): State<AppState>,
     claims: Claims,
@@ -31,10 +87,14 @@ pub async fn request_revision(
         return Err(WebError::NotInTeam);
     };
 
+    queue_task(state, &revision, team).await
+}
+
+async fn queue_task(state: AppState, revision: &str, team: TeamId) -> Result<Response> {
     // Update repo to ensure revision is present
     let repo = state.db.get_repo(&team).await?;
     state.local_repos.update_repo(&repo).await?;
-    let Some(revision) = state.local_repos.get_revision(&repo, &revision).await? else {
+    let Some(revision) = state.local_repos.get_revision(&repo, revision).await? else {
         return Err(WebError::NotFound);
     };
 
@@ -322,7 +382,14 @@ pub async fn get_work_tar(
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct QueueResponse {
     pub queue: Vec<WorkItem>,
     pub runners: Vec<RunnerForFrontend>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IntegrationTaskStatusResponse {
+    status: QueuedTaskStatus,
 }
