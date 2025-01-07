@@ -19,10 +19,14 @@
         <Tabs default-value="manual">
           <TabsList>
             <TabsTrigger value="manual">Manually</TabsTrigger>
-            <TabsTrigger value="token">By Token</TabsTrigger>
+            <TabsTrigger value="github" v-if="integrationStatus?.github">GitHub App</TabsTrigger>
+            <TabsTrigger value="token">Build your own integration</TabsTrigger>
           </TabsList>
           <TabsContent value="manual">
             <SubmitRevision />
+          </TabsContent>
+          <TabsContent value="github" v-if="integrationStatus?.github">
+            <TeamIntegrationGithub :app-url="integrationStatus?.github.url" />
           </TabsContent>
           <TabsContent value="token">
             <TeamIntegrationToken
@@ -44,6 +48,7 @@ import { queryIntegrationStatus, queryRepo } from '@/data/network.ts'
 import PageContainer from '@/components/PageContainer.vue'
 import SetupRepo from '@/components/SetupRepo.vue'
 import SubmitRevision from '@/components/SubmitRevision.vue'
+import TeamIntegrationGithub from '@/components/TeamIntegrationGithub.vue'
 import TeamIntegrationToken from '@/components/TeamIntegrationToken.vue'
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
