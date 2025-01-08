@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n           task_id as \"task_id!: TaskId\",\n           run_id as \"run_id!: ExternalRunId\",\n           platform,\n           owner,\n           repo,\n           revision,\n           status as \"status!: ExternalRunStatus\"\n        FROM ExternalRuns WHERE platform = ?\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "task_id!: TaskId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "run_id!: ExternalRunId",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "platform",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "owner",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "repo",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "revision",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "status!: ExternalRunStatus",
+        "ordinal": 6,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "a092fb8828d1a1416ea2aa0a77200f7e7defcbaf949ef8041dafac6f13202350"
+}

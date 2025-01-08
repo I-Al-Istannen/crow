@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE ExternalRuns SET status = ? WHERE run_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "2f9464551e268e095acac58c0a056c6ab3b22073daadf79971ccaa5279b988c2"
+}

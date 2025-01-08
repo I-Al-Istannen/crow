@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT team_id as \"team_id!: TeamId\" FROM TeamIntegrationTokens WHERE token = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "team_id!: TeamId",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "c1afd8954648e20a0106857fd62801110c353c9beb123805d6d08b6237f8d1d8"
+}

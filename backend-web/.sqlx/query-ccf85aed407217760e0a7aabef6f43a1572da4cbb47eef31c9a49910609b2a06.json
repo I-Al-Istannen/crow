@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT team, url, auto_fetch FROM Repos",
+  "describe": {
+    "columns": [
+      {
+        "name": "team",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "url",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "auto_fetch",
+        "ordinal": 2,
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "ccf85aed407217760e0a7aabef6f43a1572da4cbb47eef31c9a49910609b2a06"
+}

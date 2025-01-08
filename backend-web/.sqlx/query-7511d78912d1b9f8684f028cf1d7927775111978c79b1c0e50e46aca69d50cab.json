@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO ExternalRuns\n            (task_id, run_id, platform, owner, repo, revision, status)\n        VALUES (?, ?, ?, ?, ?, ?, ?)\n        ON CONFLICT DO UPDATE SET\n            status = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "7511d78912d1b9f8684f028cf1d7927775111978c79b1c0e50e46aca69d50cab"
+}

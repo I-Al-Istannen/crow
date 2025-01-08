@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM ExternalRuns WHERE run_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "f6c23e422e32ea49c2b568ef12872592a75c0ac3dd81c6229a7e577ba97656d9"
+}

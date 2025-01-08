@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO TeamIntegrationTokens\n                (team_id, token)\n            VALUES\n                (?, ?)\n            ON CONFLICT DO NOTHING\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "acb39d736d7616294fe925862a011992782e43152412ef2734c5348083c953eb"
+}
