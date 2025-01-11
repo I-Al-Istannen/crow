@@ -38,7 +38,11 @@ pub struct GithubConfig {
     pub app_name: String,
     pub app_private_key: String,
     #[serde(deserialize_with = "parse_duration")]
-    pub check_interval: Duration,
+    pub status_check_interval: Duration,
+    #[serde(deserialize_with = "parse_duration")]
+    pub workflow_check_interval: Duration,
+    pub workflow_path: String,
+    pub workflow_template: String,
 }
 
 fn parse_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>

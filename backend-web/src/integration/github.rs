@@ -1,9 +1,10 @@
 use crate::config::GithubConfig;
 use crate::error::WebError;
 use crate::types::{
-    AppState, CreatedExternalRun, ExternalRunId, ExternalRunStatus, QueuedTaskStatus, TaskId,
+    AppState, CreatedExternalRun, ExternalRunId, ExternalRunStatus, QueuedTaskStatus, Repo, TaskId,
     TeamIntegrationToken,
 };
+use axum::http;
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use crypto_box::PublicKey;
 use jsonwebtoken::EncodingKey;
@@ -21,10 +22,11 @@ use snafu::{IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::{Display, Formatter};
+use std::sync::Arc;
 use time::OffsetDateTime;
 use tokio::spawn;
 use tokio::sync::mpsc;
-use tracing::{debug, info};
+use tracing::{debug, info, instrument, warn};
 use url::Url;
 
 #[derive(Debug, Snafu)]
@@ -139,6 +141,7 @@ struct ClientCrab {
 }
 
 impl ClientCrab {
+    #[instrument(skip_all)]
     pub async fn new(
         installation: Installation,
         master_crab: Octocrab,
@@ -153,6 +156,7 @@ impl ClientCrab {
         })
     }
 
+    #[instrument(skip_all)]
     async fn login(
         installation: &Installation,
         master_crab: &Octocrab,
@@ -178,6 +182,7 @@ impl ClientCrab {
         Ok((octocrab, expires))
     }
 
+    #[instrument(skip_all)]
     async fn get_repositories(&mut self) -> Result<Vec<Repository>, GitHubError> {
         let installed_repos: InstallationRepositories = self
             .get_crab()
@@ -188,6 +193,7 @@ impl ClientCrab {
         Ok(installed_repos.repositories)
     }
 
+    #[instrument(skip_all)]
     async fn create_check(&mut self, data: CheckCreateData) -> Result<u64, GitHubError> {
         let res = self
             .get_crab()
@@ -203,6 +209,7 @@ impl ClientCrab {
         Ok(*res.id)
     }
 
+    #[instrument(skip_all)]
     async fn start_check(&mut self, data: CheckStartData) -> Result<(), GitHubError> {
         self.get_crab()
             .await?
@@ -216,6 +223,7 @@ impl ClientCrab {
         Ok(())
     }
 
+    #[instrument(skip_all)]
     async fn finish_check(&mut self, data: CheckFinishData) -> Result<(), GitHubError> {
         self.get_crab()
             .await?
@@ -230,6 +238,7 @@ impl ClientCrab {
         Ok(())
     }
 
+    #[instrument(skip_all)]
     async fn init_workflow(
         &mut self,
         repo_name: &RepoFullName,
@@ -253,19 +262,30 @@ impl ClientCrab {
             .path(workflow_path)
             .r#ref(&default_branch)
             .send()
-            .await
-            .context(OctocrabSnafu)?;
+            .await;
+        let existing = match existing {
+            Ok(mut it) => it.take_items(),
+            Err(octocrab::Error::GitHub {
+                source:
+                    octocrab::GitHubError {
+                        status_code: http::StatusCode::NOT_FOUND,
+                        ..
+                    },
+                ..
+            }) => vec![],
+            Err(e) => return Err(OctocrabSnafu.into_error(e)),
+        };
         let mut existing_sha = None;
 
         // Verify we actually need to change anything
-        if !existing.items.is_empty() {
+        if !existing.is_empty() {
             info!(
                 owner = repo_name.owner,
                 repo = repo_name.repo,
                 workflow_file = workflow_path,
                 "Workflow file already exists"
             );
-            let existing = &existing.items[0];
+            let existing = &existing[0];
 
             let existing_content = existing
                 .content
@@ -394,6 +414,7 @@ impl ClientCrab {
         Ok(())
     }
 
+    #[instrument(skip_all)]
     async fn create_integration_token_secret(
         handler: &RepoHandler<'_>,
         repo_name: &RepoFullName,
@@ -465,6 +486,7 @@ impl GitHub {
         })
     }
 
+    #[instrument(skip_all)]
     pub async fn create_check(
         &mut self,
         data: CheckCreateData,
@@ -476,6 +498,7 @@ impl GitHub {
             .map(|it| it.into())
     }
 
+    #[instrument(skip_all)]
     pub async fn start_check(&mut self, data: CheckStartData) -> Result<(), GitHubError> {
         self.get_client_crab(&data.repo_name)
             .await?
@@ -483,6 +506,7 @@ impl GitHub {
             .await
     }
 
+    #[instrument(skip_all)]
     pub async fn finish_check(&mut self, data: CheckFinishData) -> Result<(), GitHubError> {
         self.get_client_crab(&data.repo_name)
             .await?
@@ -490,6 +514,7 @@ impl GitHub {
             .await
     }
 
+    #[instrument(skip_all)]
     pub async fn init_workflow(
         &mut self,
         repo_name: &RepoFullName,
@@ -508,6 +533,7 @@ impl GitHub {
             .await
     }
 
+    #[instrument(skip_all)]
     async fn get_client_crab(
         &mut self,
         repo_full_name: &RepoFullName,
@@ -563,6 +589,7 @@ pub enum EventForGithub {
     },
 }
 
+#[instrument(skip_all)]
 async fn create_check(
     github: &mut GitHub,
     state: &AppState,
@@ -595,6 +622,7 @@ async fn create_check(
     Ok(())
 }
 
+#[instrument(skip_all)]
 async fn start_check(
     github: &mut GitHub,
     state: &AppState,
@@ -615,6 +643,7 @@ async fn start_check(
     Ok(())
 }
 
+#[instrument(skip_all)]
 async fn finish_check(
     github: &mut GitHub,
     state: &AppState,
@@ -679,22 +708,23 @@ async fn finish_check(
     Ok(())
 }
 
+#[instrument(skip_all)]
 async fn drain_github_events(
-    mut github: GitHub,
+    github: Arc<tokio::sync::Mutex<GitHub>>,
     state: AppState,
     mut rx: mpsc::Receiver<EventForGithub>,
 ) {
     while let Some(event) = rx.recv().await {
         debug!(event = ?event, "Processing event");
-
+        let github = &mut github.lock().await;
         let res = match event.clone() {
-            EventForGithub::Queued(data) => create_check(&mut github, &state, data).await,
-            EventForGithub::Running(data) => start_check(&mut github, &state, data).await,
+            EventForGithub::Queued(data) => create_check(github, &state, data).await,
+            EventForGithub::Running(data) => start_check(github, &state, data).await,
             EventForGithub::Finished {
                 repo_name,
                 check_run_id,
                 task_id,
-            } => finish_check(&mut github, &state, repo_name, check_run_id, task_id).await,
+            } => finish_check(github, &state, repo_name, check_run_id, task_id).await,
         };
 
         if let Err(e) = res {
@@ -703,6 +733,7 @@ async fn drain_github_events(
     }
 }
 
+#[instrument(skip_all)]
 async fn github_iteration(
     tx: &mpsc::Sender<EventForGithub>,
     state: &AppState,
@@ -808,29 +839,98 @@ async fn github_iteration(
     Ok(())
 }
 
-pub async fn run_github_app(config: GithubConfig, state: AppState) -> Result<(), GitHubError> {
-    let check_interval = config.check_interval;
-    let mut github = GitHub::new(config).await?;
-
+#[instrument(skip_all)]
+async fn init_workflow_single_repo(
+    state: &AppState,
+    github: &mut GitHub,
+    repo: &Repo,
+    repo_name: &RepoFullName,
+    config: &GithubConfig,
+) -> Result<(), GitHubError> {
+    let integration_token = state
+        .db
+        .get_team_integration_token(&repo.team)
+        .await
+        .context(OurBackendSnafu)?;
     github
         .init_workflow(
-            &RepoFullName {
-                owner: "I-Al-Istannen".to_string(),
-                repo: "github-app-tests".to_string(),
-            },
-            ".github/workflow/crow.yml",
-            "hello, world!\n",
-            &TeamIntegrationToken::from("hello, world".to_string()),
+            repo_name,
+            &config.workflow_path,
+            &config.workflow_template,
+            &integration_token,
         )
         .await?;
+    Ok(())
+}
+
+#[instrument(skip_all)]
+async fn init_workflow_iteration(
+    config: &GithubConfig,
+    github: Arc<tokio::sync::Mutex<GitHub>>,
+    state: &AppState,
+) -> Result<(), GitHubError> {
+    for repo in state.db.get_repos().await.context(OurBackendSnafu)? {
+        debug!(repo = ?repo, "Checking workflow integration");
+        if let Some(repo_name) = RepoFullName::from_url(&repo.url) {
+            debug!(repo = ?repo_name, "Updating workflow");
+
+            let github = &mut github.lock().await;
+            if let Err(e) =
+                init_workflow_single_repo(state, github, &repo, &repo_name, config).await
+            {
+                warn!(
+                    error = %Report::from_error(e),
+                    repo_name = %repo_name,
+                    team_id = %repo.team,
+                    "Failed to update workflow integration"
+                );
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[instrument(skip_all)]
+async fn update_workflow_task(
+    github: Arc<tokio::sync::Mutex<GitHub>>,
+    config: GithubConfig,
+    state: AppState,
+) {
+    loop {
+        info!("Checking for workflow updates");
+
+        let res = init_workflow_iteration(&config, github.clone(), &state).await;
+        if let Err(e) = res {
+            warn!(error = %Report::from_error(e), "Failed to check for workflow updates");
+        }
+        tokio::time::sleep(config.workflow_check_interval).await;
+    }
+}
+
+#[instrument(skip_all)]
+pub async fn run_github_app(config: GithubConfig, state: AppState) -> Result<(), GitHubError> {
+    info!("Starting github app integration");
+    let github = GitHub::new(config.clone()).await?;
+    let github = Arc::new(tokio::sync::Mutex::new(github));
 
     let (tx, rx) = mpsc::channel(10);
 
-    spawn(drain_github_events(github, state.clone(), rx));
+    spawn(drain_github_events(github.clone(), state.clone(), rx));
+    spawn(update_workflow_task(
+        github.clone(),
+        config.clone(),
+        state.clone(),
+    ));
 
     loop {
-        github_iteration(&tx, &state).await?;
+        debug!("Starting github status iteration");
 
-        tokio::time::sleep(check_interval).await;
+        let res = github_iteration(&tx, &state).await;
+        if let Err(e) = res {
+            warn!(error = %Report::from_error(e), "Failed to perform github status iteration");
+        }
+
+        tokio::time::sleep(config.status_check_interval).await;
     }
 }
