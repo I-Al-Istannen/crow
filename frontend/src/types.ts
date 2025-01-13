@@ -53,6 +53,7 @@ export const FinishedTaskInfoSchema = z.object({
   end: z.number().transform((ms) => new Date(ms)),
   teamId: TeamIdSchema,
   revisionId: z.string(),
+  commitMessage: z.string(),
 })
 
 // Out of order due to dependencies

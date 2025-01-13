@@ -62,7 +62,8 @@ const data = computed(() => {
   return allData.value.filter(
     (task) =>
       task.info.taskId.includes(searchTerm.value) ||
-      task.info.revisionId.includes(searchTerm.value),
+      task.info.revisionId.includes(searchTerm.value) ||
+      task.info.commitMessage.includes(searchTerm.value),
   )
 })
 

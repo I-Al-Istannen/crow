@@ -5,7 +5,10 @@
       :class="['rounded-xl', 'border', 'bg-card', 'text-card-foreground']"
     >
       <span class="flex flex-col justify-center">
-        <span class="mb-1 font-medium">{{ task.info.revisionId }}</span>
+        <span class="mb-1">
+          <span class="text-muted-foreground">{{ task.info.revisionId.substring(0, 8) }}: </span>
+          <span class="font-medium">{{ task.info.commitMessage }}</span>
+        </span>
         <TaskQuickOverview class="text-sm" :task="task" />
       </span>
       <span class="text-sm text-muted-foreground flex flex-col justify-center items-end">
