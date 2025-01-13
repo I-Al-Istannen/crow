@@ -118,7 +118,7 @@ watch(
       // To do this, we fix the first item. It will always appear in the resulting list.
       const oldFirstItem = (oldPage - 1) * oldItemsPerPage!
       currentPage.value = Math.floor(oldFirstItem / itemsPerPage) + 1
-      return
+      newPage = currentPage.value
     }
 
     const start = Math.max(0, newPage - 1) * itemsPerPage
