@@ -47,10 +47,9 @@ pub(super) async fn patch_or_create_repo(
         VALUES
             (?, ?)
         ON CONFLICT DO UPDATE SET
-          url = ?
+          url = excluded.url
         "#,
         team_id,
-        repo_url,
         repo_url,
     )
     .execute(&mut *con)

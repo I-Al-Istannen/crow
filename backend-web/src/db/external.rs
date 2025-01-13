@@ -13,14 +13,14 @@ pub(crate) async fn add_external_run(
             (task_id, run_id, platform, owner, repo, revision, status)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT DO UPDATE SET
-            status = ?"#,
+            status = excluded.status
+        "#,
         run.task_id,
         run_id,
         run.platform,
         run.owner,
         run.repo,
         run.revision,
-        run.status,
         run.status,
     )
     .execute(con)

@@ -21,8 +21,8 @@ CREATE TABLE TeamIntegrationTokens
 
 CREATE TABLE Repos
 (
-    team       VARCHAR(36)  NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
-    url        VARCHAR(255) NOT NULL
+    team VARCHAR(36)  NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    url  VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE Queue
@@ -68,7 +68,8 @@ CREATE TABLE Tests
     id              VARCHAR(36) PRIMARY KEY,
     name            VARCHAR(255) NOT NULL,
     expected_output TEXT         NOT NULL,
-    owner           VARCHAR(36)  NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE
+    owner           VARCHAR(36)  NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    admin_authored  BOOLEAN      NOT NULL
 );
 
 CREATE TABLE ExternalRuns

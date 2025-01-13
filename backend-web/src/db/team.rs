@@ -89,9 +89,8 @@ pub(super) async fn sync_teams(
             VALUES
                 (?, ?)
             ON CONFLICT DO UPDATE SET
-                display_name = ?"#,
+                display_name = excluded.display_name"#,
             team.id,
-            team.display_name,
             team.display_name
         )
         .execute(&mut *con)

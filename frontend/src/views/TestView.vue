@@ -18,29 +18,39 @@
         <div v-if="isLoading">Loading tests...</div>
         <div v-if="isFetched && tests === undefined">Loading failed</div>
         <div v-if="isFetched && tests !== undefined">
-          <Accordion type="multiple" v-model="expandedTests">
-            <AccordionItem v-for="test in displayedTests" :key="test.id" :value="test.id">
-              <AccordionTrigger>
-                <span>
-                  {{ test.name }}
-                  <span class="text-sm text-muted-foreground ml-2">by {{ test.creatorName }}</span>
-                </span>
-                <span class="flex flex-grow justify-end mr-2" v-if="canEdit(test)">
-                  <Button
-                    variant="ghost"
-                    class="h-full p-2 -m-2"
-                    @click.stop="openEditDialog(test)"
-                    :disabled="testToEditLoading"
-                  >
-                    <LucidePencil :size="16" :class="{ 'animate-spin': testToEditLoading }" />
-                  </Button>
-                </span>
-              </AccordionTrigger>
-              <AccordionContent>
-                <TestDetail :test-id="test.id" />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          <TooltipProvider>
+            <Accordion type="multiple" v-model="expandedTests">
+              <AccordionItem v-for="test in displayedTests" :key="test.id" :value="test.id">
+                <AccordionTrigger>
+                  <span class="flex items-center">
+                    {{ test.name }}
+                    <span class="text-sm text-muted-foreground ml-2"
+                      >by {{ test.creatorName }}</span
+                    >
+                    <Tooltip v-if="test.adminAuthored">
+                      <TooltipTrigger as-child>
+                        <LucideBadgeCheck class="ml-2" :size="16" />
+                      </TooltipTrigger>
+                      <TooltipContent>Created by an administrator</TooltipContent>
+                    </Tooltip>
+                  </span>
+                  <span class="flex flex-grow justify-end mr-2" v-if="canEdit(test)">
+                    <Button
+                      variant="ghost"
+                      class="h-full p-2 -m-2"
+                      @click.stop="openEditDialog(test)"
+                      :disabled="testToEditLoading"
+                    >
+                      <LucidePencil :size="16" :class="{ 'animate-spin': testToEditLoading }" />
+                    </Button>
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <TestDetail :test-id="test.id" />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </TooltipProvider>
 
           <div v-if="tests.length === 0" class="text-muted-foreground text-sm mb-2">
             No tests yet. Create some!
@@ -65,11 +75,12 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { LucideBadgeCheck, LucidePencil } from 'lucide-vue-next'
 import type { Test, TestSummary } from '@/types.ts'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { fetchTestDetail, queryTests } from '@/data/network.ts'
 import { ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
-import { LucidePencil } from 'lucide-vue-next'
 import PageContainer from '@/components/PageContainer.vue'
 import PaginationControls from '@/components/PaginationControls.vue'
 import SetTestDialog from '@/components/SetTestDialog.vue'

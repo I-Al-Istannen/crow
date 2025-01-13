@@ -42,6 +42,7 @@ pub async fn set_test(
             name: payload.name,
             expected_output: payload.expected_output,
             owner: team,
+            admin_authored: claims.is_admin(),
         })
         .await?,
     ))

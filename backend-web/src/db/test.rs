@@ -8,17 +8,19 @@ pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<T
     query!(
         r#"
         INSERT INTO Tests 
-            (id, name, expected_output, owner)
+            (id, name, expected_output, owner, admin_authored)
         VALUES
-            (?, ?, ?, ?)
+            (?, ?, ?, ?, ?)
         ON CONFLICT DO UPDATE SET
             name = excluded.name,
-            expected_output = excluded.expected_output
+            expected_output = excluded.expected_output,
+            admin_authored = excluded.admin_authored
         "#,
         test.id,
         test.name,
         test.expected_output,
-        test.owner
+        test.owner,
+        test.admin_authored
     )
     .execute(&mut *con)
     .instrument(info_span!("sqlx_add_test"))
@@ -31,7 +33,8 @@ pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<T
             id as "id!: TestId",
             name,
             expected_output,
-            owner as "owner!: TeamId"
+            owner as "owner!: TeamId",
+            admin_authored
         FROM Tests
         WHERE id = ?"#,
         test.id
@@ -52,7 +55,8 @@ pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>> {
             id as "id!: TestId",
             name,
             expected_output,
-            owner as "owner!: TeamId"
+            owner as "owner!: TeamId",
+            admin_authored
         FROM Tests
         "#
     )
@@ -70,7 +74,8 @@ pub(super) async fn get_tests_summaries(con: &mut SqliteConnection) -> Result<Ve
             Tests.id as "id!: TestId",
             Tests.name,
             Teams.display_name as "creator_name",
-            Teams.id as "creator_id!: TeamId"
+            Teams.id as "creator_id!: TeamId",
+            Tests.admin_authored
         FROM Tests
         JOIN Teams ON Tests.owner = Teams.id
         "#
@@ -92,7 +97,8 @@ pub(super) async fn fetch_test(
             id as "id!: TestId",
             name,
             expected_output,
-            owner as "owner!: TeamId"
+            owner as "owner!: TeamId",
+            admin_authored
         FROM Tests
         WHERE id = ?
         "#,

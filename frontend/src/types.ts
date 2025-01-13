@@ -171,6 +171,7 @@ export const TestSchema = z.object({
   name: z.string(),
   expectedOutput: z.string(),
   owner: TeamIdSchema,
+  adminAuthored: z.boolean(),
 })
 
 export const TeamInfoSchema = z.object({
@@ -183,6 +184,7 @@ export const TestSummarySchema = z.object({
   name: z.string(),
   creatorId: TeamIdSchema,
   creatorName: z.string(),
+  adminAuthored: z.boolean(),
 })
 
 export type AbortedExecution = z.infer<typeof AbortedExecutionSchema>
