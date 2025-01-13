@@ -42,6 +42,10 @@
             </AccordionItem>
           </Accordion>
 
+          <div v-if="tests.length === 0" class="text-muted-foreground text-sm mb-2">
+            No tests yet. Create some!
+          </div>
+
           <PaginationControls
             class="mt-4"
             :data="tests"

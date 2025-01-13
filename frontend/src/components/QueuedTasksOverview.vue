@@ -1,5 +1,5 @@
 <template>
-  <Table>
+  <Table v-if="queue.length > 0">
     <TableHeader>
       <TableHead>Position</TableHead>
       <TableHead>Revision</TableHead>
@@ -39,6 +39,9 @@
       </TableRow>
     </TableBody>
   </Table>
+  <div v-else class="text-muted-foreground text-sm mb-2">
+    The queue is empty! The perfect time for you to submit something :)
+  </div>
 </template>
 
 <script setup lang="ts">
