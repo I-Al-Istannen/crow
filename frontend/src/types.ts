@@ -118,6 +118,7 @@ export const WorkItemSchema = z.object({
   id: TaskIdSchema,
   team: TeamIdSchema,
   revision: z.string(),
+  commitMessage: z.string(),
   insertTime: z.number().transform((ms) => new Date(ms)),
 })
 

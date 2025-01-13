@@ -2,6 +2,7 @@
   <Table v-if="queue.length > 0">
     <TableHeader>
       <TableHead>Position</TableHead>
+      <TableHead>Commit</TableHead>
       <TableHead>Revision</TableHead>
       <TableHead>Team</TableHead>
       <TableHead>Queued since</TableHead>
@@ -21,7 +22,10 @@
           {{ index + 1 }}
         </TableCell>
         <TableCell>
-          {{ item.revision }}
+          {{ item.commitMessage.substring(0, 60) }}
+        </TableCell>
+        <TableCell>
+          {{ item.revision.substring(0, 8) }}
         </TableCell>
         <TableCell>
           {{ item.team }}
