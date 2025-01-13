@@ -35,7 +35,6 @@ import { z } from 'zod'
 
 type RepoPatch = {
   repoUrl: string
-  autoFetch: boolean
 }
 
 type TestPatch = {

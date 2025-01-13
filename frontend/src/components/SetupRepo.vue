@@ -14,20 +14,6 @@
         <FormMessage />
       </FormItem>
     </FormField>
-    <FormField v-slot="{ value, handleChange }" name="autoFetch" :validate-on-input="true">
-      <FormItem class="flex flex-row items-start gap-x-3 space-y-0">
-        <FormControl>
-          <Checkbox :checked="value" @update:checked="handleChange" />
-        </FormControl>
-        <div class="space-y-1 leading-none">
-          <FormLabel>Automatic fetching</FormLabel>
-          <FormDescription>
-            Whether to automatically check for (and test) new commits
-          </FormDescription>
-          <FormMessage />
-        </div>
-      </FormItem>
-    </FormField>
     <Button type="submit" :disabled="mutationPending">
       <LoaderCircle class="animate-spin mr-2 -ml-2" v-if="mutationPending" />
       Submit
@@ -46,7 +32,6 @@ import {
 } from '@/components/ui/form'
 import { computed, toRefs, watch } from 'vue'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { LoaderCircle } from 'lucide-vue-next'
 import type { Repo } from '@/types.ts'
@@ -74,12 +59,10 @@ const form = useForm({
   validationSchema: toTypedSchema(
     z.object({
       repoUrl: z.string().url('invalid url'),
-      autoFetch: z.boolean(),
     }),
   ),
   initialValues: {
     repoUrl: repo.value?.url,
-    autoFetch: repo.value?.autoFetch,
   },
 })
 
@@ -87,7 +70,6 @@ watch(repo, () => {
   form.resetForm({
     values: {
       repoUrl: repo.value?.url,
-      autoFetch: repo.value?.autoFetch,
     },
   })
 })
@@ -101,7 +83,6 @@ const onSubmit = form.handleSubmit(async (values) => {
     teamId.value,
     {
       repoUrl: values.repoUrl,
-      autoFetch: values.autoFetch,
     },
   ])
 

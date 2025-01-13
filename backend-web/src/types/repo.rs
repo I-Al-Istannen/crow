@@ -6,5 +6,4 @@ use serde::Serialize;
 pub struct Repo {
     pub team: TeamId,
     pub url: String,
-    pub auto_fetch: bool,
 }

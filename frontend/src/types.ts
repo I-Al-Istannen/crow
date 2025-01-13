@@ -107,7 +107,6 @@ export const IntegrationInfoResponseSchema = z.object({
 export const RepoSchema = z.object({
   team: TeamIdSchema,
   url: z.string().url('The repo URL is invalid'),
-  autoFetch: z.boolean(),
 })
 
 export const RequestRevisionSchema = z.object({

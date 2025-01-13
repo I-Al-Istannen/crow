@@ -12,18 +12,12 @@
         "name": "url",
         "ordinal": 1,
         "type_info": "Text"
-      },
-      {
-        "name": "auto_fetch",
-        "ordinal": 2,
-        "type_info": "Bool"
       }
     ],
     "parameters": {
       "Right": 1
     },
     "nullable": [
-      false,
       false,
       false
     ]

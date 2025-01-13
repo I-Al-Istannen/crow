@@ -30,7 +30,7 @@ pub async fn set_team_repo(
 
     let repo = state
         .db
-        .set_team_repo(&target_team, &payload.repo_url, payload.auto_fetch)
+        .set_team_repo(&target_team, &payload.repo_url)
         .await?;
     state.local_repos.update_repo(&repo).await?;
 
@@ -109,5 +109,4 @@ pub async fn get_team_info(
 #[serde(rename_all = "camelCase")]
 pub struct TeamPatchPayload {
     pub repo_url: String,
-    pub auto_fetch: bool,
 }

@@ -26,7 +26,7 @@ pub(super) async fn get_repo(con: &mut SqliteConnection, team_id: &TeamId) -> Re
 
 #[instrument(skip_all)]
 pub(super) async fn get_repos(con: &mut SqliteConnection) -> Result<Vec<Repo>> {
-    Ok(query_as!(Repo, "SELECT team, url, auto_fetch FROM Repos")
+    Ok(query_as!(Repo, "SELECT team, url FROM Repos")
         .fetch_all(con)
         .instrument(info_span!("sqlx_get_repos"))
         .await?)
@@ -37,25 +37,21 @@ pub(super) async fn patch_or_create_repo(
     con: impl Acquire<'_, Database = Sqlite>,
     team_id: &TeamId,
     repo_url: &str,
-    auto_fetch: bool,
 ) -> Result<Repo> {
     let mut con = con.begin().await?;
 
     query!(
         r#"
         INSERT INTO Repos
-            (team, url, auto_fetch)
+            (team, url)
         VALUES
-            (?, ?, ?)
+            (?, ?)
         ON CONFLICT DO UPDATE SET
-          url = ?,
-          auto_fetch = ?
+          url = ?
         "#,
         team_id,
         repo_url,
-        auto_fetch,
         repo_url,
-        auto_fetch
     )
     .execute(&mut *con)
     .instrument(info_span!("sqlx_update_insert_repo"))

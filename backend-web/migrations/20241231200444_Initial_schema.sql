@@ -22,8 +22,7 @@ CREATE TABLE TeamIntegrationTokens
 CREATE TABLE Repos
 (
     team       VARCHAR(36)  NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
-    url        VARCHAR(255) NOT NULL,
-    auto_fetch BOOLEAN      NOT NULL DEFAULT TRUE
+    url        VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE Queue

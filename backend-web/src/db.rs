@@ -87,10 +87,9 @@ impl Database {
         &self,
         team_id: &TeamId,
         repo_url: &str,
-        auto_fetch: bool,
     ) -> Result<Repo> {
         let pool = self.write_lock().await;
-        repo::patch_or_create_repo(&*pool, team_id, repo_url, auto_fetch).await
+        repo::patch_or_create_repo(&*pool, team_id, repo_url).await
     }
 
     pub async fn get_repo(&self, team_id: &TeamId) -> Result<Repo> {
