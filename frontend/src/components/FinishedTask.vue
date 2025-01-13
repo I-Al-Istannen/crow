@@ -1,8 +1,14 @@
 <template>
   <Card>
     <CardHeader class="pb-2">
-      <CardTitle>Task summary</CardTitle>
-      <CardDescription>A quick summary of the most important points</CardDescription>
+      <CardTitle>
+        <span v-if="taskSummary">{{ taskSummary.info.commitMessage }}</span>
+        <span v-else>Task summary</span>
+      </CardTitle>
+      <CardDescription>
+        <span v-if="taskSummary">{{ taskSummary.info.revisionId }}</span>
+        <span v-else>A quick summary of the most important points</span>
+      </CardDescription>
     </CardHeader>
     <CardContent v-if="isLoading">Loading task data...</CardContent>
     <CardContent v-if="isFetched && task === null">

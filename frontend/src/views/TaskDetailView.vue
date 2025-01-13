@@ -8,8 +8,14 @@
     />
     <Card v-else>
       <CardHeader class="pb-2">
-        <CardTitle>Task detail</CardTitle>
-        <CardDescription>View information about running or finished tasks</CardDescription>
+        <CardTitle>
+          <span v-if="queuedTask">{{ queuedTask.commitMessage }}</span>
+          <span v-else>Task detail</span>
+        </CardTitle>
+        <CardDescription>
+          <span v-if="queuedTask">{{ queuedTask.revision }}</span>
+          <span v-else>View information about running or finished tasks</span>
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div v-if="hasTriedFetching && taskStatus === null">
