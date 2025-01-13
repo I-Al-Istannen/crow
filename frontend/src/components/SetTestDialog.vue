@@ -11,31 +11,33 @@
       </DialogHeader>
       <div>
         <form novalidate @submit="onSubmit" class="space-y-4">
-          <FormField v-slot="{ componentField }" name="name" :validate-on-input="true">
-            <FormItem v-auto-animate>
-              <FormLabel class="text-sm font-medium">Test display name</FormLabel>
-              <FormControl>
-                <Input type="text" placeholder="Cool test" v-bind="componentField" />
-              </FormControl>
-              <FormDescription>A descriptive name for your test</FormDescription>
-              <FormMessage />
-            </FormItem>
-          </FormField>
-          <FormField v-slot="{ componentField }" name="id" :validate-on-input="true">
-            <FormItem v-auto-animate>
-              <FormLabel class="text-sm font-medium">Test ID</FormLabel>
-              <FormControl>
-                <Input
-                  :disabled="!!testToEdit"
-                  type="text"
-                  placeholder="cool-test"
-                  v-bind="componentField"
-                />
-              </FormControl>
-              <FormDescription>A unique alpha-numeric identifier for your test</FormDescription>
-              <FormMessage />
-            </FormItem>
-          </FormField>
+          <div class="flex gap-2 items-start">
+            <FormField v-slot="{ componentField }" name="name" :validate-on-input="true">
+              <FormItem v-auto-animate class="flex-grow">
+                <FormLabel class="text-sm font-medium">Test display name</FormLabel>
+                <FormControl>
+                  <Input type="text" placeholder="Cool test" v-bind="componentField" />
+                </FormControl>
+                <FormDescription>A descriptive name for your test</FormDescription>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+            <FormField v-slot="{ componentField }" name="id" :validate-on-input="true">
+              <FormItem v-auto-animate class="flex-grow">
+                <FormLabel class="text-sm font-medium">Test ID</FormLabel>
+                <FormControl>
+                  <Input
+                    :disabled="!!testToEdit"
+                    type="text"
+                    placeholder="cool-test"
+                    v-bind="componentField"
+                  />
+                </FormControl>
+                <FormDescription>A unique alpha-numeric identifier for your test</FormDescription>
+                <FormMessage />
+              </FormItem>
+            </FormField>
+          </div>
           <FormField v-slot="{ componentField }" name="expectedOutput" :validate-on-input="true">
             <FormItem v-auto-animate>
               <FormLabel class="text-sm font-medium">Expected output</FormLabel>
@@ -142,7 +144,7 @@ const form = useForm({
         .string()
         .min(3, 'Please give the test a descriptive id')
         .max(40, 'That id is a bit long, don’t you think?')
-        .regex(/^[a-zA-Z0-9]+$/, 'Only alphanumeric characters are allowed')
+        .regex(/^[a-zA-Z0-9_-]+$/, 'Only alphanumeric characters are allowed')
         .refine((id) => !idTaken(id), 'This test id already exists'),
       expectedOutput: z
         .string()
