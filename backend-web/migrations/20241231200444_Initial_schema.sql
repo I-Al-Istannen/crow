@@ -27,20 +27,22 @@ CREATE TABLE Repos
 
 CREATE TABLE Queue
 (
-    id          VARCHAR(36) PRIMARY KEY,
-    team        VARCHAR(36)  NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
-    revision    VARCHAR(255) NOT NULL,
-    insert_time INTEGER      NOT NULL
+    id             VARCHAR(36) PRIMARY KEY,
+    team           VARCHAR(36)  NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    revision       VARCHAR(255) NOT NULL,
+    commit_message VARCHAR(120) NOT NULL,
+    insert_time    INTEGER      NOT NULL
 );
 
 CREATE TABLE Tasks
 (
-    task_id      VARCHAR(36) PRIMARY KEY,
-    team_id      VARCHAR(36) NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
-    revision     VARCHAR(40) NOT NULL,
-    start_time   INTEGER     NOT NULL,
-    end_time     INTEGER     NOT NULL,
-    execution_id VARCHAR(36) DEFAULT NULL REFERENCES ExecutionResults (execution_id) ON DELETE CASCADE ON UPDATE CASCADE
+    task_id        VARCHAR(36) PRIMARY KEY,
+    team_id        VARCHAR(36)  NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    revision       VARCHAR(40)  NOT NULL,
+    commit_message VARCHAR(120) NOT NULL,
+    start_time     INTEGER      NOT NULL,
+    end_time       INTEGER      NOT NULL,
+    execution_id   VARCHAR(36) DEFAULT NULL REFERENCES ExecutionResults (execution_id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE TestResults

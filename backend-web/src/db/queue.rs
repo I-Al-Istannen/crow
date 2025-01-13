@@ -14,10 +14,11 @@ pub(super) async fn queue_task(con: &mut SqliteConnection, task: WorkItem) -> Re
         .as_millis() as i64;
 
     query!(
-        "INSERT INTO Queue (id, team, revision, insert_time) VALUES (?, ?, ?, ?)",
+        "INSERT INTO Queue (id, team, revision, commit_message, insert_time) VALUES (?, ?, ?, ?, ?)",
         task.id,
         task.team,
         task.revision,
+        task.commit_message,
         insert_time
     )
     .execute(con)
@@ -45,6 +46,7 @@ pub(super) async fn get_queued_tasks(con: &mut SqliteConnection) -> Result<Vec<W
             id as "id!: TaskId",
             team as "team!: TeamId",
             revision,
+            commit_message,
             insert_time as "insert_time!: u64"
         FROM Queue"#
     )
@@ -52,6 +54,7 @@ pub(super) async fn get_queued_tasks(con: &mut SqliteConnection) -> Result<Vec<W
         id: row.id,
         team: row.team,
         revision: row.revision,
+        commit_message: row.commit_message,
         insert_time: SystemTime::UNIX_EPOCH.add(Duration::from_millis(row.insert_time)),
     })
     .fetch_all(con)
@@ -70,6 +73,7 @@ pub(super) async fn fetch_queued_task(
             id as "id!: TaskId",
             team as "team!: TeamId",
             revision,
+            commit_message,
             insert_time as "insert_time!: u64"
         FROM Queue
         WHERE id = ?
@@ -80,6 +84,7 @@ pub(super) async fn fetch_queued_task(
         id: row.id,
         team: row.team,
         revision: row.revision,
+        commit_message: row.commit_message,
         insert_time: SystemTime::UNIX_EPOCH.add(Duration::from_millis(row.insert_time)),
     })
     .fetch_optional(con)

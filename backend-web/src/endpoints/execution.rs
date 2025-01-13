@@ -97,12 +97,17 @@ async fn queue_task(state: AppState, revision: &str, team: TeamId) -> Result<Res
     let Some(revision) = state.local_repos.get_revision(&repo, revision).await? else {
         return Err(WebError::NotFound);
     };
+    let commit_message = state
+        .local_repos
+        .get_revision_message(&repo, &revision)
+        .await?;
 
     let task_id: TaskId = Uuid::new_v4().to_string().into();
     let task = WorkItem {
         id: task_id.clone(),
         team,
         revision: revision.to_string(),
+        commit_message,
         insert_time: SystemTime::now(),
     };
     state.db.queue_task(task.clone()).await?;
@@ -325,6 +330,7 @@ pub async fn get_work(
         task_id: task.id.to_string(),
         team_id: task.team.to_string(),
         revision_id: task.revision.to_string(),
+        commit_message: task.commit_message.clone(),
         image: "alpine:latest".to_string(),
         build_command: state.execution_config.build_command.clone(),
         build_timeout: state.execution_config.build_timeout,

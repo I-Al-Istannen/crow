@@ -7,6 +7,7 @@ use std::time::{Duration, SystemTime};
 pub struct CompilerTask {
     pub task_id: String,
     pub revision_id: String,
+    pub commit_message: String,
     pub team_id: String,
     pub image: String,
     pub build_command: Vec<String>,
@@ -105,6 +106,7 @@ pub struct FinishedTaskInfo {
 
     pub team_id: String,
     pub revision_id: String,
+    pub commit_message: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

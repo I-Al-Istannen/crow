@@ -173,6 +173,34 @@ impl LocalRepos {
         }
     }
 
+    pub async fn get_revision_message(
+        &self,
+        repo: &Repo,
+        revision_id: &RevisionId,
+    ) -> Result<String, GitError> {
+        let path = self.get_repo_path(&repo.team);
+
+        let output = handle_exitcode(
+            Command::new("git")
+                .arg("rev-list")
+                .arg("--format=%s")
+                .arg("--max-count=1")
+                .arg(revision_id.to_string())
+                .current_dir(&path)
+                .output()
+                .await,
+        )
+        .context(LookupCommitRevSnafu {
+            revision: revision_id.to_string(),
+        })?;
+
+        Ok(String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .lines()
+            .skip(1)
+            .collect())
+    }
+
     pub async fn export_repo(
         &self,
         repo: &Repo,

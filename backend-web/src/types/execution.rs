@@ -262,6 +262,7 @@ pub struct WorkItem {
     pub id: TaskId,
     pub team: TeamId,
     pub revision: String,
+    pub commit_message: String,
     #[serde(serialize_with = "serialize_system_time")]
     #[serde(deserialize_with = "deserialize_system_time")]
     pub insert_time: SystemTime,

@@ -83,11 +83,7 @@ impl Database {
         user::add_user(&mut *pool.acquire().await?, user).await
     }
 
-    pub async fn set_team_repo(
-        &self,
-        team_id: &TeamId,
-        repo_url: &str,
-    ) -> Result<Repo> {
+    pub async fn set_team_repo(&self, team_id: &TeamId, repo_url: &str) -> Result<Repo> {
         let pool = self.write_lock().await;
         repo::patch_or_create_repo(&*pool, team_id, repo_url).await
     }

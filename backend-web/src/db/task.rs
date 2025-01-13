@@ -85,6 +85,7 @@ pub(super) async fn get_task(
             end_time as "end_time!: u64",
             team_id as "team_id!: TeamId",
             revision as "revision_id!: String",
+            commit_message as "commit_message!: String",
             execution_id as "execution_id!: String"
         FROM Tasks
         WHERE task_id = ?
@@ -107,6 +108,7 @@ pub(super) async fn get_task(
         start,
         end,
         revision_id: task.revision_id,
+        commit_message: task.commit_message,
         team_id: task.team_id.to_string(),
     };
 
@@ -274,13 +276,14 @@ async fn record_task(
     query!(
         r#"
         INSERT INTO Tasks
-            (task_id, team_id, revision, start_time, end_time, execution_id)
+            (task_id, team_id, revision, commit_message, start_time, end_time, execution_id)
         VALUES
-            (?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?)
         "#,
         result.info().task_id,
         result.info().team_id,
         result.info().revision_id,
+        result.info().commit_message,
         start_time,
         end_time,
         build_id
