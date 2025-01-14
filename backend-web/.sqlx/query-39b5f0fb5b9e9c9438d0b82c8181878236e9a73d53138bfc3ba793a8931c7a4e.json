@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            task_id as \"task_id!: TaskId\",\n            start_time as \"start_time!: u64\",\n            end_time as \"end_time!: u64\",\n            team_id as \"team_id!: TeamId\",\n            revision as \"revision_id!: String\",\n            execution_id as \"execution_id!: String\"\n        FROM Tasks\n        WHERE task_id = ?\n        ",
+  "query": "\n        SELECT\n            task_id as \"task_id!: TaskId\",\n            start_time as \"start_time!: u64\",\n            end_time as \"end_time!: u64\",\n            team_id as \"team_id!: TeamId\",\n            revision as \"revision_id!: String\",\n            commit_message as \"commit_message!: String\",\n            execution_id as \"execution_id!: String\"\n        FROM Tasks\n        WHERE task_id = ?\n        ",
   "describe": {
     "columns": [
       {
@@ -29,8 +29,13 @@
         "type_info": "Text"
       },
       {
-        "name": "execution_id!: String",
+        "name": "commit_message!: String",
         "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "execution_id!: String",
+        "ordinal": 6,
         "type_info": "Text"
       }
     ],
@@ -43,8 +48,9 @@
       false,
       false,
       false,
+      false,
       true
     ]
   },
-  "hash": "382e48ace1754e05d792f5c38ed416c5d930ef0c058c2f387452ef62c9aea110"
+  "hash": "39b5f0fb5b9e9c9438d0b82c8181878236e9a73d53138bfc3ba793a8931c7a4e"
 }

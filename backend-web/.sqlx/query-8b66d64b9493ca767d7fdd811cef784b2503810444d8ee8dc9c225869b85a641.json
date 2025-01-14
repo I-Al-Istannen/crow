@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO Tests \n            (id, name, expected_output, owner, admin_authored, category)\n        VALUES\n            (?, ?, ?, ?, ?, ?)\n        ON CONFLICT DO UPDATE SET\n            name = excluded.name,\n            expected_output = excluded.expected_output,\n            admin_authored = excluded.admin_authored,\n            category = excluded.category\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "8b66d64b9493ca767d7fdd811cef784b2503810444d8ee8dc9c225869b85a641"
+}

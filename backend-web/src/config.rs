@@ -10,6 +10,7 @@ pub struct Config {
     pub teams: Vec<TeamEntry>,
     pub execution: ExecutionConfig,
     pub github: Option<GithubConfig>,
+    pub test: TestConfig,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,6 +44,11 @@ pub struct GithubConfig {
     pub workflow_check_interval: Duration,
     pub workflow_path: String,
     pub workflow_template: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct TestConfig {
+    pub categories: Vec<String>,
 }
 
 fn parse_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>

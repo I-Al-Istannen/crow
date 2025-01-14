@@ -14,6 +14,7 @@ pub struct Test {
     pub expected_output: String,
     pub owner: TeamId,
     pub admin_authored: bool,
+    pub category: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -24,4 +25,5 @@ pub struct TestSummary {
     pub creator_id: TeamId,
     pub creator_name: String,
     pub admin_authored: bool,
+    pub category: String,
 }

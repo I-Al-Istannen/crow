@@ -14,6 +14,7 @@ pub enum WebError {
     InvalidCredentials,
     InvalidJson(String),
     InternalServerError(String),
+    InvalidTestCategory(String),
     NotFound,
     NotInTeam,
 }
@@ -25,6 +26,7 @@ impl WebError {
             Self::InvalidCredentials => ("invalid_credentials", StatusCode::UNAUTHORIZED),
             Self::InvalidJson(_) => ("invalid_json", StatusCode::BAD_REQUEST),
             Self::InternalServerError(_) => ("internal_error", StatusCode::INTERNAL_SERVER_ERROR),
+            Self::InvalidTestCategory(_) => ("invalid_test_category", StatusCode::BAD_REQUEST),
             Self::NotFound => ("not_found", StatusCode::NOT_FOUND),
             Self::NotInTeam => ("not_in_team", StatusCode::BAD_REQUEST),
         }
@@ -40,6 +42,7 @@ impl Display for WebError {
             Self::InvalidCredentials => write!(f, "Invalid credentials"),
             Self::InvalidJson(msg) => write!(f, "Invalid JSON: `{msg}`"),
             Self::InternalServerError(msg) => write!(f, "Internal server error: `{msg}`"),
+            Self::InvalidTestCategory(msg) => write!(f, "Invalid test category: `{msg}`"),
             Self::NotFound => write!(f, "Not found"),
             Self::NotInTeam => write!(f, "Not in team"),
         }

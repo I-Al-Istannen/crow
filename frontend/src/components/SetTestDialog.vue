@@ -11,8 +11,8 @@
       </DialogHeader>
       <div>
         <form novalidate @submit="onSubmit" class="space-y-4">
-          <div class="flex gap-2 items-start">
-            <FormField v-slot="{ componentField }" name="name" :validate-on-input="true">
+          <div class="flex gap-2 items-start flex-wrap">
+            <FormField v-slot="{ componentField }" name="name">
               <FormItem v-auto-animate class="flex-grow">
                 <FormLabel class="text-sm font-medium">Test display name</FormLabel>
                 <FormControl>
@@ -22,7 +22,7 @@
                 <FormMessage />
               </FormItem>
             </FormField>
-            <FormField v-slot="{ componentField }" name="id" :validate-on-input="true">
+            <FormField v-slot="{ componentField }" name="id">
               <FormItem v-auto-animate class="flex-grow">
                 <FormLabel class="text-sm font-medium">Test ID</FormLabel>
                 <FormControl>
@@ -37,8 +37,31 @@
                 <FormMessage />
               </FormItem>
             </FormField>
+            <FormField v-slot="{ componentField }" name="category">
+              <FormItem v-auto-animate class="flex-grow">
+                <FormLabel class="text-sm font-medium">Category</FormLabel>
+                <Select v-bind="componentField">
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectGroup v-if="categories">
+                      <SelectItem v-for="category in categories" :key="category" :value="category">
+                        {{ category }}
+                      </SelectItem>
+                    </SelectGroup>
+                    <SelectGroup v-else>
+                      <SelectItem value="loading" :disabled="true">Loading...</SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <FormDescription>The category your test belongs to</FormDescription>
+              </FormItem>
+            </FormField>
           </div>
-          <FormField v-slot="{ componentField }" name="expectedOutput" :validate-on-input="true">
+          <FormField v-slot="{ componentField }" name="expectedOutput">
             <FormItem v-auto-animate>
               <FormLabel class="text-sm font-medium">Expected output</FormLabel>
               <FormControl>
@@ -93,6 +116,14 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import type { Test, TestId } from '@/types.ts'
 import { computed, ref, toRefs, watch } from 'vue'
 import { mutateDeleteTest, mutateTest, queryTests } from '@/data/network.ts'
@@ -121,9 +152,11 @@ const { testToEdit } = toRefs(props)
 const { team } = storeToRefs(useUserStore())
 
 const { mutateAsync: mutateEditTest, isPending: editPending } = mutateTest(useQueryClient())
-const { data: tests } = queryTests()
+const { data: testResponse } = queryTests()
 const { mutateAsync: mutateDelTest, isPending: deletePending } = mutateDeleteTest(useQueryClient())
 const mutationPending = computed(() => editPending.value || deletePending.value)
+const tests = computed(() => testResponse.value?.tests)
+const categories = computed(() => testResponse.value?.categories)
 
 const { start: startDeleteResetTimeout } = useTimeoutFn(
   () => {
@@ -146,6 +179,12 @@ const form = useForm({
         .max(40, 'That id is a bit long, don’t you think?')
         .regex(/^[a-zA-Z0-9_-]+$/, 'Only alphanumeric characters are allowed')
         .refine((id) => !idTaken(id), 'This test id already exists'),
+      category: z
+        .string()
+        .refine(
+          (category) => categories.value?.includes(category),
+          'Select a valid category: ' + categories.value?.join(', '),
+        ),
       expectedOutput: z
         .string()
         .min(1, 'Some output would be nice')
@@ -161,6 +200,7 @@ watch([dialogOpen, testToEdit], ([open, test]) => {
         name: test.name,
         id: test.id,
         expectedOutput: test.expectedOutput,
+        category: test.category,
       },
     })
   } else if (open) {
@@ -169,6 +209,7 @@ watch([dialogOpen, testToEdit], ([open, test]) => {
         name: undefined,
         id: undefined,
         expectedOutput: undefined,
+        category: undefined,
       },
     })
   }
@@ -190,6 +231,7 @@ const onSubmit = form.handleSubmit(async (values) => {
     name: values.name,
     id: values.id,
     expectedOutput: values.expectedOutput,
+    category: values.category,
   })
 
   toast.success(testToEdit?.value !== undefined ? 'Test updated :)' : 'Test created :)')

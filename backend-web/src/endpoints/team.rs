@@ -4,7 +4,6 @@ use crate::error::{Result, WebError};
 use crate::types::{AppState, FinishedCompilerTaskSummary, Repo, TeamId, TeamInfo};
 use axum::extract::{Path, State};
 use serde::Deserialize;
-use std::time::Duration;
 use tracing::instrument;
 
 #[instrument(skip_all)]
@@ -15,8 +14,6 @@ pub async fn set_team_repo(
     Json(payload): Json<TeamPatchPayload>,
 ) -> Result<Json<Repo>> {
     let user = state.db.get_user(&claims.sub).await?;
-
-    tokio::time::sleep(Duration::from_secs(2)).await;
 
     if !claims.is_admin() {
         let Some(team) = user.user.team else {
@@ -44,8 +41,6 @@ pub async fn get_team_repo(
     Path(team_id): Path<TeamId>,
 ) -> Result<Json<Repo>> {
     let user = db.get_user(&claims.sub).await?;
-
-    tokio::time::sleep(Duration::from_secs(2)).await;
 
     if claims.is_admin() {
         return Ok(Json(db.get_repo(&team_id).await?));

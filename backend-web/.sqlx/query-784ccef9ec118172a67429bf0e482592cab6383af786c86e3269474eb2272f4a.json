@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO Queue (id, team, revision, commit_message, insert_time) VALUES (?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "784ccef9ec118172a67429bf0e482592cab6383af786c86e3269474eb2272f4a"
+}

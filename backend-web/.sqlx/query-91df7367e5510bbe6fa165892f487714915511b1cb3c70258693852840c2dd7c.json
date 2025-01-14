@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            id as \"id!: TestId\",\n            name,\n            expected_output,\n            owner as \"owner!: TeamId\"\n        FROM Tests\n        WHERE id = ?",
+  "query": "\n        SELECT\n            id as \"id!: TestId\",\n            name,\n            expected_output,\n            owner as \"owner!: TeamId\",\n            admin_authored,\n            category\n        FROM Tests\n        WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -22,6 +22,16 @@
         "name": "owner!: TeamId",
         "ordinal": 3,
         "type_info": "Text"
+      },
+      {
+        "name": "admin_authored",
+        "ordinal": 4,
+        "type_info": "Bool"
+      },
+      {
+        "name": "category",
+        "ordinal": 5,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -31,8 +41,10 @@
       true,
       false,
       false,
+      false,
+      false,
       false
     ]
   },
-  "hash": "973556d6434865c674ccc4e00d1d04c97bf2fa75f4eecbe4eea76bbb83b7ce55"
+  "hash": "91df7367e5510bbe6fa165892f487714915511b1cb3c70258693852840c2dd7c"
 }

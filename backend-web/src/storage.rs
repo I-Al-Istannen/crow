@@ -336,10 +336,7 @@ async fn update_mirror(repo: &Repo, path: &Path) -> Result<(), GitError> {
 }
 
 fn handle_exitcode(output: std::io::Result<Output>) -> std::io::Result<Output> {
-    let output = match output {
-        Ok(output) => output,
-        Err(err) => return Err(err),
-    };
+    let output = output?;
 
     if output.status.success() {
         return Ok(output);

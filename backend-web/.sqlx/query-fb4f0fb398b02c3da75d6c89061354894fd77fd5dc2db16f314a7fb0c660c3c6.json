@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO Teams\n                (id, display_name)\n            VALUES\n                (?, ?)\n            ON CONFLICT DO UPDATE SET\n                display_name = excluded.display_name",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "fb4f0fb398b02c3da75d6c89061354894fd77fd5dc2db16f314a7fb0c660c3c6"
+}

@@ -5,6 +5,8 @@ import {
   FinishedCompilerTaskSummarySchema,
   type IntegrationInfoResponse,
   IntegrationInfoResponseSchema,
+  type ListTestResponse,
+  ListTestResponseSchema,
   type QueueResponse,
   QueueResponseSchema,
   type Repo,
@@ -20,8 +22,6 @@ import {
   type Test,
   type TestId,
   TestSchema,
-  type TestSummary,
-  TestSummarySchema,
   type WorkItem,
   WorkItemSchema,
 } from '@/types.ts'
@@ -41,6 +41,7 @@ type TestPatch = {
   name: string
   id: TestId
   expectedOutput: string
+  category: string
 }
 
 async function fetchMyself(): Promise<ShowMyselfResponse> {
@@ -177,10 +178,10 @@ export function queryTeamInfo(teamId: MaybeRefOrGetter<TeamId | undefined>) {
   })
 }
 
-export async function fetchTests(): Promise<TestSummary[]> {
+export async function fetchTests(): Promise<ListTestResponse> {
   const response = await fetchWithAuth('/tests')
   const json = await response.json()
-  return z.array(TestSummarySchema).parse(json)
+  return ListTestResponseSchema.parse(json)
 }
 
 export function queryTests() {
@@ -223,7 +224,11 @@ export async function fetchSetTest(test: TestPatch): Promise<Test | 'no-permissi
   const response = await fetchWithAuth(`/tests/${encodeURIComponent(test.id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: test.name, expectedOutput: test.expectedOutput }),
+    body: JSON.stringify({
+      name: test.name,
+      expectedOutput: test.expectedOutput,
+      category: test.category,
+    }),
   })
   const json = await response.json()
   return TestSchema.parse(json)

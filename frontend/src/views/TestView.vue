@@ -78,8 +78,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LucideBadgeCheck, LucidePencil } from 'lucide-vue-next'
 import type { Test, TestSummary } from '@/types.ts'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { computed, ref, watch } from 'vue'
 import { fetchTestDetail, queryTests } from '@/data/network.ts'
-import { ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import PageContainer from '@/components/PageContainer.vue'
 import PaginationControls from '@/components/PaginationControls.vue'
@@ -97,7 +97,9 @@ const testToEditLoading = ref(false)
 const displayedTests = ref<TestSummary[]>([])
 
 const { team } = storeToRefs(useUserStore())
-const { data: tests, isFetched, isLoading } = queryTests()
+const { data: testResp, isFetched, isLoading } = queryTests()
+
+const tests = computed(() => testResp.value?.tests)
 
 // Reset the edited test so clicking on new test does not prefill with the last edited test
 watch(testSetDialogOpen, (isOpen) => {

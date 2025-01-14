@@ -8,19 +8,21 @@ pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<T
     query!(
         r#"
         INSERT INTO Tests 
-            (id, name, expected_output, owner, admin_authored)
+            (id, name, expected_output, owner, admin_authored, category)
         VALUES
-            (?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?)
         ON CONFLICT DO UPDATE SET
             name = excluded.name,
             expected_output = excluded.expected_output,
-            admin_authored = excluded.admin_authored
+            admin_authored = excluded.admin_authored,
+            category = excluded.category
         "#,
         test.id,
         test.name,
         test.expected_output,
         test.owner,
-        test.admin_authored
+        test.admin_authored,
+        test.category
     )
     .execute(&mut *con)
     .instrument(info_span!("sqlx_add_test"))
@@ -34,7 +36,8 @@ pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<T
             name,
             expected_output,
             owner as "owner!: TeamId",
-            admin_authored
+            admin_authored,
+            category
         FROM Tests
         WHERE id = ?"#,
         test.id
@@ -56,7 +59,8 @@ pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>> {
             name,
             expected_output,
             owner as "owner!: TeamId",
-            admin_authored
+            admin_authored,
+            category
         FROM Tests
         "#
     )
@@ -75,7 +79,8 @@ pub(super) async fn get_tests_summaries(con: &mut SqliteConnection) -> Result<Ve
             Tests.name,
             Teams.display_name as "creator_name",
             Teams.id as "creator_id!: TeamId",
-            Tests.admin_authored
+            Tests.admin_authored,
+            Tests.category
         FROM Tests
         JOIN Teams ON Tests.owner = Teams.id
         "#
@@ -98,7 +103,8 @@ pub(super) async fn fetch_test(
             name,
             expected_output,
             owner as "owner!: TeamId",
-            admin_authored
+            admin_authored,
+            category
         FROM Tests
         WHERE id = ?
         "#,

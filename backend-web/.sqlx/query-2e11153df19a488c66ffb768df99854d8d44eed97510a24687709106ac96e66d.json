@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            id as \"id!: TaskId\",\n            team as \"team!: TeamId\",\n            revision,\n            insert_time as \"insert_time!: u64\"\n        FROM Queue",
+  "query": "\n        SELECT\n            id as \"id!: TaskId\",\n            team as \"team!: TeamId\",\n            revision,\n            commit_message,\n            insert_time as \"insert_time!: u64\"\n        FROM Queue",
   "describe": {
     "columns": [
       {
@@ -19,8 +19,13 @@
         "type_info": "Text"
       },
       {
-        "name": "insert_time!: u64",
+        "name": "commit_message",
         "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "insert_time!: u64",
+        "ordinal": 4,
         "type_info": "Integer"
       }
     ],
@@ -31,8 +36,9 @@
       true,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "e35330447cefaf5d5b59b5081af2ac50916bdd60c1d2c07a598445af5e329c76"
+  "hash": "2e11153df19a488c66ffb768df99854d8d44eed97510a24687709106ac96e66d"
 }

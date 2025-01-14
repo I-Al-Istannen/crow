@@ -117,6 +117,7 @@ async fn main() {
         Keys::new(config.jwt_secret.as_bytes()),
         config.github.as_ref().map(|it| it.app_name.to_string()),
         config.execution,
+        config.test,
         LocalRepos::new(local_repo_path),
     );
 

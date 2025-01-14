@@ -1,6 +1,14 @@
 database_path = "./target/dev.db"
 jwt_secret = "A very cool JWT secret."
 
+[test]
+categories = [
+    "Task 1",
+    "Task 2",
+    "Task 3",
+    "Task 4"
+]
+
 [execution]
 runner_token = "correct horse battery staple"
 build_command = ["sh", "-c", "echo 'Hello world!' && sleep 10"]

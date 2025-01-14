@@ -17,8 +17,7 @@ use shared::{
     RunnerUpdate, RunnerWorkResponse,
 };
 use snafu::Report;
-use std::time::{Duration, SystemTime};
-use tokio::time;
+use std::time::SystemTime;
 use tokio_util::io::ReaderStream;
 use tracing::{info, instrument, warn};
 use uuid::Uuid;
@@ -120,8 +119,6 @@ pub async fn get_queue(
     State(state): State<AppState>,
     _claims: Claims,
 ) -> Result<Json<QueueResponse>> {
-    // sleep 1s
-    time::sleep(Duration::from_secs(1)).await;
     let queue = state.db.get_queued_tasks().await?;
     let runners = state.executor.lock().unwrap().get_runners();
 

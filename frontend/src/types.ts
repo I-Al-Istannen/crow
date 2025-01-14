@@ -174,6 +174,7 @@ export const TestSchema = z.object({
   expectedOutput: z.string(),
   owner: TeamIdSchema,
   adminAuthored: z.boolean(),
+  category: z.string(),
 })
 
 export const TeamInfoSchema = z.object({
@@ -187,6 +188,12 @@ export const TestSummarySchema = z.object({
   creatorId: TeamIdSchema,
   creatorName: z.string(),
   adminAuthored: z.boolean(),
+  category: z.string(),
+})
+
+export const ListTestResponseSchema = z.object({
+  tests: z.array(TestSummarySchema),
+  categories: z.array(z.string()),
 })
 
 export type AbortedExecution = z.infer<typeof AbortedExecutionSchema>
@@ -202,6 +209,7 @@ export type FinishedTestSummary = z.infer<typeof FinishedTestSummarySchema>
 export type GithubIntegrationInfoResponse = z.infer<typeof GithubIntegrationInfoResponse>
 export type IntegrationInfoResponse = z.infer<typeof IntegrationInfoResponseSchema>
 export type InternalError = z.infer<typeof InternalErrorSchema>
+export type ListTestResponse = z.infer<typeof ListTestResponseSchema>
 export type QueueResponse = z.infer<typeof QueueResponseSchema>
 export type Repo = z.infer<typeof RepoSchema>
 export type RequestRevision = z.infer<typeof RequestRevisionSchema>

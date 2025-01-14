@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO Repos\n            (team, url)\n        VALUES\n            (?, ?)\n        ON CONFLICT DO UPDATE SET\n          url = excluded.url\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "1e793147748decbe33ee1d6470dd910eee1ec47fe19250d5a0e97182b1b04cd9"
+}
