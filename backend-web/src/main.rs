@@ -4,7 +4,7 @@ use crate::db::{Database, UserForAuth};
 use crate::endpoints::{
     delete_test, executor_info, get_integration_status, get_n_recent_tasks, get_queue,
     get_queued_task, get_recent_tasks, get_running_task_info, get_task, get_team_info,
-    get_team_repo, get_test, get_work, get_work_tar, head_running_task_info,
+    get_team_repo, get_test, get_top_task_per_team, get_work, get_work_tar, head_running_task_info,
     integration_get_task_status, integration_request_revision, list_task_ids, list_tests,
     list_users, login, request_revision, runner_done, runner_ping, runner_register, runner_update,
     set_team_repo, set_test, show_me_myself,
@@ -227,6 +227,7 @@ async fn main_server(
         .route("/tests/:test_id", delete(delete_test))
         .route("/tests/:test_id", get(get_test))
         .route("/tests/:test_id", put(set_test))
+        .route("/top-tasks", get(get_top_task_per_team))
         .route("/users", get(list_users).layer(authed_admin))
         .route("/users/me", get(show_me_myself))
         .route("/users/me/integrations", get(get_integration_status))

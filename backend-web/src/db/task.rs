@@ -5,6 +5,7 @@ use shared::{
     FinishedTest, InternalError,
 };
 use sqlx::{query, Acquire, Sqlite, SqliteConnection};
+use std::collections::HashMap;
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
 use tracing::{info_span, instrument, Instrument};
@@ -376,4 +377,40 @@ async fn record_aborted(
     .instrument(info_span!("sqlx_record_aborted"))
     .await?;
     Ok(())
+}
+
+#[instrument(skip_all)]
+pub(super) async fn get_top_task_per_team(
+    con: impl Acquire<'_, Database = Sqlite>,
+) -> Result<HashMap<TeamId, FinishedCompilerTaskSummary>> {
+    let mut con = con.begin().await?;
+
+    let query_res = query!(
+        r#"
+        SELECT
+            Tasks.team_id as "team_id!: TeamId",
+            PASS_BY_TASK.task_id as "task_id!: TaskId",
+            MAX(PASS_BY_TASK.passed_count) as passes
+        FROM (
+            SELECT TestResults.task_id, COUNT(1) as passed_count
+            FROM TestResults
+            JOIN ExecutionResults ER ON ER.execution_id = TestResults.execution_id
+            WHERE ER.result = 'Finished'
+            GROUP BY TestResults.task_id
+        ) PASS_BY_TASK
+        JOIN Tasks ON Tasks.task_id = PASS_BY_TASK.task_id
+        GROUP BY Tasks.team_id;
+        "#
+    )
+    .fetch_all(&mut *con)
+    .await?;
+
+    let mut result = HashMap::new();
+
+    for row in query_res {
+        let task = get_task(&mut *con, &row.task_id).await?;
+        result.insert(row.team_id, task.into());
+    }
+
+    Ok(result)
 }

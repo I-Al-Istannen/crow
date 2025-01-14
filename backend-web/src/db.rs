@@ -17,6 +17,7 @@ use crate::types::{
 use shared::FinishedCompilerTask;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
 use sqlx::{query, Pool, Sqlite, SqlitePool};
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
@@ -172,6 +173,13 @@ impl Database {
     pub async fn get_task_ids(&self) -> Result<Vec<TaskId>> {
         let pool = self.read_lock().await;
         task::get_task_ids(&mut *pool.acquire().await?).await
+    }
+
+    pub async fn get_top_task_per_team(
+        &self,
+    ) -> Result<HashMap<TeamId, FinishedCompilerTaskSummary>> {
+        let pool = self.read_lock().await;
+        task::get_top_task_per_team(&*pool).await
     }
 
     pub async fn add_test(&self, test: Test) -> Result<Test> {

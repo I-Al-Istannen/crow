@@ -2,7 +2,8 @@ use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::{Result, WebError};
 use crate::types::{
-    AppState, ExecutorInfo, QueuedTaskStatus, RunnerForFrontend, TaskId, TeamId, WorkItem,
+    AppState, ExecutorInfo, FinishedCompilerTaskSummary, QueuedTaskStatus, RunnerForFrontend,
+    TaskId, TeamId, WorkItem,
 };
 use axum::body::Body;
 use axum::extract::{Path, State};
@@ -17,6 +18,7 @@ use shared::{
     RunnerUpdate, RunnerWorkResponse,
 };
 use snafu::Report;
+use std::collections::HashMap;
 use std::time::SystemTime;
 use tokio_util::io::ReaderStream;
 use tracing::{info, instrument, warn};
@@ -154,6 +156,14 @@ pub async fn get_task(
     Path(task_id): Path<TaskId>,
 ) -> Result<Json<FinishedCompilerTask>> {
     Ok(Json(state.db.get_task(&task_id).await?))
+}
+
+#[instrument(skip_all)]
+pub async fn get_top_task_per_team(
+    State(state): State<AppState>,
+    _claims: Claims,
+) -> Result<Json<HashMap<TeamId, FinishedCompilerTaskSummary>>> {
+    Ok(Json(state.db.get_top_task_per_team().await?))
 }
 
 #[instrument(skip_all)]
