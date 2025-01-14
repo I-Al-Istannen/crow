@@ -257,67 +257,51 @@ impl ClientCrab {
 
         Self::create_integration_token_secret(&handler, repo_name, team_integration_token).await?;
 
-        let existing = handler
-            .get_content()
-            .path(workflow_path)
-            .r#ref(&default_branch)
-            .send()
-            .await;
-        let existing = match existing {
-            Ok(mut it) => it.take_items(),
-            Err(octocrab::Error::GitHub {
-                source:
-                    octocrab::GitHubError {
-                        status_code: http::StatusCode::NOT_FOUND,
-                        ..
-                    },
-                ..
-            }) => vec![],
-            Err(e) => return Err(OctocrabSnafu.into_error(e)),
-        };
-        let mut existing_sha = None;
+        let (existing_sha, different) = Self::get_existing_sha_and_difference(
+            &handler,
+            workflow_path,
+            workflow_template,
+            &default_branch,
+            repo_name,
+        )
+        .await?;
 
-        // Verify we actually need to change anything
-        if !existing.is_empty() {
-            info!(
+        // No need to do anything, we integrated into default branch
+        if !different {
+            debug!(
                 owner = repo_name.owner,
                 repo = repo_name.repo,
                 workflow_file = workflow_path,
-                "Workflow file already exists"
+                "Workflow already exists and is identical, skipping setup"
             );
-            let existing = &existing[0];
+            return Ok(());
+        }
 
-            let existing_content = existing
-                .content
-                .as_ref()
-                .map(|it| it.to_string())
-                .unwrap_or_default();
-            let existing_content = B64.decode(existing_content.trim()).unwrap();
-            let existing_content = String::from_utf8_lossy(&existing_content);
+        let (_, different) = Self::get_existing_sha_and_difference(
+            &handler,
+            workflow_path,
+            workflow_template,
+            "crow-init",
+            repo_name,
+        )
+        .await?;
 
-            if existing_content == workflow_template {
-                info!(
-                    owner = repo_name.owner,
-                    repo = repo_name.repo,
-                    workflow_file = workflow_path,
-                    "Workflow already exists and is identical, skipping setup"
-                );
-                return Ok(());
-            }
-
-            info!(
+        // No need to do anything, our branch is already at the correct state
+        if !different {
+            debug!(
                 owner = repo_name.owner,
                 repo = repo_name.repo,
                 workflow_file = workflow_path,
-                "Workflow already exists and is different, updating"
+                "Workflow already exists in `crow-init` and is identical, skipping setup"
             );
-            existing_sha = Some(existing.sha.clone());
+            return Ok(());
         }
 
         info!(
             owner = repo_name.owner,
             repo = repo_name.repo,
             workflow_file = workflow_path,
+            existing_file = ?existing_sha,
             "Creating workflow"
         );
 
@@ -415,12 +399,67 @@ impl ClientCrab {
     }
 
     #[instrument(skip_all)]
+    async fn get_existing_sha_and_difference(
+        handler: &RepoHandler<'_>,
+        workflow_path: &str,
+        workflow_template: &str,
+        reference: &str,
+        repo_name: &RepoFullName,
+    ) -> Result<(Option<String>, bool), GitHubError> {
+        let existing = handler
+            .get_content()
+            .path(workflow_path)
+            .r#ref(reference)
+            .send()
+            .await;
+        let existing = match existing {
+            Ok(mut it) => it.take_items(),
+            Err(octocrab::Error::GitHub {
+                source:
+                    octocrab::GitHubError {
+                        status_code: http::StatusCode::NOT_FOUND,
+                        ..
+                    },
+                ..
+            }) => vec![],
+            Err(e) => return Err(OctocrabSnafu.into_error(e)),
+        };
+
+        // Verify we actually need to change anything
+        if !existing.is_empty() {
+            debug!(
+                owner = repo_name.owner,
+                repo = repo_name.repo,
+                workflow_file = workflow_path,
+                reference = reference,
+                "Workflow file already exists"
+            );
+            let existing = &existing[0];
+
+            let existing_content = existing
+                .content
+                .as_ref()
+                .map(|it| it.to_string())
+                .unwrap_or_default();
+            let existing_content = B64.decode(existing_content.trim()).unwrap();
+            let existing_content = String::from_utf8_lossy(&existing_content);
+
+            if existing_content == workflow_template {
+                return Ok((None, false));
+            }
+
+            return Ok((Some(existing.sha.clone()), true));
+        }
+        Ok((None, true))
+    }
+
+    #[instrument(skip_all)]
     async fn create_integration_token_secret(
         handler: &RepoHandler<'_>,
         repo_name: &RepoFullName,
         team_integration_token: &TeamIntegrationToken,
     ) -> Result<(), GitHubError> {
-        info!(
+        debug!(
             owner = repo_name.owner,
             repo = repo_name.repo,
             "Creating or updating integration token secret"
@@ -904,6 +943,7 @@ async fn update_workflow_task(
         if let Err(e) = res {
             warn!(error = %Report::from_error(e), "Failed to check for workflow updates");
         }
+        info!("Finished checking for workflow updates");
         tokio::time::sleep(config.workflow_check_interval).await;
     }
 }
