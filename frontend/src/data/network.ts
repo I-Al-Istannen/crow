@@ -17,6 +17,7 @@ import {
   ShowMyselfResponseSchema,
   type TaskId,
   type TeamId,
+  TeamIdSchema,
   type TeamInfo,
   TeamInfoSchema,
   type Test,
@@ -361,5 +362,25 @@ export function queryIntegrationStatus(_teamId: MaybeRefOrGetter<TeamId | undefi
       purpose: 'fetching integration status',
     },
     enabled: computed(() => enabled.value && loggedIn.value),
+  })
+}
+
+export async function fetchTopTaskPerTeam(): Promise<Map<TeamId, FinishedCompilerTaskSummary>> {
+  const response = await fetchWithAuth('/top-tasks')
+  const result = new Map()
+  for (const [k, v] of Object.entries(await response.json())) {
+    result.set(TeamIdSchema.parse(k), FinishedCompilerTaskSummarySchema.parse(v))
+  }
+  return result
+}
+
+export function queryTopTaskPerTeam() {
+  return useQuery({
+    queryKey: ['top-task'],
+    queryFn: fetchTopTaskPerTeam,
+    meta: {
+      purpose: 'fetching top task per team',
+    },
+    enabled: isLoggedIn(),
   })
 }

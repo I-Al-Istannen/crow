@@ -18,6 +18,7 @@
       </CardContent>
       <CardContent v-if="isLoading">Loading recent tasks...</CardContent>
     </Card>
+    <TopRunsPerTeam />
   </PageContainer>
 </template>
 
@@ -25,6 +26,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import FinishedTaskOverview from '@/components/FinishedTaskOverview.vue'
 import PageContainer from '@/components/PageContainer.vue'
+import TopRunsPerTeam from '@/components/TopRunsPerTeam.vue'
 import { queryRecentTasks } from '@/data/network.ts'
 
 const { data, isFetched, isLoading } = queryRecentTasks()
