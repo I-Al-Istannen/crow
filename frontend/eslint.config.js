@@ -34,6 +34,7 @@ export default [
           ignores: [
             'Accordion',
             'Alert',
+            'Badge',
             'Button',
             'Card',
             'Checkbox',

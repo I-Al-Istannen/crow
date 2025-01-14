@@ -22,20 +22,20 @@
             <Accordion type="multiple" v-model="expandedTests">
               <AccordionItem v-for="test in displayedTests" :key="test.id" :value="test.id">
                 <AccordionTrigger>
-                  <span class="flex items-center">
+                  <span class="flex items-center gap-1">
                     {{ test.name }}
-                    <span class="text-sm text-muted-foreground ml-2"
-                      >by {{ test.creatorName }}</span
-                    >
+                    <span class="text-sm text-muted-foreground">by {{ test.creatorName }}</span>
                     <Tooltip v-if="test.adminAuthored">
                       <TooltipTrigger as-child>
-                        <LucideBadgeCheck class="ml-2" :size="16" />
+                        <LucideBadgeCheck :size="16" />
                       </TooltipTrigger>
                       <TooltipContent>Created by an administrator</TooltipContent>
                     </Tooltip>
                   </span>
-                  <span class="flex flex-grow justify-end mr-2" v-if="canEdit(test)">
+                  <span class="flex flex-grow justify-end mr-2 items-center gap-2">
+                    <Badge variant="secondary">{{ test.category }}</Badge>
                     <Button
+                      v-if="canEdit(test)"
                       variant="ghost"
                       class="h-full p-2 -m-2"
                       @click.stop="openEditDialog(test)"
@@ -80,6 +80,7 @@ import type { Test, TestSummary } from '@/types.ts'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { computed, ref, watch } from 'vue'
 import { fetchTestDetail, queryTests } from '@/data/network.ts'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import PageContainer from '@/components/PageContainer.vue'
 import PaginationControls from '@/components/PaginationControls.vue'
@@ -99,7 +100,7 @@ const displayedTests = ref<TestSummary[]>([])
 const { team } = storeToRefs(useUserStore())
 const { data: testResp, isFetched, isLoading } = queryTests()
 
-const tests = computed(() => testResp.value?.tests)
+const tests = computed(() => sortTests(testResp.value?.tests))
 
 // Reset the edited test so clicking on new test does not prefill with the last edited test
 watch(testSetDialogOpen, (isOpen) => {
@@ -125,5 +126,17 @@ async function openEditDialog(testSummary: TestSummary) {
 
 function canEdit(test: TestSummary): boolean {
   return test.creatorId === team.value?.id
+}
+
+function sortTests(tests?: TestSummary[]): TestSummary[] | undefined {
+  if (tests === undefined) {
+    return undefined
+  }
+  return tests.slice().sort((a, b) => {
+    if (a.category.localeCompare(b.category) !== 0) {
+      return a.category.localeCompare(b.category)
+    }
+    return a.name.localeCompare(b.name)
+  })
 }
 </script>
