@@ -55,7 +55,9 @@ pub fn export_image_to_tar(image: &ImageId, target: &Path) -> Result<(), DockerE
             message: "verifying image exists",
         })?;
     if !output.status.success() {
-        if String::from_utf8_lossy(&output.stdout).trim() == "[]" {
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        if stdout == "[]" && stderr.to_lowercase().contains("no such image") {
             return Err(ImageNotFoundSnafu {
                 image: image.clone(),
             }
@@ -63,7 +65,7 @@ pub fn export_image_to_tar(image: &ImageId, target: &Path) -> Result<(), DockerE
         }
         return Err(UnknownDockerResponseSnafu {
             message: "while inspecting image",
-            response: String::from_utf8_lossy(&output.stderr).trim().to_string(),
+            response: stderr,
         }
         .into_error(NoneError));
     }
