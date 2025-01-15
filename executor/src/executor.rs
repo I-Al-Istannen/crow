@@ -102,7 +102,7 @@ fn execute_task_impl(
         stdout: container.data.stdout.clone(),
         stderr: container.data.stderr.clone(),
         runtime: container.data.runtime,
-        exit_status: Some(0),
+        exit_status: container.data.exit_status.code(),
     };
     let _ = message_channel.send(RunnerUpdate::FinishedBuild {
         result: build_output.clone(),
