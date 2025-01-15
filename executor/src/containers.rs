@@ -166,6 +166,12 @@ pub enum TestRunError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display("Runc reported an error during container start: `{message}` at {location}"))]
+    RuncStart {
+        message: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
     #[snafu(display("Could not finish executing test container at {location}"))]
     Execution {
         source: WaitForContainerError,
@@ -453,6 +459,18 @@ impl TaskContainer<Built> {
         }
 
         let (stdout, stderr, result, runtime) = res.context(ExecutionSnafu)?;
+
+        if !result.success()
+            && stderr.trim().lines().count() == 1
+            && stderr.contains("runc run failed:")
+        {
+            warn!(
+                container_id = %container_id,
+                message = %stderr,
+                "Running a test failed with a runc error"
+            );
+            return Err(RuncStartSnafu { message: stderr.trim() }.into_error(NoneError));
+        }
 
         Ok(TestRunResult {
             stdout,

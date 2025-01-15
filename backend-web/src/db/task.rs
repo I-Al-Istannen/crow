@@ -45,7 +45,7 @@ pub(super) async fn add_finished_task(
                 &mut con,
                 &build_id,
                 build_output,
-                ExecutionExitStatus::Finished,
+                ExecutionExitStatus::Success,
             )
             .await?;
             record_task(&mut con, result, start_time, end_time, &build_id).await?;
@@ -113,7 +113,7 @@ pub(super) async fn get_task(
         team_id: task.team_id.to_string(),
     };
 
-    if !build_output.produced_results() {
+    if !matches!(build_output, ExecutionOutput::Success(_)) {
         return Ok(FinishedCompilerTask::BuildFailed { info, build_output });
     }
 
@@ -230,7 +230,13 @@ async fn get_execution(con: &mut SqliteConnection, execution_id: &str) -> Result
             message: execution.error.unwrap_or("N/A".to_string()),
             runtime: Duration::from_millis(execution.duration_ms),
         }),
-        ExecutionExitStatus::Finished => ExecutionOutput::Finished(FinishedExecution {
+        ExecutionExitStatus::Failure => ExecutionOutput::Failure(FinishedExecution {
+            stdout: execution.stdout,
+            stderr: execution.stderr,
+            runtime: Duration::from_millis(execution.duration_ms),
+            exit_status: execution.exit_code,
+        }),
+        ExecutionExitStatus::Success => ExecutionOutput::Success(FinishedExecution {
             stdout: execution.stdout,
             stderr: execution.stderr,
             runtime: Duration::from_millis(execution.duration_ms),
@@ -255,8 +261,11 @@ async fn record_execution_output(
     match e {
         ExecutionOutput::Aborted(e) => record_aborted(con, &execution_id, e).await?,
         ExecutionOutput::Error(e) => record_internal_error(con, &execution_id, e).await?,
-        ExecutionOutput::Finished(e) => {
-            record_finished_execution(con, &execution_id, e, ExecutionExitStatus::Finished).await?
+        ExecutionOutput::Failure(e) => {
+            record_finished_execution(con, &execution_id, e, ExecutionExitStatus::Failure).await?
+        }
+        ExecutionOutput::Success(e) => {
+            record_finished_execution(con, &execution_id, e, ExecutionExitStatus::Success).await?
         }
         ExecutionOutput::Timeout(e) => {
             record_finished_execution(con, &execution_id, e, ExecutionExitStatus::Timeout).await?
@@ -395,12 +404,13 @@ pub(super) async fn get_top_task_per_team(
             SELECT TestResults.task_id, COUNT(1) as passed_count
             FROM TestResults
             JOIN ExecutionResults ER ON ER.execution_id = TestResults.execution_id
-            WHERE ER.result = 'Finished'
+            WHERE ER.result = ?
             GROUP BY TestResults.task_id
         ) PASS_BY_TASK
         JOIN Tasks ON Tasks.task_id = PASS_BY_TASK.task_id
         GROUP BY Tasks.team_id;
-        "#
+        "#,
+        ExecutionExitStatus::Success
     )
     .fetch_all(&mut *con)
     .await?;

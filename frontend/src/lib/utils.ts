@@ -44,16 +44,20 @@ export function formatApproxDuration(currentTime: number, insertTime: number) {
 }
 
 export function statusColor(
-  status: 'Finished' | 'Error' | 'Timeout' | 'Aborted' | 'Queued' | 'Started',
+  status: 'Success' | 'Failure' | 'Error' | 'Timeout' | 'Aborted' | 'Queued' | 'Started',
   prefix: string,
 ): string {
   switch (status) {
     // comments are here to make tailwind pick up and generate the classes
-    case 'Finished':
+    case 'Success':
       // bg-green-500
       // text-green-500
       return prefix + '-green-500'
     case 'Error':
+      // bg-red-400
+      // text-red-400
+      return prefix + '-red-400'
+    case 'Failure':
       // bg-red-500
       // text-red-500
       return prefix + '-red-500'

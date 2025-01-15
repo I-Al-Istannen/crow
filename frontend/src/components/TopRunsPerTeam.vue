@@ -37,6 +37,6 @@ const sortedTeams = computed(() => {
 
 function finishedTests(task: FinishedCompilerTaskSummary) {
   const tests = task.type === 'RanTests' ? task.tests : undefined
-  return tests?.filter((test) => test.output === 'Finished')?.length || 0
+  return tests?.filter((test) => test.output === 'Success')?.length || 0
 }
 </script>

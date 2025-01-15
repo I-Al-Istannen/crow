@@ -138,12 +138,19 @@ fn execute_task_impl(
         let mut results = Vec::new();
         while let Ok((test_id, res)) = rx.recv() {
             let output = match res {
-                Ok(res) => ExecutionOutput::Finished(FinishedExecution {
-                    stdout: res.stdout,
-                    stderr: res.stderr,
-                    runtime: res.runtime,
-                    exit_status: Some(0),
-                }),
+                Ok(res) => {
+                    let execution = FinishedExecution {
+                        stdout: res.stdout,
+                        stderr: res.stderr,
+                        runtime: res.runtime,
+                        exit_status: res.exit_status.code(),
+                    };
+                    if res.exit_status.success() {
+                        ExecutionOutput::Success(execution)
+                    } else {
+                        ExecutionOutput::Failure(execution)
+                    }
+                }
                 Err(e) => test_run_error_to_output(
                     start_monotonic,
                     task.task_id.clone(),

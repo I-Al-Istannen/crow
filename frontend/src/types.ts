@@ -21,7 +21,8 @@ export const ExecutingTestSchema = z.object({
 export const ExecutionExitStatusSchema = z.union([
   z.literal('Aborted'),
   z.literal('Error'),
-  z.literal('Finished'),
+  z.literal('Failure'),
+  z.literal('Success'),
   z.literal('Timeout'),
 ])
 
@@ -42,7 +43,8 @@ export const FinishedExecutionSchema = z.object({
 export const ExecutionOutputSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('Aborted') }).merge(AbortedExecutionSchema),
   z.object({ type: z.literal('Error') }).merge(InternalErrorSchema),
-  z.object({ type: z.literal('Finished') }).merge(FinishedExecutionSchema),
+  z.object({ type: z.literal('Failure') }).merge(FinishedExecutionSchema),
+  z.object({ type: z.literal('Success') }).merge(FinishedExecutionSchema),
   z.object({ type: z.literal('Timeout') }).merge(FinishedExecutionSchema),
 ])
 

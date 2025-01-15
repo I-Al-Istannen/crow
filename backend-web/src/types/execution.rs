@@ -272,7 +272,8 @@ pub struct WorkItem {
 pub enum ExecutionExitStatus {
     Aborted,
     Error,
-    Finished,
+    Failure,
+    Success,
     Timeout,
 }
 
@@ -281,7 +282,8 @@ impl From<&ExecutionOutput> for ExecutionExitStatus {
         match value {
             ExecutionOutput::Aborted(_) => Self::Aborted,
             ExecutionOutput::Error(_) => Self::Error,
-            ExecutionOutput::Finished(_) => Self::Finished,
+            ExecutionOutput::Success(_) => Self::Success,
+            ExecutionOutput::Failure(_) => Self::Failure,
             ExecutionOutput::Timeout(_) => Self::Timeout,
         }
     }

@@ -56,7 +56,7 @@ const { token } = storeToRefs(useUserStore())
 
 const buildExecutionOutput = computed<ExecutionOutput | undefined>(() => {
   if (buildStatus.value && buildStatus.value !== 'Started') {
-    return { type: 'Finished', ...buildStatus.value }
+    return { type: 'Success', ...buildStatus.value }
   }
   return undefined
 })

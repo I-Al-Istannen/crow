@@ -4,8 +4,11 @@
     <span v-if="testStatistics.finish > 0" class="text-green-500">
       {{ testStatistics.finish }} finished
     </span>
-    <span v-if="testStatistics.error > 0" class="text-red-500">
-      {{ testStatistics.error }} errors
+    <span v-if="testStatistics.failure > 0" class="text-red-500">
+      {{ testStatistics.failure }} failures
+    </span>
+    <span v-if="testStatistics.error > 0" class="text-red-400">
+      {{ testStatistics.error }} internal errors
     </span>
     <span v-if="testStatistics.timeout > 0" class="text-orange-500">
       {{ testStatistics.timeout }} timeouts
@@ -38,11 +41,12 @@ const testStatistics = computed(() => {
     return undefined
   }
 
-  const finish = tests.value.filter((test) => test.output === 'Finished').length
   const abort = tests.value.filter((test) => test.output === 'Aborted').length
   const error = tests.value.filter((test) => test.output === 'Error').length
+  const failure = tests.value.filter((test) => test.output === 'Failure').length
+  const finish = tests.value.filter((test) => test.output === 'Success').length
   const timeout = tests.value.filter((test) => test.output === 'Timeout').length
 
-  return { finish, abort, error, timeout }
+  return { abort, error, failure, finish, timeout }
 })
 </script>

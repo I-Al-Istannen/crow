@@ -31,7 +31,7 @@ function getBuildOutput(task: FinishedCompilerTask): ExecutionOutput {
     return task.buildOutput
   }
   return {
-    type: 'Finished',
+    type: 'Success',
     ...task.buildOutput,
   }
 }

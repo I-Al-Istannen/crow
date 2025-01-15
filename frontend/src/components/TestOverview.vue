@@ -12,8 +12,9 @@
           :class="[statusColor(testType(test), 'bg')]"
           @click="'output' in test ? handleTestClick(test) : undefined"
         >
-          <LucideCheck v-if="testType(test) === 'Finished'" />
-          <LucideX v-else-if="testType(test) === 'Error'" />
+          <LucideCheck v-if="testType(test) === 'Success'" />
+          <LucideX v-else-if="testType(test) === 'Failure'" />
+          <LucideFlame v-else-if="testType(test) === 'Error'" />
           <LucideUnplug v-else-if="testType(test) === 'Aborted'" />
           <LucideClockAlert v-else-if="testType(test) === 'Timeout'" />
           <LucideLoaderCircle
@@ -45,9 +46,10 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import {
   LucideCheck,
   LucideClockAlert,
+  LucideFlame,
   LucideLoaderCircle,
   LucideUnplug,
-  LucideX,
+  LucideX
 } from 'lucide-vue-next'
 import { computed, ref, toRefs } from 'vue'
 import FinishedTestDetailDialog from '@/components/FinishedTestDetailDialog.vue'
