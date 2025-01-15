@@ -4,7 +4,10 @@
       <CardTitle>Test results</CardTitle>
       <CardDescription>Information about individual tests</CardDescription>
     </CardHeader>
-    <CardContent class="flex flex-row gap-1 flex-wrap">
+    <CardContent class="-mt-2" v-if="sortedTests.length === 0">
+      No tests were run during this task.
+    </CardContent>
+    <CardContent class="flex flex-row gap-1 flex-wrap" v-else>
       <FinishedTestDetailDialog :test="clickedTest" v-model:dialog-open="dialogOpen" />
       <HoverCard v-for="test in sortedTests" :key="test.testId" :open-delay="0">
         <HoverCardTrigger
