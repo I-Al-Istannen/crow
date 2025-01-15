@@ -108,6 +108,20 @@ fn execute_task_impl(
         result: build_output.clone(),
     });
 
+    if !container.data.exit_status.success() {
+        return Ok(FinishedCompilerTask::BuildFailed {
+            info: FinishedTaskInfo {
+                task_id: task.task_id,
+                end: SystemTime::now(),
+                start,
+                team_id: task.team_id,
+                revision_id: task.revision_id,
+                commit_message: task.commit_message,
+            },
+            build_output: ExecutionOutput::Failure(build_output),
+        });
+    }
+
     let test_results = pool.scope(|s| {
         let (tx, rx) = mpsc::channel();
 
