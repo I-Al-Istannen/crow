@@ -37,7 +37,7 @@ const { task } = toRefs(props)
 const tests = computed(() => (task.value.type === 'RanTests' ? task.value.tests : undefined))
 
 const testStatistics = computed(() => {
-  if (tests.value === undefined) {
+  if (tests.value === undefined || task.value.type === 'BuildFailed') {
     return undefined
   }
 
