@@ -469,7 +469,10 @@ impl TaskContainer<Built> {
                 message = %stderr,
                 "Running a test failed with a runc error"
             );
-            return Err(RuncStartSnafu { message: stderr.trim() }.into_error(NoneError));
+            return Err(RuncStartSnafu {
+                message: stderr.trim(),
+            }
+            .into_error(NoneError));
         }
 
         Ok(TestRunResult {

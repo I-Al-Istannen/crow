@@ -70,7 +70,6 @@ pub enum ExecutionOutput {
 }
 
 impl ExecutionOutput {
-
     pub fn into_finished_execution(self) -> Option<FinishedExecution> {
         match self {
             ExecutionOutput::Failure(finished) => Some(finished),
