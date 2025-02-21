@@ -49,7 +49,7 @@ pub struct ExecutingTask<'a> {
     pub message_channel: mpsc::Sender<RunnerUpdate>,
 }
 
-pub fn execute_task(task: ExecutingTask, source_tar: TempPath) -> FinishedCompilerTask {
+pub fn execute_task(task: ExecutingTask<'_>, source_tar: TempPath) -> FinishedCompilerTask {
     let task_id = task.inner.task_id.clone();
     let team_id = task.inner.team_id.clone();
     let revision_id = task.inner.revision_id.clone();
@@ -76,7 +76,7 @@ pub fn execute_task(task: ExecutingTask, source_tar: TempPath) -> FinishedCompil
 }
 
 fn execute_task_impl(
-    task: ExecutingTask,
+    task: ExecutingTask<'_>,
     source_tar: TempPath,
 ) -> Result<FinishedCompilerTask, TaskRunError> {
     let start = SystemTime::now();

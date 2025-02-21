@@ -1,6 +1,7 @@
 // We do not care about the extra few ns/ms it takes to copy the errors around, the callstacks
 // are not deep and the other operations much more expensive.
 #![allow(clippy::result_large_err)]
+#![allow(unsafe_code)]
 
 use crate::containers::{ContainerCreateError, TestRunError, WaitForContainerError};
 use crate::executor::{execute_task, ExecutingTask};

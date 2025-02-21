@@ -1,8 +1,11 @@
 [package]
 name = "shared"
-version = "0.1.0"
-edition = "2021"
+version = { workspace = true }
+edition = { workspace = true }
 
 [dependencies]
 derive_more = { version = "1.0.0", features = ["full"] }
 serde = { version = "1.0.216", features = ["derive"] }
+
+[lints]
+workspace = true

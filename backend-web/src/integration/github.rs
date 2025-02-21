@@ -72,7 +72,7 @@ pub struct RepoFullName {
 
 impl RepoFullName {
     pub fn from_url(url: &str) -> Option<Self> {
-        parse_url_to_repo_owner(url).map(|(owner, repo)| RepoFullName { owner, repo })
+        parse_url_to_repo_owner(url).map(|(owner, repo)| Self { owner, repo })
     }
 }
 

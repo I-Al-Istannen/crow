@@ -36,7 +36,7 @@ impl WebError {
 impl Error for WebError {}
 
 impl Display for WebError {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::NoPermissions => write!(f, "No permissions"),
             Self::InvalidCredentials => write!(f, "Invalid credentials"),

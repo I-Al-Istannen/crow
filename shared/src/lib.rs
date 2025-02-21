@@ -72,9 +72,9 @@ pub enum ExecutionOutput {
 impl ExecutionOutput {
     pub fn into_finished_execution(self) -> Option<FinishedExecution> {
         match self {
-            ExecutionOutput::Failure(finished) => Some(finished),
-            ExecutionOutput::Success(finished) => Some(finished),
-            ExecutionOutput::Timeout(finished) => Some(finished),
+            Self::Failure(finished) => Some(finished),
+            Self::Success(finished) => Some(finished),
+            Self::Timeout(finished) => Some(finished),
             _ => None,
         }
     }
@@ -123,8 +123,8 @@ pub enum FinishedCompilerTask {
 impl FinishedCompilerTask {
     pub fn info(&self) -> &FinishedTaskInfo {
         match self {
-            FinishedCompilerTask::BuildFailed { info, .. } => info,
-            FinishedCompilerTask::RanTests { info, .. } => info,
+            Self::BuildFailed { info, .. } => info,
+            Self::RanTests { info, .. } => info,
         }
     }
 }

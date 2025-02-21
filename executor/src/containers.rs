@@ -212,7 +212,7 @@ impl ContainerConfig {
         let path_config = workdir.join("config.json");
 
         match self {
-            ContainerConfig::WritableRootfs => {
+            Self::WritableRootfs => {
                 let config = include_str!("../resources/runc-read-write.json")
                     .replace("{rootfs}", &rootfs.display().to_string())
                     .replace(
@@ -224,7 +224,7 @@ impl ContainerConfig {
                     path: path_config.to_path_buf(),
                 })?;
             }
-            ContainerConfig::OverlayRootfs => {
+            Self::OverlayRootfs => {
                 let path_upper = workdir.join("overlay-upper");
                 let path_work = workdir.join("overlay-work");
 

@@ -101,7 +101,7 @@ pub enum GitError {
 impl From<GitError> for WebError {
     fn from(value: GitError) -> Self {
         warn!(error = ?Report::from_error(&value), "A git error occurred");
-        WebError::InternalServerError(Report::from_error(&value).to_string())
+        Self::InternalServerError(Report::from_error(&value).to_string())
     }
 }
 

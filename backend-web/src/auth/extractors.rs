@@ -39,11 +39,11 @@ impl Claims {
         self.role == UserRole::Admin
     }
 
-    pub fn is_admin_opt(claims: &Option<Claims>) -> bool {
+    pub fn is_admin_opt(claims: &Option<Self>) -> bool {
         claims.as_ref().map(|x| x.role).unwrap_or(UserRole::Regular) == UserRole::Admin
     }
 
-    pub async fn from_token(state: &AppState, token: &str) -> Result<Claims, WebError> {
+    pub async fn from_token(state: &AppState, token: &str) -> Result<Self, WebError> {
         let mut claims = validate_jwt(token, &state.jwt_keys)?;
 
         // Update claims from DB to instantly process role changes (yes, this kind of

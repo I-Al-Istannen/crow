@@ -55,11 +55,11 @@ impl Database {
         })
     }
 
-    async fn write_lock(&self) -> RwLockWriteGuard<Pool<Sqlite>> {
+    async fn write_lock(&self) -> RwLockWriteGuard<'_, Pool<Sqlite>> {
         self.lock.write().instrument(info_span!("w_lock")).await
     }
 
-    async fn read_lock(&self) -> RwLockReadGuard<Pool<Sqlite>> {
+    async fn read_lock(&self) -> RwLockReadGuard<'_, Pool<Sqlite>> {
         self.lock.read().instrument(info_span!("r_lock")).await
     }
 
@@ -235,6 +235,6 @@ impl Database {
 impl From<sqlx::Error> for WebError {
     fn from(value: sqlx::Error) -> Self {
         warn!(error = ?value, "sqlx query error");
-        WebError::InternalServerError(value.to_string())
+        Self::InternalServerError(value.to_string())
     }
 }
