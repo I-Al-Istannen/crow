@@ -4,9 +4,9 @@ use crate::types::AppState;
 use axum::body::Body;
 use axum::extract::State;
 use axum::response::{IntoResponse, Response};
-use axum_extra::headers::authorization::Basic;
-use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
+use axum_extra::headers::Authorization;
+use axum_extra::headers::authorization::Basic;
 use shared::{
     CompilerTask, CompilerTest, FinishedCompilerTask, RunnerId, RunnerInfo, RunnerRegisterResponse,
     RunnerUpdate, RunnerWorkResponse,

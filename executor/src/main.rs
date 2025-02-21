@@ -4,17 +4,17 @@
 #![allow(unsafe_code)]
 
 use crate::containers::{ContainerCreateError, TestRunError, WaitForContainerError};
-use crate::executor::{execute_task, ExecutingTask};
-use clap::builder::styling::AnsiColor;
-use clap::builder::Styles;
+use crate::executor::{ExecutingTask, execute_task};
 use clap::Parser;
+use clap::builder::Styles;
+use clap::builder::styling::AnsiColor;
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use reqwest::blocking::{Client, ClientBuilder};
 use shared::{RunnerInfo, RunnerUpdate, RunnerWorkResponse};
 use snafu::{Location, Report, ResultExt, Snafu};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Receiver;
-use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 use tracing::{info, warn};

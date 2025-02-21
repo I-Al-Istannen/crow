@@ -9,7 +9,7 @@ use shared::{
 };
 use snafu::{Location, Report, ResultExt, Snafu};
 use std::sync::atomic::AtomicBool;
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 use std::time::{Instant, SystemTime};
 use tempfile::TempPath;
 use tracing::error;

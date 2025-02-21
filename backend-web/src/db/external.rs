@@ -1,6 +1,6 @@
 use crate::error::Result;
 use crate::types::{CreatedExternalRun, ExternalRunId, ExternalRunStatus, TaskId};
-use sqlx::{query, query_as, SqliteConnection};
+use sqlx::{SqliteConnection, query, query_as};
 
 pub(crate) async fn add_external_run(
     con: &mut SqliteConnection,

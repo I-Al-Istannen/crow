@@ -3,10 +3,10 @@ use crate::error::WebError;
 use crate::types::{AppState, JwtIssuer, UserId, UserRole};
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
-use axum::{async_trait, RequestPartsExt};
-use axum_extra::headers::authorization::Bearer;
-use axum_extra::headers::Authorization;
+use axum::{RequestPartsExt, async_trait};
 use axum_extra::TypedHeader;
+use axum_extra::headers::Authorization;
+use axum_extra::headers::authorization::Bearer;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

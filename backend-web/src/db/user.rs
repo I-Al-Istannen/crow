@@ -1,7 +1,7 @@
 use crate::error::{Result, WebError};
 use crate::types::{FullUserForAdmin, OwnUser, User, UserId, UserRole};
-use sqlx::{query, SqliteConnection};
-use tracing::{info, instrument, trace_span, Instrument};
+use sqlx::{SqliteConnection, query};
+use tracing::{Instrument, info, instrument, trace_span};
 
 #[instrument(skip_all)]
 pub(super) async fn get_user_for_login(

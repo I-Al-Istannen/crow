@@ -1,9 +1,9 @@
 use crate::config::TeamEntry;
 use crate::error::{Result, WebError};
 use crate::types::{Team, TeamId, TeamInfo, TeamIntegrationToken, User};
-use sqlx::{query, query_as, Acquire, Sqlite, SqliteConnection};
+use sqlx::{Acquire, Sqlite, SqliteConnection, query, query_as};
 use std::collections::HashSet;
-use tracing::{info, info_span, instrument, warn, Instrument};
+use tracing::{Instrument, info, info_span, instrument, warn};
 
 #[instrument(skip_all)]
 pub(super) async fn get_team(con: &mut SqliteConnection, team_id: &TeamId) -> Result<Team> {

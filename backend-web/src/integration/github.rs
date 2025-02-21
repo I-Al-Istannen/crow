@@ -5,9 +5,10 @@ use crate::types::{
     TeamIntegrationToken,
 };
 use axum::http;
-use base64::{engine::general_purpose::STANDARD as B64, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD as B64};
 use crypto_box::PublicKey;
 use jsonwebtoken::EncodingKey;
+use octocrab::Octocrab;
 use octocrab::models::repos::secrets::CreateRepositorySecret;
 use octocrab::models::{
     AppId, Installation, InstallationRepositories, InstallationToken, Repository,
@@ -16,7 +17,6 @@ use octocrab::params::apps::CreateInstallationAccessToken;
 use octocrab::params::checks::{CheckRunConclusion, CheckRunStatus};
 use octocrab::params::repos::Reference;
 use octocrab::repos::RepoHandler;
-use octocrab::Octocrab;
 use rand::rngs::OsRng;
 use snafu::{IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::collections::HashMap;
@@ -913,9 +913,9 @@ async fn init_workflow_iteration(
         if let Some(repo_name) = RepoFullName::from_url(&repo.url) {
             debug!(repo = ?repo_name, "Updating workflow");
 
-            let github = &mut github.lock().await;
+            let mut github = github.lock().await;
             if let Err(e) =
-                init_workflow_single_repo(state, github, &repo, &repo_name, config).await
+                init_workflow_single_repo(state, &mut github, &repo, &repo_name, config).await
             {
                 warn!(
                     error = %Report::from_error(e),
@@ -924,6 +924,7 @@ async fn init_workflow_iteration(
                     "Failed to update workflow integration"
                 );
             }
+            drop(github);
         }
     }
 

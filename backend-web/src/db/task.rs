@@ -4,11 +4,11 @@ use shared::{
     AbortedExecution, ExecutionOutput, FinishedCompilerTask, FinishedExecution, FinishedTaskInfo,
     FinishedTest, InternalError,
 };
-use sqlx::{query, Acquire, Sqlite, SqliteConnection};
+use sqlx::{Acquire, Sqlite, SqliteConnection, query};
 use std::collections::HashMap;
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
-use tracing::{info_span, instrument, Instrument};
+use tracing::{Instrument, info_span, instrument};
 
 #[instrument(skip_all)]
 pub(super) async fn add_finished_task(

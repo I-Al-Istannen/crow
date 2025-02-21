@@ -2,10 +2,10 @@ use crate::types::{TeamId, TestId};
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
 use shared::{
-    deserialize_system_time, serialize_system_time, ExecutionOutput, FinishedCompilerTask,
-    FinishedExecution, FinishedTest, RunnerId, RunnerInfo,
+    ExecutionOutput, FinishedCompilerTask, FinishedExecution, FinishedTest, RunnerId, RunnerInfo,
+    deserialize_system_time, serialize_system_time,
 };
-use snafu::{ensure, Location, Snafu};
+use snafu::{Location, Snafu, ensure};
 use std::collections::{HashMap, HashSet};
 use std::time::SystemTime;
 use tokio::sync::broadcast;

@@ -1,5 +1,5 @@
 use derive_more::Display;
-use snafu::{ensure, IntoError, Location, NoneError, ResultExt, Snafu};
+use snafu::{IntoError, Location, NoneError, ResultExt, Snafu, ensure};
 use std::fs::File;
 use std::path::Path;
 use std::process::Command;
@@ -13,9 +13,7 @@ pub enum DockerError {
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display(
-        "Could not understand docker response {message}: `{response}` at {location}"
-    ))]
+    #[snafu(display("Could not understand docker response {message}: `{response}` at {location}"))]
     UnknownDockerResponse {
         message: &'static str,
         response: String,
