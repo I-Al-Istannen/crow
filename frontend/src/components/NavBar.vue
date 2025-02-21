@@ -3,7 +3,7 @@
     <div class="container flex items-center justify-between max-w-7xl">
       <div class="flex space-x-6">
         <div class="flex items-center justify-center">
-          <Origami />
+          <img src="/src/crow1337.svg" alt="logo" class="h-[24px]" />
           <span class="ml-2 font-semibold max-md:hidden">crow</span>
         </div>
 
@@ -62,7 +62,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Home, Origami, User } from 'lucide-vue-next'
+import { Home, User } from 'lucide-vue-next'
 import {
   NavigationMenu,
   NavigationMenuItem,
