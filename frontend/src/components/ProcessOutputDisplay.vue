@@ -30,9 +30,15 @@
       <AccordionItem value="stderr" v-if="buildOutput.stderr.length > 0">
         <AccordionTrigger>Stderr</AccordionTrigger>
         <AccordionContent>
-          <pre class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto">{{
-            buildOutput.stderr
-          }}</pre>
+          <pre class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto"><span
+            class="block"
+            v-for="(line, index) in stderrLines"
+            :class="{
+              'text-red-500': line.startsWith('-'),
+              'text-green-600': line.startsWith('+'),
+              'text-violet-500': line.startsWith('@@'),
+            }"
+            :key="index">{{ line }}</span></pre>
         </AccordionContent>
       </AccordionItem>
     </Accordion>
@@ -58,6 +64,10 @@ const props = defineProps<{
 const { output, subject } = toRefs(props)
 
 const buildOutput = computed(() => getBuildOutput(output.value))
+
+const stderrLines = computed(() => {
+  return buildOutput.value.stderr.split('\n')
+})
 
 function getBuildOutput(task: ExecutionOutput): {
   stdout: string
