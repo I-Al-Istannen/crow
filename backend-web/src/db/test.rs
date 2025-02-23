@@ -8,18 +8,18 @@ pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<T
     query!(
         r#"
         INSERT INTO Tests 
-            (id, name, expected_output, owner, admin_authored, category)
+            (id, expected_output, input, owner, admin_authored, category)
         VALUES
             (?, ?, ?, ?, ?, ?)
         ON CONFLICT DO UPDATE SET
-            name = excluded.name,
             expected_output = excluded.expected_output,
+            input = excluded.input,
             admin_authored = excluded.admin_authored,
             category = excluded.category
         "#,
         test.id,
-        test.name,
         test.expected_output,
+        test.input,
         test.owner,
         test.admin_authored,
         test.category
@@ -33,8 +33,8 @@ pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<T
         r#"
         SELECT
             id as "id!: TestId",
-            name,
             expected_output,
+            input,
             owner as "owner!: TeamId",
             admin_authored,
             category
@@ -56,8 +56,8 @@ pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>> {
         r#"
         SELECT
             id as "id!: TestId",
-            name,
             expected_output,
+            input,
             owner as "owner!: TeamId",
             admin_authored,
             category
@@ -76,7 +76,6 @@ pub(super) async fn get_tests_summaries(con: &mut SqliteConnection) -> Result<Ve
         r#"
         SELECT
             Tests.id as "id!: TestId",
-            Tests.name,
             Teams.display_name as "creator_name",
             Teams.id as "creator_id!: TeamId",
             Tests.admin_authored,
@@ -100,8 +99,8 @@ pub(super) async fn fetch_test(
         r#"
         SELECT 
             id as "id!: TestId",
-            name,
             expected_output,
+            input,
             owner as "owner!: TeamId",
             admin_authored,
             category

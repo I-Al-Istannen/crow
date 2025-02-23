@@ -52,7 +52,7 @@ import {
   LucideFlame,
   LucideLoaderCircle,
   LucideUnplug,
-  LucideX
+  LucideX,
 } from 'lucide-vue-next'
 import { computed, ref, toRefs } from 'vue'
 import FinishedTestDetailDialog from '@/components/FinishedTestDetailDialog.vue'

@@ -10,8 +10,8 @@ pub struct TestId(String);
 #[serde(rename_all = "camelCase")]
 pub struct Test {
     pub id: TestId,
-    pub name: String,
     pub expected_output: String,
+    pub input: String,
     pub owner: TeamId,
     pub admin_authored: bool,
     pub category: String,
@@ -21,7 +21,6 @@ pub struct Test {
 #[serde(rename_all = "camelCase")]
 pub struct TestSummary {
     pub id: TestId,
-    pub name: String,
     pub creator_id: TeamId,
     pub creator_name: String,
     pub admin_authored: bool,

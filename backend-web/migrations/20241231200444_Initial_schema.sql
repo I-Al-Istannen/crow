@@ -67,12 +67,12 @@ CREATE TABLE ExecutionResults
 
 CREATE TABLE Tests
 (
-    id              VARCHAR(36) PRIMARY KEY,
-    name            VARCHAR(255) NOT NULL,
-    expected_output TEXT         NOT NULL,
-    owner           VARCHAR(36)  NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
-    admin_authored  BOOLEAN      NOT NULL,
-    category        VARCHAR(10)  NOT NULL
+    id              VARCHAR(120) PRIMARY KEY,
+    expected_output TEXT        NOT NULL,
+    input           TEXT        NOT NULL,
+    owner           VARCHAR(36) NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    admin_authored  BOOLEAN     NOT NULL,
+    category        VARCHAR(10) NOT NULL
 );
 
 CREATE TABLE ExternalRuns

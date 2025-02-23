@@ -45,8 +45,8 @@ pub async fn set_test(
     Ok(Json(
         db.add_test(Test {
             id: test_id,
-            name: payload.name,
             expected_output: payload.expected_output,
+            input: payload.input,
             owner: team,
             admin_authored: claims.is_admin(),
             category: payload.category,
@@ -94,8 +94,8 @@ pub async fn delete_test(
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AddTestPayload {
-    pub name: String,
     pub expected_output: String,
+    pub input: String,
     pub category: String,
 }
 

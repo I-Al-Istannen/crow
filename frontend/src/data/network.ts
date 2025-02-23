@@ -39,7 +39,7 @@ type RepoPatch = {
 }
 
 type TestPatch = {
-  name: string
+  input: string
   id: TestId
   expectedOutput: string
   category: string
@@ -226,7 +226,7 @@ export async function fetchSetTest(test: TestPatch): Promise<Test | 'no-permissi
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      name: test.name,
+      input: test.input,
       expectedOutput: test.expectedOutput,
       category: test.category,
     }),

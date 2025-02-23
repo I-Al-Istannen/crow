@@ -12,28 +12,18 @@
       <div>
         <form novalidate @submit="onSubmit" class="space-y-4">
           <div class="flex gap-2 items-start flex-wrap">
-            <FormField v-slot="{ componentField }" name="name">
-              <FormItem v-auto-animate class="flex-grow">
-                <FormLabel class="text-sm font-medium">Test display name</FormLabel>
-                <FormControl>
-                  <Input type="text" placeholder="Cool test" v-bind="componentField" />
-                </FormControl>
-                <FormDescription>A descriptive name for your test</FormDescription>
-                <FormMessage />
-              </FormItem>
-            </FormField>
             <FormField v-slot="{ componentField }" name="id">
               <FormItem v-auto-animate class="flex-grow">
-                <FormLabel class="text-sm font-medium">Test ID</FormLabel>
+                <FormLabel class="text-sm font-medium">Name</FormLabel>
                 <FormControl>
                   <Input
                     :disabled="!!testToEdit"
                     type="text"
-                    placeholder="cool-test"
+                    placeholder="Well hello compiler-friends"
                     v-bind="componentField"
                   />
                 </FormControl>
-                <FormDescription>A unique alpha-numeric identifier for your test</FormDescription>
+                <FormDescription>A unique identifier for your test</FormDescription>
                 <FormMessage />
               </FormItem>
             </FormField>
@@ -61,6 +51,22 @@
               </FormItem>
             </FormField>
           </div>
+          <FormField v-slot="{ componentField }" name="input">
+            <FormItem v-auto-animate>
+              <FormLabel class="text-sm font-medium">Input</FormLabel>
+              <FormControl>
+                <Textarea
+                  v-bind="componentField"
+                  class="font-mono whitespace-pre"
+                  placeholder="Output..."
+                />
+              </FormControl>
+              <FormDescription>
+                The contents of the input file your compiler receives
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          </FormField>
           <FormField v-slot="{ componentField }" name="expectedOutput">
             <FormItem v-auto-animate>
               <FormLabel class="text-sm font-medium">Expected output</FormLabel>
@@ -169,15 +175,11 @@ const { start: startDeleteResetTimeout } = useTimeoutFn(
 const form = useForm({
   validationSchema: toTypedSchema(
     z.object({
-      name: z
-        .string()
-        .min(3, 'Please give the test a descriptive name')
-        .max(200, "That's a bit long, don't you think?"),
       id: z
         .string()
         .min(3, 'Please give the test a descriptive id')
         .max(40, 'That id is a bit long, don’t you think?')
-        .regex(/^[a-zA-Z0-9_-]+$/, 'Only alphanumeric characters are allowed')
+        .regex(/^[ a-zA-Z0-9_-]+$/, 'Only alphanumeric characters and spaces are allowed')
         .refine((id) => !idTaken(id), 'This test id already exists'),
       category: z
         .string()
@@ -185,6 +187,10 @@ const form = useForm({
           (category) => categories.value?.includes(category),
           'Select a valid category: ' + categories.value?.join(', '),
         ),
+      input: z
+        .string()
+        .min(1, 'The input file to compile')
+        .max(150_000, 'Are you sure you need this much?'),
       expectedOutput: z
         .string()
         .min(1, 'Some output would be nice')
@@ -197,7 +203,7 @@ watch([dialogOpen, testToEdit], ([open, test]) => {
   if (open && test) {
     form.resetForm({
       values: {
-        name: test.name,
+        input: test.input,
         id: test.id,
         expectedOutput: test.expectedOutput,
         category: test.category,
@@ -206,7 +212,7 @@ watch([dialogOpen, testToEdit], ([open, test]) => {
   } else if (open) {
     form.resetForm({
       values: {
-        name: undefined,
+        input: undefined,
         id: undefined,
         expectedOutput: undefined,
         category: undefined,
@@ -228,7 +234,7 @@ const idTaken = (id: TestId) => {
 
 const onSubmit = form.handleSubmit(async (values) => {
   await mutateEditTest({
-    name: values.name,
+    input: values.input,
     id: values.id,
     expectedOutput: values.expectedOutput,
     category: values.category,

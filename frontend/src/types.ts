@@ -172,8 +172,8 @@ export const ShowMyselfResponseSchema = z.object({
 
 export const TestSchema = z.object({
   id: TestIdSchema,
-  name: z.string(),
   expectedOutput: z.string(),
+  input: z.string(),
   owner: TeamIdSchema,
   adminAuthored: z.boolean(),
   category: z.string(),
@@ -186,7 +186,6 @@ export const TeamInfoSchema = z.object({
 
 export const TestSummarySchema = z.object({
   id: TestIdSchema,
-  name: z.string(),
   creatorId: TeamIdSchema,
   creatorName: z.string(),
   adminAuthored: z.boolean(),

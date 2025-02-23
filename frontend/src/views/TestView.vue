@@ -23,7 +23,7 @@
               <AccordionItem v-for="test in displayedTests" :key="test.id" :value="test.id">
                 <AccordionTrigger>
                   <span class="flex items-center gap-1">
-                    {{ test.name }}
+                    {{ test.id }}
                     <span class="text-sm text-muted-foreground">by {{ test.creatorName }}</span>
                     <Tooltip v-if="test.adminAuthored">
                       <TooltipTrigger as-child>
@@ -136,7 +136,7 @@ function sortTests(tests?: TestSummary[]): TestSummary[] | undefined {
     if (a.category.localeCompare(b.category) !== 0) {
       return a.category.localeCompare(b.category)
     }
-    return a.name.localeCompare(b.name)
+    return a.id.localeCompare(b.id)
   })
 }
 </script>
