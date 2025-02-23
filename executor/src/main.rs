@@ -17,6 +17,7 @@ mod containers;
 mod docker;
 mod mode_executor;
 mod task_executor;
+mod test_validation;
 
 #[derive(Debug, Snafu)]
 pub enum AnyError {

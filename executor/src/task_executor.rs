@@ -2,6 +2,7 @@ use crate::containers::{
     ContainerCreateError, IntegrateSourceError, TaskContainer, TestRunError, WaitForContainerError,
 };
 use crate::docker::ImageId;
+use crate::test_validation;
 use rayon::ThreadPool;
 use shared::{
     AbortedExecution, CompilerTask, ExecutionOutput, FinishedCompilerTask, FinishedExecution,
@@ -142,7 +143,7 @@ fn execute_task_impl(
                     test.timeout,
                     aborted,
                 );
-                let res = tx.send((test.test_id.clone(), res));
+                let res = tx.send((test.clone(), res));
                 if let Err(e) = res {
                     error!(
                         test_id = test.test_id.as_str(),
@@ -157,7 +158,7 @@ fn execute_task_impl(
         drop(tx);
 
         let mut results = Vec::new();
-        while let Ok((test_id, res)) = rx.recv() {
+        while let Ok((test, res)) = rx.recv() {
             let output = match res {
                 Ok(res) => {
                     let execution = FinishedExecution {
@@ -166,20 +167,19 @@ fn execute_task_impl(
                         runtime: res.runtime,
                         exit_status: res.exit_status.code(),
                     };
-                    if res.exit_status.success() {
-                        ExecutionOutput::Success(execution)
-                    } else {
-                        ExecutionOutput::Failure(execution)
-                    }
+                    test_validation::judge_output(&test, res.exit_status, execution)
                 }
                 Err(e) => test_run_error_to_output(
                     start_monotonic,
                     task.task_id.clone(),
-                    test_id.clone(),
+                    test.test_id.clone(),
                     e,
                 ),
             };
-            let finished_test = FinishedTest { test_id, output };
+            let finished_test = FinishedTest {
+                test_id: test.test_id,
+                output,
+            };
             results.push(finished_test.clone());
             let _ = message_channel.send(RunnerUpdate::FinishedTest {
                 result: finished_test,
