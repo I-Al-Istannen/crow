@@ -133,8 +133,8 @@ function sortTests(tests?: TestSummary[]): TestSummary[] | undefined {
     return undefined
   }
   return tests.slice().sort((a, b) => {
-    if (a.category.localeCompare(b.category) !== 0) {
-      return a.category.localeCompare(b.category)
+    if (b.category.localeCompare(a.category) !== 0) {
+      return b.category.localeCompare(a.category)
     }
     return a.id.localeCompare(b.id)
   })
