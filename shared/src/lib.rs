@@ -26,7 +26,7 @@ pub struct CompilerTest {
     pub timeout: Duration,
     pub run_command: Vec<String>,
     pub expected_output: String,
-    // TODO: Files?
+    pub input: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

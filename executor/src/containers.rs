@@ -162,6 +162,18 @@ pub enum TestRunError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display(
+        "Could not write input file to `{}`({}) at {location}",
+        path_in_container.display(),
+        path.display()
+    ))]
+    WriteInput {
+        path_in_container: PathBuf,
+        path: PathBuf,
+        source: io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
     #[snafu(display("Could not start the test container at {location}"))]
     ExecutionStart {
         source: io::Error,
@@ -210,10 +222,10 @@ impl ContainerConfig {
         rootfs: &Path,
         workdir: &Path,
         args: &[String],
-    ) -> Result<(), RunConfigError> {
+    ) -> Result<PathBuf, RunConfigError> {
         let path_config = workdir.join("config.json");
 
-        match self {
+        let root = match self {
             Self::WritableRootfs => {
                 let config = include_str!("../resources/runc-read-write.json")
                     .replace("{rootfs}", &rootfs.display().to_string())
@@ -225,6 +237,8 @@ impl ContainerConfig {
                 fs::write(&path_config, config).context(FileWriteSnafu {
                     path: path_config.to_path_buf(),
                 })?;
+
+                rootfs.to_path_buf()
             }
             Self::OverlayRootfs => {
                 let path_upper = workdir.join("overlay-upper");
@@ -250,10 +264,12 @@ impl ContainerConfig {
                 fs::write(&path_config, config).context(FileWriteSnafu {
                     path: path_config.to_path_buf(),
                 })?;
-            }
-        }
 
-        Ok(())
+                path_upper
+            }
+        };
+
+        Ok(root)
     }
 }
 
@@ -418,6 +434,8 @@ impl TaskContainer<Built> {
     pub fn run_test(
         &self,
         args: &[String],
+        input: &str,
+        input_path: &Path,
         timeout: Duration,
         aborted: Arc<AtomicBool>,
     ) -> Result<TestRunResult, TestRunError> {
@@ -433,10 +451,15 @@ impl TaskContainer<Built> {
             .context(CreationSnafu)?;
         let rootfs = &self.rootfs;
 
-        ContainerConfig::OverlayRootfs
+        let container_root = ContainerConfig::OverlayRootfs
             .apply_to_workdir(rootfs, workdir.path(), args)
             .context(ConfigApplySnafu)
             .context(CreationSnafu)?;
+
+        fs::write(container_root.join(input_path), input).context(WriteInputSnafu {
+            path_in_container: container_root.join(input_path),
+            path: input_path,
+        })?;
 
         let container_id = ContainerId(Uuid::new_v4().to_string());
 

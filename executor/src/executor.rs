@@ -8,6 +8,7 @@ use shared::{
     FinishedTaskInfo, FinishedTest, InternalError, RunnerUpdate,
 };
 use snafu::{Location, Report, ResultExt, Snafu};
+use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, mpsc};
 use std::time::{Instant, SystemTime};
@@ -134,7 +135,13 @@ fn execute_task_impl(
                 let _ = message_channel.send(RunnerUpdate::StartedTest {
                     test_id: test.test_id.clone(),
                 });
-                let res = container.run_test(&test.run_command, test.timeout, aborted);
+                let res = container.run_test(
+                    &test.run_command,
+                    &test.input,
+                    Path::new("input.🦆"),
+                    test.timeout,
+                    aborted,
+                );
                 let res = tx.send((test.test_id.clone(), res));
                 if let Err(e) = res {
                     error!(

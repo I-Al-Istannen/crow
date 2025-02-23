@@ -130,6 +130,7 @@ pub async fn get_work(
             timeout: state.execution_config.test_timeout,
             run_command: state.execution_config.test_command.clone(),
             expected_output: test.expected_output,
+            input: test.input,
         })
         .collect();
 
