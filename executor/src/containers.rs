@@ -174,6 +174,18 @@ pub enum TestRunError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display("Could not find path to own executable at {location}"))]
+    FindOwnExecutable {
+        source: io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not copy own executable to container at {location}"))]
+    CopyExecutorToContainer {
+        source: io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
     #[snafu(display("Could not start the test container at {location}"))]
     ExecutionStart {
         source: io::Error,
@@ -460,6 +472,11 @@ impl TaskContainer<Built> {
             path_in_container: container_root.join(input_path),
             path: input_path,
         })?;
+        fs::copy(
+            std::env::current_exe().context(FindOwnExecutableSnafu)?,
+            container_root.join("executor"),
+        )
+        .context(CopyExecutorToContainerSnafu)?;
 
         let container_id = ContainerId(Uuid::new_v4().to_string());
 
