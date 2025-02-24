@@ -24,7 +24,26 @@ export const useUserStore = defineStore('user', () => {
     const json = await res.json()
     user.value = UserSchema.parse(json['user'])
     token.value = json['token']
+
+    localStorage.setItem('userStore', JSON.stringify({ token: token.value }))
   }
 
-  return { accountReady, token, team, user, loggedIn, logIn }
+  function logOut() {
+    token.value = null
+    user.value = null
+    team.value = null
+
+    localStorage.removeItem('userStore')
+  }
+
+  return { accountReady, token, team, user, loggedIn, logIn, logOut }
 })
+
+export function hydrateUserStore() {
+  const store = useUserStore()
+  const existingItem = localStorage.getItem('userStore')
+  if (existingItem) {
+    const parsed = JSON.parse(existingItem)
+    store.token = parsed.token
+  }
+}

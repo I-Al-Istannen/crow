@@ -24,7 +24,7 @@
           </NavigationMenuList>
         </NavigationMenu>
       </div>
-      <div v-if="accountReady">
+      <div v-if="loggedIn">
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
             <Button variant="outline" size="icon">
@@ -45,7 +45,7 @@
               </router-link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Logout</DropdownMenuItem>
+            <DropdownMenuItem @click="doLogout" class="cursor-pointer">Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -83,7 +83,7 @@ const routerLinkClasses =
   ' disabled:opacity-50 data-[active]:bg-accent'
 
 const currentRoute = useRoute()
-const { user, accountReady } = storeToRefs(useUserStore())
+const { user, accountReady, loggedIn } = storeToRefs(useUserStore())
 const userName = computed(() => user.value?.displayName)
 
 const routes = computed(() =>
@@ -96,4 +96,8 @@ const routes = computed(() =>
       icon: route.meta?.icon || Home,
     })),
 )
+
+const doLogout = async () => {
+  useUserStore().logOut()
+}
 </script>

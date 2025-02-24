@@ -5,6 +5,7 @@ import { MutationCache, QueryCache, VueQueryPlugin } from '@tanstack/vue-query'
 import App from './App.vue'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import { hydrateUserStore } from '@/stores/user.ts'
 import router from './router'
 import { toast } from 'vue-sonner'
 
@@ -34,5 +35,7 @@ app.use(VueQueryPlugin, {
     }),
   },
 })
+
+hydrateUserStore()
 
 app.mount('#app')
