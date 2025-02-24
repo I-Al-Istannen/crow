@@ -7,6 +7,7 @@ mod test;
 mod user;
 
 pub use self::user::UserForAuth;
+use crate::auth::oidc::OidcUser;
 use crate::config::TeamEntry;
 use crate::error::{Result, WebError};
 use crate::types::{
@@ -82,6 +83,11 @@ impl Database {
     pub async fn add_user(&self, user: &UserForAuth) -> Result<()> {
         let pool = self.write_lock().await;
         user::add_user(&mut *pool.acquire().await?, user).await
+    }
+
+    pub async fn synchronize_oidc_user(&self, user: OidcUser) -> Result<OwnUser> {
+        let pool = self.write_lock().await;
+        user::synchronize_oidc_user(&mut *pool.acquire().await?, user).await
     }
 
     pub async fn set_team_repo(&self, team_id: &TeamId, repo_url: &str) -> Result<Repo> {

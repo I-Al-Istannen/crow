@@ -11,6 +11,7 @@ pub struct Config {
     pub execution: ExecutionConfig,
     pub github: Option<GithubConfig>,
     pub test: TestConfig,
+    pub oidc: OidcConfig,
 }
 
 #[derive(Debug, Deserialize)]
@@ -49,6 +50,15 @@ pub struct GithubConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct TestConfig {
     pub categories: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct OidcConfig {
+    pub client_id: String,
+    pub client_secret: String,
+    pub issuer_url: String,
+    pub redirect_url: String,
+    pub scopes: Vec<String>,
 }
 
 fn parse_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>

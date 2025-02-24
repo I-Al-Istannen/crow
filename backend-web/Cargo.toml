@@ -17,9 +17,9 @@ tokio = { version = "1.42.0", features = ["full"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json"] }
 toml = "0.8.19"
-axum-prometheus = "0.7.0"
+axum-prometheus = { version = "0.8.0", default-features = false, features = ["prometheus"] }
 tower-http = { version = "0.6.2", features = ["cors", "trace"] }
-axum-extra = { version = "0.9.6", features = ["typed-header"] }
+axum-extra = { version = "0.9.6", features = ["typed-header", "cookie"] }
 shared = { version = "0.1.0", path = "../shared" }
 parse_duration = "2.1.1"
 uuid = { version = "1.11.0", features = ["v4"] }
@@ -31,6 +31,9 @@ url = "2.5.4"
 time = "0.3.37"
 crypto_box = { version = "0.9.1", features = ["seal"] }
 base64 = "0.22.1"
+openidconnect = "4.0.0"
+reqwest = "0.12.12"
+oauth2 = "5.0.0"
 
 [lints]
 workspace = true

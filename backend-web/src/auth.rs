@@ -8,6 +8,7 @@ use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode}
 use tracing::{debug, info, instrument, warn};
 
 pub mod extractors;
+pub mod oidc;
 
 #[derive(Clone)]
 pub struct Keys {

@@ -1,4 +1,5 @@
 mod executor;
+mod oidc;
 mod streaming;
 mod tasks;
 mod team;
@@ -18,6 +19,8 @@ pub use self::executor::runner_done;
 pub use self::executor::runner_ping;
 pub use self::executor::runner_register;
 pub use self::executor::runner_update;
+pub use self::oidc::login_oidc;
+pub use self::oidc::login_oidc_callback;
 pub use self::streaming::get_running_task_info;
 pub use self::streaming::head_running_task_info;
 pub use self::tasks::executor_info;

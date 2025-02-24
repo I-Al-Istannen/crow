@@ -1,10 +1,11 @@
 -- Add migration script here
 CREATE TABLE Users
 (
-    id           VARCHAR(36) PRIMARY KEY,
-    display_name VARCHAR(50) NOT NULL CHECK (LENGTH(display_name) < 50),
-    role         VARCHAR(20) NOT NULL CHECK (role IN ('Admin', 'Regular')),
-    team         VARCHAR(36) DEFAULT NULL REFERENCES Teams (id) ON DELETE SET NULL ON UPDATE CASCADE
+    id            VARCHAR(36) PRIMARY KEY,
+    display_name  VARCHAR(50) NOT NULL CHECK (LENGTH(display_name) < 50),
+    role          VARCHAR(20) NOT NULL CHECK (role IN ('Admin', 'Regular')),
+    team          VARCHAR(36) DEFAULT NULL REFERENCES Teams (id) ON DELETE SET NULL ON UPDATE CASCADE,
+    refresh_token VARCHAR(50) DEFAULT NULL
 );
 
 CREATE TABLE Teams

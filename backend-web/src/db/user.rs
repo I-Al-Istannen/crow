@@ -1,3 +1,4 @@
+use crate::auth::oidc::OidcUser;
 use crate::error::{Result, WebError};
 use crate::types::{FullUserForAdmin, OwnUser, User, UserId, UserRole};
 use sqlx::{SqliteConnection, query};
@@ -63,6 +64,32 @@ pub(super) async fn add_user(con: &mut SqliteConnection, user: &UserForAuth) -> 
     .await?;
 
     Ok(())
+}
+
+#[instrument(skip_all)]
+pub(super) async fn synchronize_oidc_user(
+    con: &mut SqliteConnection,
+    user: OidcUser,
+) -> Result<OwnUser> {
+    query!(
+        r#"
+        INSERT INTO Users
+            (id, display_name, role)
+        VALUES
+            (?, ?, ?)
+        ON CONFLICT DO UPDATE SET
+            display_name = excluded.display_name
+        "#,
+        user.id,
+        user.name,
+        UserRole::Regular
+    )
+    .execute(&mut *con)
+    .await?;
+
+    let user_id = UserId::from(user.id);
+
+    get_user(&mut *con, &user_id).await
 }
 
 #[derive(sqlx::FromRow)]

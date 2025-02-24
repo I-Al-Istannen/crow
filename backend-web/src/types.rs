@@ -24,6 +24,7 @@ pub use self::user::User;
 pub use self::user::UserId;
 pub use self::user::UserRole;
 use crate::auth::Keys;
+use crate::auth::oidc::Oidc;
 use crate::config::{ExecutionConfig, TestConfig};
 use crate::db::Database;
 use crate::storage::LocalRepos;
@@ -49,6 +50,7 @@ pub struct AppState {
     pub executor: Arc<Mutex<Executor>>,
     pub local_repos: LocalRepos,
     pub github_app_name: Option<String>,
+    pub oidc: Oidc,
 }
 
 impl AppState {
@@ -59,6 +61,7 @@ impl AppState {
         execution_config: ExecutionConfig,
         test_config: TestConfig,
         local_repos: LocalRepos,
+        oidc: Oidc,
     ) -> Self {
         Self {
             db,
@@ -68,6 +71,7 @@ impl AppState {
             executor: Arc::new(Mutex::new(Executor::default())),
             local_repos,
             github_app_name,
+            oidc,
         }
     }
 }

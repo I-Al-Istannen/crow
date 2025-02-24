@@ -1,3 +1,4 @@
+use crate::auth::oidc::Oidc;
 use crate::auth::{Claims, Keys};
 use crate::config::Config;
 use crate::db::{Database, UserForAuth};
@@ -6,8 +7,8 @@ use crate::endpoints::{
     get_queued_task, get_recent_tasks, get_running_task_info, get_task, get_team_info,
     get_team_repo, get_test, get_top_task_per_team, get_work, get_work_tar, head_running_task_info,
     integration_get_task_status, integration_request_revision, list_task_ids, list_tests,
-    list_users, login, request_revision, runner_done, runner_ping, runner_register, runner_update,
-    set_team_repo, set_test, show_me_myself,
+    list_users, login, login_oidc, login_oidc_callback, request_revision, runner_done, runner_ping,
+    runner_register, runner_update, set_team_repo, set_test, show_me_myself,
 };
 use crate::error::WebError;
 use crate::storage::LocalRepos;
@@ -119,6 +120,7 @@ async fn main() {
         config.execution,
         config.test,
         LocalRepos::new(local_repo_path),
+        Oidc::build_new(config.oidc.clone()).await.unwrap(),
     );
 
     if let Some(github_config) = config.github.clone() {
@@ -231,6 +233,8 @@ async fn main_server(
         .route("/users", get(list_users).layer(authed_admin))
         .route("/users/me", get(show_me_myself))
         .route("/users/me/integrations", get(get_integration_status))
+        .route("/login", get(login_oidc))
+        .route("/login/oidc/callback", get(login_oidc_callback))
         .layer(prometheus_layer)
         .layer(CorsLayer::very_permissive()) // TODO: Make nicer
         .layer(TraceLayer::new_for_http())
