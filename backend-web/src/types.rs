@@ -68,7 +68,7 @@ impl AppState {
             jwt_keys: jwt_secret,
             execution_config,
             test_config,
-            executor: Arc::new(Mutex::new(Executor::default())),
+            executor: Executor::new(),
             local_repos,
             github_app_name,
             oidc,

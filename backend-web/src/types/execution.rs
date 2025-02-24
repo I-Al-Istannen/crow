@@ -7,7 +7,9 @@ use shared::{
 };
 use snafu::{Location, Snafu, ensure};
 use std::collections::{HashMap, HashSet};
-use std::time::SystemTime;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, SystemTime};
+use tokio::select;
 use tokio::sync::broadcast;
 use tracing::warn;
 
@@ -98,12 +100,6 @@ impl From<RunnerUpdate> for RunnerUpdateForFrontend {
     }
 }
 
-#[derive(Default)]
-pub struct Executor {
-    runners: HashMap<RunnerId, Runner>,
-    in_progress: HashMap<TaskId, InternalRunningTaskState>,
-}
-
 #[derive(Debug, Snafu)]
 pub enum ExecutorError {
     #[snafu(display("Runner `{runner_id}` not found at {location}"))]
@@ -120,7 +116,44 @@ pub struct ExecutorInfo {
     pub in_progress: Vec<(TaskId, usize)>,
 }
 
+pub struct Executor {
+    runners: HashMap<RunnerId, Runner>,
+    in_progress: HashMap<TaskId, InternalRunningTaskState>,
+    _old_runner_cleanup: tokio::sync::oneshot::Sender<()>,
+}
+
 impl Executor {
+    pub fn new() -> Arc<Mutex<Self>> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+
+        let res = Arc::new(Mutex::new(Self {
+            in_progress: HashMap::new(),
+            runners: HashMap::new(),
+            _old_runner_cleanup: tx,
+        }));
+
+        let res_clone = res.clone();
+        tokio::task::spawn(async move {
+            let periodic = async move {
+                loop {
+                    tokio::time::sleep(Duration::from_secs(60)).await;
+                    res_clone.lock().unwrap().runners.retain(|_, v| {
+                        let time_since_ping =
+                            v.last_ping.elapsed().unwrap_or(Duration::from_secs(0));
+
+                        time_since_ping < Duration::from_secs(5 * 60)
+                    });
+                }
+            };
+            select! {
+                _ = periodic => {},
+                _ = rx => {},
+            }
+        });
+
+        res
+    }
+
     pub fn get_runners(&self) -> Vec<RunnerForFrontend> {
         self.runners.values().map(|it| it.into()).collect()
     }
