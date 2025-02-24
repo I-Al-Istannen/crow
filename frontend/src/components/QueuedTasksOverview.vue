@@ -43,7 +43,7 @@
       </TableRow>
     </TableBody>
   </Table>
-  <div v-else class="text-muted-foreground text-sm mb-2">
+  <div v-else class="text-muted-foreground text-sm mb-2" :class="{ 'mt-6': runners.length > 0 }">
     The queue is empty! The perfect time for you to submit something :)
   </div>
 </template>
