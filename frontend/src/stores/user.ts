@@ -9,6 +9,7 @@ export const useUserStore = defineStore('user', () => {
   const team = ref<Team | null>(null)
 
   const loggedIn = computed(() => token.value !== null)
+  const accountReady = computed(() => loggedIn.value && team.value !== null)
 
   async function logIn(oidc_code: string, oidc_state: string) {
     const res = await fetchWithError(
@@ -25,5 +26,5 @@ export const useUserStore = defineStore('user', () => {
     token.value = json['token']
   }
 
-  return { token, team, user, loggedIn, logIn }
+  return { accountReady, token, team, user, loggedIn, logIn }
 })

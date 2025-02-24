@@ -7,7 +7,7 @@
           <span class="ml-2 font-semibold max-md:hidden">crow</span>
         </div>
 
-        <NavigationMenu>
+        <NavigationMenu v-if="accountReady">
           <NavigationMenuList>
             <NavigationMenuItem v-for="route in routes" :key="route.title">
               <router-link :to="route.route">
@@ -24,7 +24,7 @@
           </NavigationMenuList>
         </NavigationMenu>
       </div>
-      <div>
+      <div v-if="accountReady">
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
             <Button variant="outline" size="icon">
@@ -83,7 +83,7 @@ const routerLinkClasses =
   ' disabled:opacity-50 data-[active]:bg-accent'
 
 const currentRoute = useRoute()
-const { user } = storeToRefs(useUserStore())
+const { user, accountReady } = storeToRefs(useUserStore())
 const userName = computed(() => user.value?.displayName)
 
 const routes = computed(() =>

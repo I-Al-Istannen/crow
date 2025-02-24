@@ -167,7 +167,7 @@ export const RunnerUpdateMessageSchema = z.object({
 
 export const ShowMyselfResponseSchema = z.object({
   user: UserSchema,
-  team: TeamSchema,
+  team: TeamSchema.nullable(),
 })
 
 export const TestSchema = z.object({
