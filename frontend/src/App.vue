@@ -7,14 +7,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, watch } from 'vue'
 import NavBar from '@/components/NavBar.vue'
 import { RouterView } from 'vue-router'
 import { Toaster } from '@/components/ui/sonner'
 import { queryMyself } from '@/data/network.ts'
 import { storeToRefs } from 'pinia'
-import { toast } from 'vue-sonner'
 import { useUserStore } from '@/stores/user.ts'
+import { watch } from 'vue'
 
 const { data: myself } = queryMyself()
 const { team, user } = storeToRefs(useUserStore())
@@ -24,13 +23,5 @@ watch(myself, (newData) => {
     team.value = newData.team
     user.value = newData.user
   }
-})
-
-onMounted(() => {
-  toast.promise(useUserStore().logIn(), {
-    loading: 'Loading...',
-    success: 'Logged in!',
-    error: 'Failed to log in.',
-  })
 })
 </script>

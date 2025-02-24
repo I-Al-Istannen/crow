@@ -10,12 +10,16 @@ export const useUserStore = defineStore('user', () => {
 
   const loggedIn = computed(() => token.value !== null)
 
-  async function logIn() {
-    const res = await fetchWithError(`/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'admin', password: 'admin' }),
-    })
+  async function logIn(oidc_code: string, oidc_state: string) {
+    const res = await fetchWithError(
+      `/login/oidc/callback?code=${encodeURIComponent(oidc_code)}&state=${encodeURIComponent(oidc_state)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: oidc_code, state: oidc_state }),
+        credentials: 'include',
+      },
+    )
     const json = await res.json()
     user.value = UserSchema.parse(json['user'])
     token.value = json['token']

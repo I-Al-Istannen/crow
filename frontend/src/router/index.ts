@@ -6,6 +6,7 @@ import RepoView from '@/views/RepoView.vue'
 import TaskDetailView from '@/views/TaskDetailView.vue'
 import TeamInfoView from '@/views/TeamInfoView.vue'
 import TestView from '@/views/TestView.vue'
+import LoginCallbackView from '@/views/LoginCallbackView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -66,6 +67,15 @@ const router = createRouter({
       component: TeamInfoView,
       meta: {
         name: 'Team Info',
+        hidden: true,
+      },
+    },
+    {
+      path: '/login/oidc-callback',
+      name: 'oidc-callback',
+      component: LoginCallbackView,
+      meta: {
+        name: 'Login callback',
         hidden: true,
       },
     },

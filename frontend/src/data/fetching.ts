@@ -26,7 +26,9 @@ export async function fetchWithError(
     !response.ok &&
     !(extra?.extraSuccessStatus && extra.extraSuccessStatus.includes(response.status))
   ) {
-    throw new FetchError(`Failed to fetch: ${response.status}`, response.status)
+    // TODO: Prettify WebErrors
+    const text = await response.text().catch(() => 'unknown')
+    throw new FetchError(`Failed to fetch: ${response.status} (${text})`, response.status)
   }
   return response
 }

@@ -66,4 +66,4 @@ client_id = "MZQOu3xu9lDvQLnyUbx9UaE48mQt23Mp56A6IBxW"
 client_secret = "svLCpBVQvPHAQCmPNhWlCH5914cRvgwhR4mfki1KCI8asUX2y7L3bNPKpXLZOztW4gtp9uhzaeFLevtusoAjdzKCyThmHhmt4wxS4xQDKhstXKKHAUjYxjrG5SExED5G"
 issuer_url = "http://localhost:9000/application/o/test-oidc/"
 scopes = ["email", "openid", "profile", "offline_access"]
-redirect_url = "http://localhost:3000/login/oidc/callback"
+redirect_url = "http://localhost:5173/login/oidc-callback"

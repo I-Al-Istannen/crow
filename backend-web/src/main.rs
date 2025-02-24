@@ -234,7 +234,7 @@ async fn main_server(
         .route("/users/me", get(show_me_myself))
         .route("/users/me/integrations", get(get_integration_status))
         .route("/login", get(login_oidc))
-        .route("/login/oidc/callback", get(login_oidc_callback))
+        .route("/login/oidc/callback", post(login_oidc_callback))
         .layer(prometheus_layer)
         .layer(CorsLayer::very_permissive()) // TODO: Make nicer
         .layer(TraceLayer::new_for_http())
