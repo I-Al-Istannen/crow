@@ -42,18 +42,21 @@
 
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { computed, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { BACKEND_URL } from '@/data/fetching.ts'
+import { Boid } from '@/lib/boids.ts'
 import { Button } from '@/components/ui/button'
 import PageContainer from '@/components/PageContainer.vue'
+import { Vec2d } from '@/lib/maths.ts'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user.ts'
 
 const { loggedIn } = storeToRefs(useUserStore())
-const crows = shallowRef<Crow[]>([])
+const crows = shallowRef<Boid[]>([])
 const lastAnimationTime = ref<number>(0)
 const crowContainer = ref<InstanceType<typeof PageContainer> | null>(null)
 const mousePos = ref<{ x: number; y: number }>({ x: -100, y: -100 })
+const animationId = ref<number | null>(null)
 
 const loginUrl = computed(() => BACKEND_URL + '/login')
 
@@ -61,232 +64,50 @@ watch(
   loggedIn,
   (loggedIn) => {
     if (!loggedIn) {
-      requestAnimationFrame(animationLoop)
+      animationId.value = requestAnimationFrame(animationLoop)
     }
   },
   { immediate: true },
 )
 
-type Crow = {
-  id: string
-  currentDirection: 'left' | 'right'
-  bounds: {
-    width: number
-    height: number
+onBeforeUnmount(() => {
+  if (animationId.value) {
+    cancelAnimationFrame(animationId.value)
   }
-  img: HTMLImageElement | null
-  position: {
-    x: number
-    y: number
-  }
-  velocity: {
-    dx: number
-    dy: number
-  }
+})
+
+function spawnCrow(bounds: { width: number; height: number }): Boid {
+  return new Boid(
+    'crow' + Math.random().toString(16).slice(2),
+    new Vec2d(Math.random() * bounds.width, Math.random() * bounds.height),
+    new Vec2d(Math.random() * 2 - 1, Math.random() * 2 - 1),
+    25,
+    25,
+  )
 }
 
-type Bounds = {
-  width: number
-  height: number
+function maxBoidCount() {
+  return Math.min(50, Math.max(window.screen.width, window.screen.height) / 15)
 }
 
-function getDirection(crow: Crow): 'left' | 'right' {
-  return crow.velocity.dx >= 0 ? 'right' : 'left'
-}
-
-function distSquared(a: { x: number; y: number }, b: { x: number; y: number }) {
-  return (a.x - b.x) ** 2 + (a.y - b.y) ** 2
-}
-
-const VISUAL_RANGE = 200 ** 2
-const MAX_SPEED = 10
-
-function coherence(crow: Crow) {
-  let centerX = 0
-  let centerY = 0
-  let neighbours = 0
-  for (const other of crows.value) {
-    if (other.id === crow.id) {
-      continue
-    }
-    if (distSquared(crow.position, other.position) > VISUAL_RANGE) {
-      continue
-    }
-    centerX += other.position.x
-    centerY += other.position.y
-    neighbours++
-  }
-
-  if (neighbours === 0) {
-    return {
-      dx: 0,
-      dy: 0,
-    }
-  }
-
-  // Rule 1: Coherence
-  const moveForce = {
-    dx: centerX / neighbours - crow.position.x,
-    dy: centerY / neighbours - crow.position.y,
-  }
-  moveForce.dx /= 100
-  moveForce.dy /= 100
-
-  return moveForce
-}
-
-function separation(crow: Crow) {
-  let separationX = 0
-  let separationY = 0
-  for (const other of crows.value) {
-    if (other.id === crow.id) {
-      continue
-    }
-    if (distSquared(crow.position, other.position) > 50 ** 2) {
-      continue
-    }
-
-    separationX -= other.position.x - crow.position.x
-    separationY -= other.position.y - crow.position.y
-  }
-
-  return {
-    dx: separationX / 30,
-    dy: separationY / 30,
-  }
-}
-
-function alignment(crow: Crow) {
-  let averageX = 0
-  let averageY = 0
-  let neighbours = 0
-  for (const other of crows.value) {
-    if (other.id === crow.id) {
-      continue
-    }
-    if (distSquared(crow.position, other.position) > VISUAL_RANGE) {
-      continue
-    }
-    averageX += other.velocity.dx
-    averageY += other.velocity.dy
-    neighbours++
-  }
-  averageX /= neighbours
-  averageY /= neighbours
-
-  if (neighbours === 0) {
-    return {
-      dx: 0,
-      dy: 0,
-    }
-  }
-
-  return {
-    dx: (averageX - crow.velocity.dx) / 8,
-    dy: (averageY - crow.velocity.dy) / 8,
-  }
-}
-
-function repelMouse(crow: Crow) {
-  const distance = distSquared(crow.position, mousePos.value)
-  if (distance > 150 ** 2) {
-    return {
-      dx: 0,
-      dy: 0,
-    }
-  }
-
-  return {
-    dx: (crow.position.x - mousePos.value.x) * 10,
-    dy: (crow.position.y - mousePos.value.y) * 10,
-  }
-}
-
-function moveCrow(crow: Crow, bounds: Bounds) {
-  const coherenceForce = coherence(crow)
-  const separationForce = separation(crow)
-  const alignmentForce = alignment(crow)
-  const mouseForce = repelMouse(crow)
-
-  crow.velocity.dx += coherenceForce.dx + separationForce.dx + alignmentForce.dx + mouseForce.dx
-  crow.velocity.dy += coherenceForce.dy + separationForce.dy + alignmentForce.dy + mouseForce.dy
-
-  if (Math.abs(crow.velocity.dx) > MAX_SPEED) {
-    crow.velocity.dx = (crow.velocity.dx / Math.abs(crow.velocity.dx)) * MAX_SPEED
-  }
-  if (Math.abs(crow.velocity.dy) > MAX_SPEED) {
-    crow.velocity.dy = (crow.velocity.dy / Math.abs(crow.velocity.dy)) * MAX_SPEED
-  }
-
-  if (crow.position.x < 0) {
-    crow.velocity.dx = MAX_SPEED / 2
-  } else if (crow.position.x + crow.bounds.width >= bounds.width) {
-    crow.velocity.dx = -MAX_SPEED / 2
-  }
-  if (crow.position.y < 0) {
-    crow.velocity.dy = MAX_SPEED / 2
-  } else if (crow.position.y + crow.bounds.height >= bounds.height) {
-    crow.velocity.dy = -MAX_SPEED / 2
-  }
-
-  crow.position.x += crow.velocity.dx
-  crow.position.y += crow.velocity.dy
-
-  const crowElement = crow.img ? crow.img : document.getElementById(crow.id)!
+function renderCrow(crow: Boid) {
+  const crowElement = document.getElementById(crow.id)
   if (!crowElement) {
     return
   }
 
-  const direction = getDirection(crow)
-  if (direction != crow.currentDirection) {
-    if (direction === 'left') {
-      crowElement.style.transform = 'scaleX(-1)'
-    } else {
-      crowElement.style.transform = ''
-    }
-    crow.currentDirection = direction
-  }
-
-  crowElement.style.top = `${crow.position.y}px`
-  crowElement.style.left = `${crow.position.x}px`
-}
-
-function spawnCrow(bounds: Bounds): Crow {
-  return {
-    id: 'crow' + Math.random().toString(16).slice(2),
-    currentDirection: 'right',
-    bounds: {
-      width: 25,
-      height: 25,
-    },
-    img: null,
-    position: {
-      x: Math.random() * bounds.width,
-      y: Math.random() * bounds.height,
-    },
-    velocity: {
-      dx: Math.random() * 2 - 1,
-      dy: Math.random() * 2 - 1,
-    },
-  }
-}
-
-function maxBoidCount() {
-  return Math.min(200, Math.max(window.screen.width, window.screen.height) / 15)
+  crowElement.style.transform = `rotate(${crow.velocity.angle(Vec2d.RIGHT)}rad)`
+  crowElement.style.left = `${crow.pos.x}px`
+  crowElement.style.top = `${crow.pos.y}px`
 }
 
 function animationLoop(time: number) {
-  const MAX_FPS = 60
-
   if (loggedIn.value) {
     return
   }
   requestAnimationFrame(animationLoop)
 
   const timeDelta = time - lastAnimationTime.value
-  if (timeDelta < 1000 / MAX_FPS) {
-    return
-  }
   lastAnimationTime.value = time
 
   const bounds = crowContainer.value?.$el.getBoundingClientRect()
@@ -303,8 +124,12 @@ function animationLoop(time: number) {
     crows.value = crows.value.slice()
   }
 
+  const bounds2d = new Vec2d(bounds.width, bounds.height)
+  const mouse2d = mousePos.value ? new Vec2d(mousePos.value.x, mousePos.value.y) : Vec2d.ZERO
+
   for (const crow of crows.value) {
-    moveCrow(crow, bounds)
+    crow.update(bounds2d, mouse2d, crows.value, timeDelta / 1000)
+    renderCrow(crow)
   }
 }
 </script>
