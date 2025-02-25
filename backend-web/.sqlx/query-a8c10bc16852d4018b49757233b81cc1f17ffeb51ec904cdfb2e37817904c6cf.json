@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            Tests.id as \"id!: TestId\",\n            Tests.name,\n            Teams.display_name as \"creator_name\",\n            Teams.id as \"creator_id!: TeamId\",\n            Tests.admin_authored,\n            Tests.category\n        FROM Tests\n        JOIN Teams ON Tests.owner = Teams.id\n        ",
+  "query": "\n        SELECT\n            Tests.id as \"id!: TestId\",\n            Teams.display_name as \"creator_name\",\n            Teams.id as \"creator_id!: TeamId\",\n            Tests.admin_authored,\n            Tests.category\n        FROM Tests\n        JOIN Teams ON Tests.owner = Teams.id\n        ",
   "describe": {
     "columns": [
       {
@@ -9,28 +9,23 @@
         "type_info": "Text"
       },
       {
-        "name": "name",
+        "name": "creator_name",
         "ordinal": 1,
         "type_info": "Text"
       },
       {
-        "name": "creator_name",
+        "name": "creator_id!: TeamId",
         "ordinal": 2,
         "type_info": "Text"
       },
       {
-        "name": "creator_id!: TeamId",
-        "ordinal": 3,
-        "type_info": "Text"
-      },
-      {
         "name": "admin_authored",
-        "ordinal": 4,
+        "ordinal": 3,
         "type_info": "Bool"
       },
       {
         "name": "category",
-        "ordinal": 5,
+        "ordinal": 4,
         "type_info": "Text"
       }
     ],
@@ -40,11 +35,10 @@
     "nullable": [
       true,
       false,
-      false,
       true,
       false,
       false
     ]
   },
-  "hash": "e2111a8c66c043557388d6eb21718ccfefa9a23c5d30d23ee2258c0b1ea9f6b8"
+  "hash": "a8c10bc16852d4018b49757233b81cc1f17ffeb51ec904cdfb2e37817904c6cf"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            id as \"id!: TestId\",\n            name,\n            expected_output,\n            owner as \"owner!: TeamId\",\n            admin_authored,\n            category\n        FROM Tests\n        WHERE id = ?",
+  "query": "\n        SELECT\n            id as \"id!: TestId\",\n            expected_output,\n            input,\n            owner as \"owner!: TeamId\",\n            admin_authored,\n            category\n        FROM Tests\n        WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -9,12 +9,12 @@
         "type_info": "Text"
       },
       {
-        "name": "name",
+        "name": "expected_output",
         "ordinal": 1,
         "type_info": "Text"
       },
       {
-        "name": "expected_output",
+        "name": "input",
         "ordinal": 2,
         "type_info": "Text"
       },
@@ -46,5 +46,5 @@
       false
     ]
   },
-  "hash": "91df7367e5510bbe6fa165892f487714915511b1cb3c70258693852840c2dd7c"
+  "hash": "42da8f78cf99cade06cca8c687e07ac98ea8c8ef4c052e18e29140f6d65e08a3"
 }
