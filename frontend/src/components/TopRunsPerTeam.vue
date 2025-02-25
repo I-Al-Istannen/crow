@@ -1,5 +1,5 @@
 <template>
-  <Card>
+  <Card v-show="sortedTeams && sortedTeams.length > 0">
     <CardHeader>
       <CardTitle>Top runs per Team</CardTitle>
       <CardDescription>The best runs of each team. Being at the top is good :)</CardDescription>
