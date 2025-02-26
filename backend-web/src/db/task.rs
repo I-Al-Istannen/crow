@@ -1,21 +1,22 @@
-use crate::error::{Result, WebError};
+use crate::error::{Result, SqlxSnafu, WebError};
 use crate::types::{ExecutionExitStatus, FinishedCompilerTaskSummary, TaskId, TeamId};
 use shared::{
     AbortedExecution, ExecutionOutput, FinishedCompilerTask, FinishedExecution, FinishedTaskInfo,
     FinishedTest, InternalError,
 };
-use sqlx::{Acquire, Sqlite, SqliteConnection, query};
+use snafu::{location, ResultExt};
+use sqlx::{query, Acquire, Sqlite, SqliteConnection};
 use std::collections::HashMap;
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
-use tracing::{Instrument, info_span, instrument};
+use tracing::{info_span, instrument, Instrument};
 
 #[instrument(skip_all)]
 pub(super) async fn add_finished_task(
     con: impl Acquire<'_, Database = Sqlite>,
     result: &FinishedCompilerTask,
 ) -> Result<()> {
-    let mut con = con.begin().await?;
+    let mut con = con.begin().await.context(SqlxSnafu)?;
 
     let start_time = result
         .info()
@@ -61,12 +62,13 @@ pub(super) async fn add_finished_task(
                 )
                 .execute(&mut *con)
                 .instrument(info_span!("sqlx_add_finished_insert_test"))
-                .await?;
+                .await
+                .context(SqlxSnafu)?;
             }
         }
     }
 
-    con.commit().await?;
+    con.commit().await.context(SqlxSnafu)?;
 
     Ok(())
 }
@@ -76,7 +78,7 @@ pub(super) async fn get_task(
     con: impl Acquire<'_, Database = Sqlite>,
     task_id: &TaskId,
 ) -> Result<FinishedCompilerTask> {
-    let mut con = con.begin().await?;
+    let mut con = con.begin().await.context(SqlxSnafu)?;
 
     let task = query!(
         r#"
@@ -95,10 +97,11 @@ pub(super) async fn get_task(
     )
     .fetch_optional(&mut *con)
     .instrument(info_span!("sqlx_get_task_query"))
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
 
     let Some(task) = task else {
-        return Err(WebError::NotFound);
+        return Err(WebError::not_found(location!()));
     };
 
     let build_output = get_execution(&mut con, &task.execution_id).await?;
@@ -135,7 +138,8 @@ pub(super) async fn get_task(
     )
     .fetch_all(&mut *con)
     .instrument(info_span!("sqlx_get_task_tests"))
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
 
     let mut finished_tests = Vec::new();
     for test in tests {
@@ -156,7 +160,7 @@ pub(super) async fn get_recent_tasks(
     team_id: &TeamId,
     count: i64,
 ) -> Result<Vec<FinishedCompilerTaskSummary>> {
-    let mut con = con.begin().await?;
+    let mut con = con.begin().await.context(SqlxSnafu)?;
 
     let tasks = query!(
         r#"
@@ -173,7 +177,8 @@ pub(super) async fn get_recent_tasks(
     .map(|it| it.task_id)
     .fetch_all(&mut *con)
     .instrument(info_span!("sqlx_get_recent_tasks_query"))
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
 
     let mut finished_tasks = Vec::new();
 
@@ -189,11 +194,12 @@ pub(super) async fn get_recent_tasks(
 
 #[instrument(skip_all)]
 pub(super) async fn get_task_ids(con: &mut SqliteConnection) -> Result<Vec<TaskId>> {
-    Ok(query!(r#"SELECT task_id as "task_id!: TaskId" FROM Tasks"#)
+    query!(r#"SELECT task_id as "task_id!: TaskId" FROM Tasks"#)
         .map(|it| it.task_id)
         .fetch_all(con)
         .instrument(info_span!("sqlx_get_task_ids"))
-        .await?)
+        .await
+        .context(SqlxSnafu)
 }
 
 #[instrument(skip_all)]
@@ -214,10 +220,11 @@ async fn get_execution(con: &mut SqliteConnection, execution_id: &str) -> Result
     )
     .fetch_optional(con)
     .instrument(info_span!("sqlx_get_execution"))
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
 
     let Some(execution) = execution else {
-        return Err(WebError::NotFound);
+        return Err(WebError::not_found(location!()));
     };
 
     Ok(match execution.result {
@@ -300,7 +307,8 @@ async fn record_task(
     )
     .execute(&mut *con)
     .instrument(info_span!("sqlx_add_finished_insert_task"))
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
 
     Ok(())
 }
@@ -330,7 +338,8 @@ async fn record_finished_execution(
     )
     .execute(&mut *con)
     .instrument(info_span!("sqlx_record_finished_execution"))
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
     Ok(())
 }
 
@@ -357,7 +366,8 @@ async fn record_internal_error(
     )
     .execute(&mut *con)
     .instrument(info_span!("sqlx_record_internal_error"))
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
     Ok(())
 }
 
@@ -384,7 +394,8 @@ async fn record_aborted(
     )
     .execute(&mut *con)
     .instrument(info_span!("sqlx_record_aborted"))
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
     Ok(())
 }
 
@@ -392,7 +403,7 @@ async fn record_aborted(
 pub(super) async fn get_top_task_per_team(
     con: impl Acquire<'_, Database = Sqlite>,
 ) -> Result<HashMap<TeamId, FinishedCompilerTaskSummary>> {
-    let mut con = con.begin().await?;
+    let mut con = con.begin().await.context(SqlxSnafu)?;
 
     let query_res = query!(
         r#"
@@ -413,7 +424,8 @@ pub(super) async fn get_top_task_per_team(
         ExecutionExitStatus::Success
     )
     .fetch_all(&mut *con)
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
 
     let mut result = HashMap::new();
 

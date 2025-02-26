@@ -1,19 +1,85 @@
 use super::Json;
-use crate::error::{Result, WebError};
+use crate::error::{HttpError, Result, WebError};
 use crate::types::AppState;
 use axum::body::Body;
 use axum::extract::State;
+use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum_extra::TypedHeader;
-use axum_extra::headers::Authorization;
 use axum_extra::headers::authorization::Basic;
+use axum_extra::headers::Authorization;
+use axum_extra::TypedHeader;
 use shared::{
     CompilerTask, CompilerTest, FinishedCompilerTask, RunnerId, RunnerInfo, RunnerRegisterResponse,
     RunnerUpdate, RunnerWorkResponse,
 };
-use snafu::Report;
+use snafu::{ensure, location, IntoError, Location, NoneError, Report, Snafu};
 use tokio_util::io::ReaderStream;
 use tracing::{info, instrument, warn};
+
+#[derive(Debug, Snafu)]
+pub enum ExecutorError {
+    #[snafu(display("Runner `{victim}` tried to impersonate `{offender}` at {location}"))]
+    RunnerImpersonation {
+        victim: String,
+        offender: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display(
+        "Runner `{runner_id}` submitted unknown task `{task_id}` for completion at {location}"
+    ))]
+    UnknownTask {
+        task_id: String,
+        runner_id: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("There was no work assigned to you we could tar at {location}"))]
+    NoWorkWhenTaring {
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Runner requested unknown revision `{revision}` at {location}"))]
+    UnknownRevisionRequested {
+        revision: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Failed to open temporary file for taring at {location}"))]
+    WorkTarOpen {
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+}
+
+impl HttpError for ExecutorError {
+    fn to_http_code(&self) -> StatusCode {
+        match self {
+            Self::RunnerImpersonation { .. } => StatusCode::UNAUTHORIZED,
+            Self::UnknownTask { .. } => StatusCode::NOT_FOUND,
+            Self::NoWorkWhenTaring { .. } => StatusCode::NOT_FOUND,
+            Self::UnknownRevisionRequested { .. } => StatusCode::NOT_FOUND,
+            Self::WorkTarOpen { .. } => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+
+    fn to_error_code(&self) -> &'static str {
+        match self {
+            Self::RunnerImpersonation { .. } => "runner_impersonation",
+            Self::UnknownTask { .. } => "unknown_task",
+            Self::NoWorkWhenTaring { .. } => "no_work_when_taring",
+            Self::UnknownRevisionRequested { .. } => "unknown_revision_requested",
+            Self::WorkTarOpen { .. } => "work_tar_open",
+        }
+    }
+}
+
+impl From<ExecutorError> for WebError {
+    fn from(e: ExecutorError) -> Self {
+        Self::http_error(e, location!())
+    }
+}
 
 #[instrument(skip_all)]
 pub async fn runner_register(
@@ -22,9 +88,13 @@ pub async fn runner_register(
     Json(runner): Json<RunnerInfo>,
 ) -> Result<Json<RunnerRegisterResponse>> {
     let runner_id = auth.username().to_string();
-    if runner.id.to_string() != runner_id {
-        return Err(WebError::InvalidCredentials);
-    }
+    ensure!(
+        runner.id.to_string() == runner_id,
+        RunnerImpersonationSnafu {
+            victim: runner.id.to_string(),
+            offender: runner_id,
+        }
+    );
 
     let task = state.executor.lock().unwrap().register_runner(&runner);
     let current_task = runner.current_task.map(|it| it.into());
@@ -71,12 +141,12 @@ pub async fn runner_done(
         .get_running_task(&task.info().task_id.clone().into())
         .is_none()
     {
-        warn!(
-            task = %task.info().task_id,
-            runner_id = %auth.username(),
-            "Runner submitted unknown task for completion"
-        );
-        return Err(WebError::NotFound);
+        return Err(UnknownTaskSnafu {
+            task_id: task.info().task_id.clone(),
+            runner_id: auth.username().to_string(),
+        }
+        .into_error(NoneError)
+        .into());
     }
 
     state.db.add_finished_task(&task).await?;
@@ -109,7 +179,12 @@ pub async fn get_work(
     Json(runner): Json<RunnerInfo>,
 ) -> Result<Json<RunnerWorkResponse>> {
     if runner.id.to_string() != auth.username() {
-        return Err(WebError::InvalidCredentials);
+        return Err(RunnerImpersonationSnafu {
+            victim: runner.id.to_string(),
+            offender: auth.username().to_string(),
+        }
+        .into_error(NoneError)
+        .into());
     }
     if let Some(task) = runner.current_task {
         warn!(runner = %runner.id, task = %task, "Runner already has a task, resetting it");
@@ -194,7 +269,11 @@ pub async fn get_work_tar(
         .lock()
         .unwrap()
         .get_current_task(&auth.username().to_string().into())
-        .ok_or(WebError::NotFound)?;
+        .ok_or(
+            NoWorkWhenTaringSnafu {}
+                .into_error(NoneError)
+                .into_weberror(location!()),
+        )?;
 
     let repo = state.db.get_repo(&task.team).await?;
     let Some(revision) = state
@@ -209,7 +288,11 @@ pub async fn get_work_tar(
             runner_id = %runner_name,
             "Requested unknown revision"
         );
-        return Err(WebError::NotFound);
+        return Err(UnknownRevisionRequestedSnafu {
+            revision: task.revision,
+        }
+        .into_error(NoneError)
+        .into());
     };
 
     let temp_file = tempfile::NamedTempFile::with_suffix(".tar.gz").unwrap();
@@ -220,7 +303,7 @@ pub async fn get_work_tar(
 
     let file = tokio::fs::File::open(temp_file.path())
         .await
-        .map_err(|e| WebError::InternalServerError(e.to_string()))?;
+        .map_err(|e| WorkTarOpenSnafu.into_error(e).into_weberror(location!()))?;
 
     // Delete the file, we have an open file handle to it
     drop(temp_file);

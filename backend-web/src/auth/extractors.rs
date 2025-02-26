@@ -3,11 +3,13 @@ use crate::error::WebError;
 use crate::types::{AppState, JwtIssuer, UserId, UserRole};
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
-use axum::{RequestPartsExt, async_trait};
-use axum_extra::TypedHeader;
-use axum_extra::headers::Authorization;
+use axum::{async_trait, RequestPartsExt};
 use axum_extra::headers::authorization::Bearer;
+use axum_extra::headers::Authorization;
+use axum_extra::TypedHeader;
 use serde::{Deserialize, Serialize};
+use snafu::location;
+use tracing::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
@@ -28,7 +30,7 @@ impl FromRequestParts<AppState> for Claims {
         let TypedHeader(Authorization(bearer)) = parts
             .extract::<TypedHeader<Authorization<Bearer>>>()
             .await
-            .map_err(|_| WebError::InvalidCredentials)?;
+            .map_err(|_| WebError::invalid_credentials(location!()))?;
 
         Self::from_token(state, bearer.token()).await
     }
@@ -49,7 +51,9 @@ impl Claims {
         // Update claims from DB to instantly process role changes (yes, this kind of
         // defeats normal stateless JWT flows)
         let Some(user) = state.db.get_user_for_login(&claims.sub).await? else {
-            return Err(WebError::InvalidCredentials);
+            info!(user = %claims.sub, "User no longer found but tried using valid JWT");
+
+            return Err(WebError::invalid_credentials(location!()));
         };
         claims.role = user.role;
 

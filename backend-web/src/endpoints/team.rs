@@ -4,6 +4,7 @@ use crate::error::{Result, WebError};
 use crate::types::{AppState, FinishedCompilerTaskSummary, Repo, TeamId, TeamInfo};
 use axum::extract::{Path, State};
 use serde::Deserialize;
+use snafu::location;
 use tracing::instrument;
 
 #[instrument(skip_all)]
@@ -17,11 +18,11 @@ pub async fn set_team_repo(
 
     if !claims.is_admin() {
         let Some(team) = user.user.team else {
-            return Err(WebError::NotInTeam);
+            return Err(WebError::not_in_team(location!()));
         };
 
         if team != target_team {
-            return Err(WebError::NoPermissions);
+            return Err(WebError::unauthorized(location!()));
         }
     }
 
@@ -47,7 +48,7 @@ pub async fn get_team_repo(
     }
 
     let Some(team) = user.user.team else {
-        return Err(WebError::NotInTeam);
+        return Err(WebError::not_in_team(location!()));
     };
 
     Ok(Json(db.get_repo(&team).await?))
@@ -61,7 +62,7 @@ pub async fn get_n_recent_tasks(
 ) -> Result<Json<Vec<FinishedCompilerTaskSummary>>> {
     let user = db.get_user(&claims.sub).await?;
     let Some(team) = user.user.team else {
-        return Err(WebError::NotInTeam);
+        return Err(WebError::not_in_team(location!()));
     };
     let count = if count == 0 { u32::MAX } else { count };
 
@@ -75,7 +76,7 @@ pub async fn get_recent_tasks(
 ) -> Result<Json<Vec<FinishedCompilerTaskSummary>>> {
     let user = db.get_user(&claims.sub).await?;
     let Some(team) = user.user.team else {
-        return Err(WebError::NotInTeam);
+        return Err(WebError::not_in_team(location!()));
     };
 
     Ok(Json(db.get_recent_tasks(&team, 10).await?))
@@ -90,10 +91,10 @@ pub async fn get_team_info(
     if !claims.is_admin() {
         let user = db.get_user(&claims.sub).await?;
         let Some(team) = user.user.team else {
-            return Err(WebError::NotInTeam);
+            return Err(WebError::not_in_team(location!()));
         };
         if team != team_id {
-            return Err(WebError::NoPermissions);
+            return Err(WebError::unauthorized(location!()));
         }
     }
 

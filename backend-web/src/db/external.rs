@@ -1,6 +1,7 @@
-use crate::error::Result;
+use crate::error::{Result, SqlxSnafu};
 use crate::types::{CreatedExternalRun, ExternalRunId, ExternalRunStatus, TaskId};
-use sqlx::{SqliteConnection, query, query_as};
+use snafu::ResultExt;
+use sqlx::{query, query_as, SqliteConnection};
 
 pub(crate) async fn add_external_run(
     con: &mut SqliteConnection,
@@ -24,7 +25,8 @@ pub(crate) async fn add_external_run(
         run.status,
     )
     .execute(con)
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
 
     Ok(())
 }
@@ -41,7 +43,8 @@ pub(crate) async fn update_external_run_status(
         run_id
     )
     .execute(con)
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
 
     Ok(res.rows_affected() > 0)
 }
@@ -50,7 +53,7 @@ pub(crate) async fn get_external_runs(
     con: &mut SqliteConnection,
     platform: &str,
 ) -> Result<Vec<CreatedExternalRun>> {
-    Ok(query_as!(
+    query_as!(
         CreatedExternalRun,
         r#"
         SELECT
@@ -66,7 +69,8 @@ pub(crate) async fn get_external_runs(
         platform
     )
     .fetch_all(con)
-    .await?)
+    .await
+    .context(SqlxSnafu)
 }
 
 pub(crate) async fn delete_external_run(
@@ -76,7 +80,8 @@ pub(crate) async fn delete_external_run(
     let run_id = **run_id as i64;
     let res = query!("DELETE FROM ExternalRuns WHERE run_id = ?", run_id)
         .execute(con)
-        .await?;
+        .await
+        .context(SqlxSnafu)?;
 
     Ok(res.rows_affected() > 0)
 }

@@ -1,7 +1,8 @@
-use crate::error::{Result, WebError};
+use crate::error::{Result, SqlxSnafu, WebError};
 use crate::types::{TeamId, Test, TestId, TestSummary};
-use sqlx::{SqliteConnection, query, query_as};
-use tracing::{Instrument, info_span, instrument};
+use snafu::{location, ResultExt};
+use sqlx::{query, query_as, SqliteConnection};
+use tracing::{info_span, instrument, Instrument};
 
 #[instrument(skip_all)]
 pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<Test> {
@@ -26,7 +27,8 @@ pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<T
     )
     .execute(&mut *con)
     .instrument(info_span!("sqlx_add_test"))
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
 
     let test = query_as!(
         Test,
@@ -44,14 +46,15 @@ pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<T
     )
     .fetch_one(con)
     .instrument(info_span!("sqlx_add_get_test"))
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
 
     Ok(test)
 }
 
 #[instrument(skip_all)]
 pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>> {
-    Ok(query_as!(
+    query_as!(
         Test,
         r#"
         SELECT
@@ -66,12 +69,13 @@ pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>> {
     )
     .fetch_all(con)
     .instrument(info_span!("sqlx_get_tests"))
-    .await?)
+    .await
+    .context(SqlxSnafu)
 }
 
 #[instrument(skip_all)]
 pub(super) async fn get_tests_summaries(con: &mut SqliteConnection) -> Result<Vec<TestSummary>> {
-    Ok(query_as!(
+    query_as!(
         TestSummary,
         r#"
         SELECT
@@ -86,7 +90,8 @@ pub(super) async fn get_tests_summaries(con: &mut SqliteConnection) -> Result<Ve
     )
     .fetch_all(con)
     .instrument(info_span!("sqlx_get_test_summaries"))
-    .await?)
+    .await
+    .context(SqlxSnafu)
 }
 
 #[instrument(skip_all)]
@@ -111,7 +116,8 @@ pub(super) async fn fetch_test(
     )
     .fetch_optional(con)
     .instrument(info_span!("sqlx_fetch_test"))
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
 
     Ok(test)
 }
@@ -121,10 +127,11 @@ pub(super) async fn delete_test(con: &mut SqliteConnection, test_id: &TestId) ->
     let res = query!(r#"DELETE FROM Tests WHERE id = ?"#, test_id)
         .execute(con)
         .instrument(info_span!("sqlx_delete_test"))
-        .await?;
+        .await
+        .context(SqlxSnafu)?;
 
     if res.rows_affected() == 0 {
-        return Err(WebError::NotFound);
+        return Err(WebError::not_found(location!()));
     }
 
     Ok(())

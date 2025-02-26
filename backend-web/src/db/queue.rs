@@ -1,9 +1,10 @@
-use crate::error::Result;
+use crate::error::{Result, SqlxSnafu};
 use crate::types::{TaskId, TeamId, WorkItem};
-use sqlx::{SqliteConnection, query};
+use snafu::ResultExt;
+use sqlx::{query, SqliteConnection};
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
-use tracing::{Instrument, info_span, instrument};
+use tracing::{info_span, instrument, Instrument};
 
 #[instrument(skip_all)]
 pub(super) async fn queue_task(con: &mut SqliteConnection, task: WorkItem) -> Result<()> {
@@ -23,7 +24,7 @@ pub(super) async fn queue_task(con: &mut SqliteConnection, task: WorkItem) -> Re
     )
     .execute(con)
     .instrument(info_span!("sqlx_insert_queue"))
-    .await?;
+    .await.context(SqlxSnafu)?;
 
     Ok(())
 }
@@ -33,14 +34,15 @@ pub(super) async fn remove_queued_task(con: &mut SqliteConnection, task: &TaskId
     query!("DELETE FROM Queue WHERE id = ?", task)
         .execute(con)
         .instrument(info_span!("sqlx_delete_queue"))
-        .await?;
+        .await
+        .context(SqlxSnafu)?;
 
     Ok(())
 }
 
 #[instrument(skip_all)]
 pub(super) async fn get_queued_tasks(con: &mut SqliteConnection) -> Result<Vec<WorkItem>> {
-    Ok(query!(
+    query!(
         r#"
         SELECT
             id as "id!: TaskId",
@@ -59,7 +61,8 @@ pub(super) async fn get_queued_tasks(con: &mut SqliteConnection) -> Result<Vec<W
     })
     .fetch_all(con)
     .instrument(info_span!("sqlx_get_queue"))
-    .await?)
+    .await
+    .context(SqlxSnafu)
 }
 
 #[instrument(skip_all)]
@@ -67,7 +70,7 @@ pub(super) async fn fetch_queued_task(
     con: &mut SqliteConnection,
     task_id: &TaskId,
 ) -> Result<Option<WorkItem>> {
-    Ok(query!(
+    query!(
         r#"
         SELECT
             id as "id!: TaskId",
@@ -89,5 +92,6 @@ pub(super) async fn fetch_queued_task(
     })
     .fetch_optional(con)
     .instrument(info_span!("sqlx_get_queued_task"))
-    .await?)
+    .await
+    .context(SqlxSnafu)
 }

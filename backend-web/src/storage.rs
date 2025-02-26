@@ -1,8 +1,9 @@
-use crate::error::WebError;
+use crate::error::{HttpError, WebError};
 use crate::types::{Repo, TeamId};
+use axum::http::StatusCode;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
-use snafu::{Location, Snafu};
+use snafu::{location, Location, Snafu};
 use snafu::{Report, ResultExt};
 use std::path::{Path, PathBuf};
 use std::process::Output;
@@ -98,10 +99,21 @@ pub enum GitError {
     },
 }
 
+impl HttpError for GitError {
+    fn to_http_code(&self) -> StatusCode {
+        StatusCode::INTERNAL_SERVER_ERROR
+    }
+
+    fn to_error_code(&self) -> &'static str {
+        "git_error"
+    }
+}
+
 impl From<GitError> for WebError {
     fn from(value: GitError) -> Self {
         warn!(error = ?Report::from_error(&value), "A git error occurred");
-        Self::InternalServerError(Report::from_error(&value).to_string())
+
+        Self::http_error(value, location!())
     }
 }
 

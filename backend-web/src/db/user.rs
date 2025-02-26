@@ -1,19 +1,21 @@
 use crate::auth::oidc::OidcUser;
-use crate::error::{Result, WebError};
+use crate::error::{Result, SqlxSnafu, WebError};
 use crate::types::{FullUserForAdmin, OwnUser, User, UserId, UserRole};
-use sqlx::{SqliteConnection, query};
-use tracing::{Instrument, info, instrument, trace_span};
+use snafu::{location, ResultExt};
+use sqlx::{query, SqliteConnection};
+use tracing::{instrument, trace_span, Instrument};
 
 #[instrument(skip_all)]
 pub(super) async fn get_user_for_login(
     con: &mut SqliteConnection,
     user_id: &UserId,
 ) -> Result<Option<UserForAuth>> {
-    Ok(sqlx::query_as("SELECT * FROM Users WHERE id = ?")
+    sqlx::query_as("SELECT * FROM Users WHERE id = ?")
         .bind(user_id)
         .fetch_optional(con)
         .instrument(trace_span!("sqlx_get_user_login"))
-        .await?)
+        .await
+        .context(SqlxSnafu)
 }
 
 #[instrument(skip_all)]
@@ -21,11 +23,12 @@ pub(super) async fn fetch_user(
     con: &mut SqliteConnection,
     user_id: &UserId,
 ) -> Result<Option<FullUserForAdmin>> {
-    Ok(sqlx::query_as("SELECT * FROM Users WHERE id = ?")
+    sqlx::query_as("SELECT * FROM Users WHERE id = ?")
         .bind(user_id)
         .fetch_optional(con)
         .instrument(trace_span!("sqlx_fetch_user"))
-        .await?)
+        .await
+        .context(SqlxSnafu)
 }
 
 #[instrument(skip_all)]
@@ -33,20 +36,18 @@ pub(super) async fn get_user(con: &mut SqliteConnection, user_id: &UserId) -> Re
     let maybe_user = fetch_user(con, user_id).await?;
 
     match maybe_user {
-        None => {
-            info!(user = ?user_id, "Tried to query non-existing user");
-            Err(WebError::NotFound)
-        }
+        None => Err(WebError::not_found(location!())),
         Some(user) => Ok(user.user),
     }
 }
 
 #[instrument(skip_all)]
 pub(super) async fn fetch_users(con: &mut SqliteConnection) -> Result<Vec<FullUserForAdmin>> {
-    Ok(sqlx::query_as("SELECT * FROM Users")
+    sqlx::query_as("SELECT * FROM Users")
         .fetch_all(con)
         .instrument(trace_span!("sqlx_get_users"))
-        .await?)
+        .await
+        .context(SqlxSnafu)
 }
 
 #[instrument(skip_all)]
@@ -61,7 +62,8 @@ pub(super) async fn add_user(con: &mut SqliteConnection, user: &UserForAuth) -> 
     )
     .execute(con)
     .instrument(trace_span!("sqlx_add_user"))
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
 
     Ok(())
 }
@@ -85,7 +87,8 @@ pub(super) async fn synchronize_oidc_user(
         UserRole::Regular
     )
     .execute(&mut *con)
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
 
     let user_id = UserId::from(user.id);
 

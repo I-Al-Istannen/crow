@@ -17,24 +17,24 @@ use axum::extract::{Request, State};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
 use axum::routing::{delete, get, head, post, put};
-use axum::{Router, middleware};
-use axum_extra::TypedHeader;
-use axum_extra::headers::Authorization;
+use axum::{middleware, Router};
 use axum_extra::headers::authorization::Basic;
+use axum_extra::headers::Authorization;
+use axum_extra::TypedHeader;
 use axum_prometheus::metrics_exporter_prometheus::PrometheusHandle;
 use axum_prometheus::{GenericMetricLayer, Handle, PrometheusMetricLayerBuilder};
-use clap::Parser;
-use clap::builder::Styles;
 use clap::builder::styling::AnsiColor;
-use snafu::Report;
+use clap::builder::Styles;
+use clap::Parser;
+use snafu::{location, Report};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::{env, fs};
 use tokio::select;
-use tokio::signal::unix::{SignalKind, signal};
+use tokio::signal::unix::{signal, SignalKind};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
-use tracing::{Instrument, Span, error, instrument, warn};
+use tracing::{error, instrument, warn, Instrument, Span};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{Layer, Registry};
@@ -156,7 +156,7 @@ async fn main_server(
         state.clone(),
         |claims: Claims, request: Request, next: Next| async move {
             if claims.role != UserRole::Admin {
-                return WebError::NoPermissions.into_response();
+                return WebError::unauthorized(location!()).into_response();
             };
             next.run(request).await
         },
@@ -169,7 +169,7 @@ async fn main_server(
          next: Next| async move {
             let token = header.0.password();
             if token != state.execution_config.runner_token {
-                return WebError::InvalidCredentials.into_response();
+                return WebError::invalid_credentials(location!()).into_response();
             }
             next.run(request).await
         },

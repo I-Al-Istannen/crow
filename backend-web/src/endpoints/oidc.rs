@@ -1,16 +1,17 @@
 use crate::auth::create_jwt;
-use crate::auth::oidc::OidcFlowId;
-use crate::endpoints::Json;
+use crate::auth::oidc::{OidcError, OidcFlowId};
 use crate::endpoints::user::LoginResponse;
-use crate::error::Result;
+use crate::endpoints::Json;
 use crate::error::WebError;
+use crate::error::{HttpError, Result};
 use crate::types::{AppState, UserRole};
 use axum::extract::State;
+use axum::http::StatusCode;
 use axum::response::Redirect;
-use axum_extra::extract::CookieJar;
 use axum_extra::extract::cookie::{Cookie, Expiration, SameSite};
+use axum_extra::extract::CookieJar;
 use serde::Deserialize;
-use snafu::Report;
+use snafu::location;
 use tracing::{info, warn};
 
 pub async fn login_oidc(
@@ -39,7 +40,7 @@ pub async fn login_oidc_callback(
         Some(flow_id) => flow_id,
         None => {
             warn!("Received oidc login callback without oidc flow id cookie");
-            return Err(WebError::InvalidCredentials);
+            return Err(WebError::invalid_credentials(location!()));
         }
     };
     let flow_id = OidcFlowId::from_string(flow_id.value().to_string());
@@ -58,9 +59,7 @@ pub async fn login_oidc_callback(
     let user = match res {
         Ok(user) => user,
         Err(e) => {
-            return Err(WebError::InternalServerError(
-                Report::from_error(e).to_string(),
-            ));
+            return Err(WebError::http_error(e, location!()));
         }
     };
 
@@ -84,4 +83,14 @@ pub async fn login_oidc_callback(
 pub struct OidcCallbackPayload {
     code: String,
     state: String,
+}
+
+impl HttpError for OidcError {
+    fn to_http_code(&self) -> StatusCode {
+        StatusCode::INTERNAL_SERVER_ERROR
+    }
+
+    fn to_error_code(&self) -> &'static str {
+        "oidc_error"
+    }
 }

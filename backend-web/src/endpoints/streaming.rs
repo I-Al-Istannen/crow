@@ -7,7 +7,7 @@ use axum::response::Response;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::json;
-use snafu::{IntoError, Location, NoneError, Report, ResultExt, Snafu};
+use snafu::{location, IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::time::Duration;
 use tokio::{select, time};
 use tracing::{debug, info, instrument};
@@ -67,7 +67,7 @@ pub async fn head_running_task_info(
     {
         Ok(())
     } else {
-        Err(WebError::NotFound)
+        Err(WebError::not_found(location!()))
     }
 }
 
@@ -83,7 +83,7 @@ pub async fn get_running_task_info(
         .unwrap()
         .get_running_task(&task_id)
     else {
-        return Err(WebError::NotFound);
+        return Err(WebError::not_found(location!()));
     };
 
     Ok(ws.on_upgrade(|ws| async move {

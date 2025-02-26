@@ -5,10 +5,9 @@ use crate::types::{
     TeamIntegrationToken,
 };
 use axum::http;
-use base64::{Engine, engine::general_purpose::STANDARD as B64};
+use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use crypto_box::PublicKey;
 use jsonwebtoken::EncodingKey;
-use octocrab::Octocrab;
 use octocrab::models::repos::secrets::CreateRepositorySecret;
 use octocrab::models::{
     AppId, Installation, InstallationRepositories, InstallationToken, Repository,
@@ -17,6 +16,7 @@ use octocrab::params::apps::CreateInstallationAccessToken;
 use octocrab::params::checks::{CheckRunConclusion, CheckRunStatus};
 use octocrab::params::repos::Reference;
 use octocrab::repos::RepoHandler;
+use octocrab::Octocrab;
 use rand::rngs::OsRng;
 use snafu::{IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::collections::HashMap;
@@ -695,7 +695,7 @@ async fn finish_check(
     let task = state.db.get_task(&task_id).await;
     let conclusion = match task {
         // Task is not in queue but also not finished?
-        Err(WebError::NotFound) => CheckRunConclusion::Stale,
+        Err(WebError::NotFound { .. }) => CheckRunConclusion::Stale,
         Err(e) => return Err(OurBackendSnafu.into_error(e)),
         Ok(task) => {
             let status: QueuedTaskStatus = task.into();

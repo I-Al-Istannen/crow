@@ -1,9 +1,10 @@
 use crate::config::TeamEntry;
-use crate::error::{Result, WebError};
+use crate::error::{Result, SqlxSnafu, WebError};
 use crate::types::{Team, TeamId, TeamInfo, TeamIntegrationToken, User};
-use sqlx::{Acquire, Sqlite, SqliteConnection, query, query_as};
+use snafu::{location, ResultExt};
+use sqlx::{query, query_as, Acquire, Sqlite, SqliteConnection};
 use std::collections::HashSet;
-use tracing::{Instrument, info, info_span, instrument, warn};
+use tracing::{info, info_span, instrument, warn, Instrument};
 
 #[instrument(skip_all)]
 pub(super) async fn get_team(con: &mut SqliteConnection, team_id: &TeamId) -> Result<Team> {
@@ -14,10 +15,11 @@ pub(super) async fn get_team(con: &mut SqliteConnection, team_id: &TeamId) -> Re
     )
     .fetch_optional(con)
     .instrument(info_span!("sqlx_get_team"))
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
 
     match team {
-        None => Err(WebError::NotFound),
+        None => Err(WebError::not_found(location!())),
         Some(team) => Ok(team),
     }
 }
@@ -35,7 +37,8 @@ pub(super) async fn get_team_info(
     )
     .fetch_all(con)
     .instrument(info_span!("sqlx_get_team_info"))
-    .await?;
+    .await
+    .context(SqlxSnafu)?;
 
     Ok(TeamInfo { team, members })
 }
@@ -45,14 +48,15 @@ pub(super) async fn get_team_integration_token(
     con: &mut SqliteConnection,
     team_id: &TeamId,
 ) -> Result<TeamIntegrationToken> {
-    Ok(query!(
+    query!(
         "SELECT token FROM TeamIntegrationTokens WHERE team_id = ?",
         team_id
     )
     .map(|it| it.token.into())
     .fetch_one(con)
     .instrument(info_span!("sqlx_get_team_integration_token"))
-    .await?)
+    .await
+    .context(SqlxSnafu)
 }
 
 #[instrument(skip_all)]
@@ -60,13 +64,14 @@ pub(super) async fn fetch_team_by_integration_token(
     con: &mut SqliteConnection,
     token: &TeamIntegrationToken,
 ) -> Result<Option<TeamId>> {
-    Ok(query!(
+    query!(
         r#"SELECT team_id as "team_id!: TeamId" FROM TeamIntegrationTokens WHERE token = ?"#,
         token
     )
     .map(|it| it.team_id)
     .fetch_optional(con)
-    .await?)
+    .await
+    .context(SqlxSnafu)
 }
 
 #[instrument(skip_all)]
@@ -74,12 +79,13 @@ pub(super) async fn sync_teams(
     con: impl Acquire<'_, Database = Sqlite>,
     teams: &[TeamEntry],
 ) -> Result<()> {
-    let mut con = con.begin().await?;
+    let mut con = con.begin().await.context(SqlxSnafu)?;
 
     query!("PRAGMA defer_foreign_keys = ON")
         .execute(&mut *con)
         .instrument(info_span!("sqlx_sync_teams_pragma"))
-        .await?;
+        .await
+        .context(SqlxSnafu)?;
 
     for team in teams {
         query!(
@@ -95,13 +101,15 @@ pub(super) async fn sync_teams(
         )
         .execute(&mut *con)
         .instrument(info_span!("sqlx_sync_teams_insert"))
-        .await?;
+        .await
+        .context(SqlxSnafu)?;
 
         for member in &team.members {
             let res = query!("UPDATE Users SET team = ? WHERE id = ?", team.id, member)
                 .execute(&mut *con)
                 .instrument(info_span!("sqlx_sync_teams_update_user"))
-                .await?;
+                .await
+                .context(SqlxSnafu)?;
 
             if res.rows_affected() == 0 {
                 warn!(user = ?member, team = ?team.id, "User not found when adding to team");
@@ -121,14 +129,16 @@ pub(super) async fn sync_teams(
             new_integration_token
         )
         .execute(&mut *con)
-        .await?;
+        .await
+        .context(SqlxSnafu)?;
     }
 
     let existing_teams = query!(r#"SELECT id as "id!" FROM Teams"#)
         .map(|it| it.id)
         .fetch_all(&mut *con)
         .instrument(info_span!("sqlx_sync_teams_get_existing"))
-        .await?;
+        .await
+        .context(SqlxSnafu)?;
     let expected_teams = teams
         .iter()
         .map(|team| team.id.to_string())
@@ -140,11 +150,12 @@ pub(super) async fn sync_teams(
             query!("DELETE FROM Teams WHERE id = ?", team)
                 .execute(&mut *con)
                 .instrument(info_span!("sqlx_sync_teams_delete"))
-                .await?;
+                .await
+                .context(SqlxSnafu)?;
         }
     }
 
-    con.commit().await?;
+    con.commit().await.context(SqlxSnafu)?;
 
     Ok(())
 }

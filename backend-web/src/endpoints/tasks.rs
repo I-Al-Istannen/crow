@@ -7,12 +7,13 @@ use crate::types::{
 };
 use axum::extract::{Path, State};
 use axum::response::{IntoResponse, Response};
-use axum_extra::TypedHeader;
-use axum_extra::headers::Authorization;
 use axum_extra::headers::authorization::Bearer;
+use axum_extra::headers::Authorization;
+use axum_extra::TypedHeader;
 use serde::Serialize;
 use serde_json::json;
 use shared::FinishedCompilerTask;
+use snafu::location;
 use std::collections::HashMap;
 use std::time::SystemTime;
 use tracing::instrument;
@@ -26,7 +27,7 @@ pub async fn integration_request_revision(
 ) -> Result<Response> {
     let token = auth.token().to_string().into();
     let Some(team_id) = state.db.fetch_team_by_integration_token(&token).await? else {
-        return Err(WebError::InvalidCredentials);
+        return Err(WebError::invalid_credentials(location!()));
     };
 
     queue_task(state, &revision, team_id).await
@@ -45,7 +46,7 @@ pub async fn integration_get_task_status(
         .await?
         .is_none()
     {
-        return Err(WebError::InvalidCredentials);
+        return Err(WebError::invalid_credentials(location!()));
     };
 
     if state
@@ -79,7 +80,7 @@ pub async fn request_revision(
     Path(revision): Path<String>,
 ) -> Result<Response> {
     let Some(team) = state.db.get_user(&claims.sub).await?.user.team else {
-        return Err(WebError::NotInTeam);
+        return Err(WebError::not_in_team(location!()));
     };
 
     queue_task(state, &revision, team).await
@@ -90,7 +91,7 @@ async fn queue_task(state: AppState, revision: &str, team: TeamId) -> Result<Res
     let repo = state.db.get_repo(&team).await?;
     state.local_repos.update_repo(&repo).await?;
     let Some(revision) = state.local_repos.get_revision(&repo, revision).await? else {
-        return Err(WebError::NotFound);
+        return Err(WebError::not_found(location!()));
     };
     let commit_message = state
         .local_repos
@@ -134,10 +135,10 @@ pub async fn get_queued_task(
         .get_running_task(&task_id)
         .is_some()
     {
-        return Err(WebError::NotFound);
+        return Err(WebError::not_found(location!()));
     }
     let Some(item) = state.db.fetch_queued_task(&task_id).await? else {
-        return Err(WebError::NotFound);
+        return Err(WebError::not_found(location!()));
     };
 
     Ok(Json(item))

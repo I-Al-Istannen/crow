@@ -6,13 +6,6 @@ mod team;
 mod test;
 mod user;
 
-use crate::error::WebError;
-use axum::extract::FromRequest;
-use axum::extract::rejection::JsonRejection;
-use axum::response::IntoResponse;
-use serde::Serialize;
-use std::error::Error;
-
 pub use self::executor::get_work;
 pub use self::executor::get_work_tar;
 pub use self::executor::runner_done;
@@ -45,6 +38,13 @@ pub use self::user::get_integration_status;
 pub use self::user::list_users;
 pub use self::user::login;
 pub use self::user::show_me_myself;
+use crate::error::{HttpError, WebError};
+use axum::extract::rejection::JsonRejection;
+use axum::extract::FromRequest;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use serde::Serialize;
+use snafu::location;
 
 // create an extractor that internally uses `axum::Json` but has a custom rejection
 #[derive(FromRequest)]
@@ -58,14 +58,18 @@ impl<T: Serialize> IntoResponse for Json<T> {
     }
 }
 
+impl HttpError for JsonRejection {
+    fn to_http_code(&self) -> StatusCode {
+        StatusCode::BAD_REQUEST
+    }
+
+    fn to_error_code(&self) -> &'static str {
+        "invalid_json"
+    }
+}
+
 impl From<JsonRejection> for WebError {
     fn from(rejection: JsonRejection) -> Self {
-        let msg = match rejection {
-            JsonRejection::JsonDataError(e) => {
-                e.source().map(|e| e.to_string()).unwrap_or(e.body_text())
-            }
-            any => any.body_text(),
-        };
-        Self::InvalidJson(msg)
+        Self::http_error(rejection, location!())
     }
 }

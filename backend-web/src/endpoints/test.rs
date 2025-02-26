@@ -4,6 +4,7 @@ use crate::error::{Result, WebError};
 use crate::types::{AppState, Test, TestId, TestSummary};
 use axum::extract::{Path, State};
 use serde::{Deserialize, Serialize};
+use snafu::location;
 use tracing::instrument;
 
 #[instrument(skip_all)]
@@ -27,19 +28,19 @@ pub async fn set_test(
     let db = &state.db;
 
     let Some(team) = db.get_user(&claims.sub).await?.user.team else {
-        return Err(WebError::NotInTeam);
+        return Err(WebError::not_in_team(location!()));
     };
 
     if !claims.is_admin() {
         if let Some(existing) = db.fetch_test(&test_id).await? {
             if existing.owner != team {
-                return Err(WebError::NoPermissions);
+                return Err(WebError::unauthorized(location!()));
             }
         }
     }
 
     if !state.test_config.categories.contains(&payload.category) {
-        return Err(WebError::InvalidTestCategory(payload.category));
+        return Err(WebError::named_not_found(payload.category, location!()));
     }
 
     Ok(Json(
@@ -62,7 +63,7 @@ pub async fn get_test(
     Path(test_id): Path<TestId>,
 ) -> Result<Json<Test>> {
     let Some(test) = db.fetch_test(&test_id).await? else {
-        return Err(WebError::NotFound);
+        return Err(WebError::not_found(location!()));
     };
     Ok(Json(test))
 }
@@ -74,16 +75,16 @@ pub async fn delete_test(
     Path(test_id): Path<TestId>,
 ) -> Result<()> {
     let Some(team) = db.get_user(&claims.sub).await?.user.team else {
-        return Err(WebError::NotInTeam);
+        return Err(WebError::not_in_team(location!()));
     };
 
     if !claims.is_admin() {
         let Some(test) = db.fetch_test(&test_id).await? else {
-            return Err(WebError::NotFound);
+            return Err(WebError::not_found(location!()));
         };
 
         if !claims.is_admin() && test.owner != team {
-            return Err(WebError::NoPermissions);
+            return Err(WebError::unauthorized(location!()));
         }
     }
 

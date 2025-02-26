@@ -5,6 +5,7 @@ use crate::error::{Result, WebError};
 use crate::types::{AppState, FullUserForAdmin, OwnUser, Team, TeamIntegrationToken, User, UserId};
 use axum::extract::State;
 use serde::{Deserialize, Serialize};
+use snafu::location;
 use tracing::{info, instrument};
 
 #[instrument(skip_all)]
@@ -28,7 +29,7 @@ pub async fn get_integration_status(
 ) -> Result<Json<IntegrationInfoResponse>> {
     let user = state.db.get_user(&claims.sub).await?;
     let Some(team) = user.user.team else {
-        return Err(WebError::NotInTeam);
+        return Err(WebError::not_in_team(location!()));
     };
     let token = state.db.get_team_integration_token(&team).await?;
     let github = state
@@ -59,7 +60,7 @@ pub async fn login(
     Json(payload): Json<LoginPayload>,
 ) -> Result<Json<LoginResponse>> {
     let Some(auth_user) = state.db.get_user_for_login(&payload.username).await? else {
-        return Err(WebError::NotFound);
+        return Err(WebError::not_found(location!()));
     };
 
     let user = auth_user.user;

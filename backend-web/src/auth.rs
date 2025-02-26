@@ -4,7 +4,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use crate::error::{Result, WebError};
 use crate::types::{JwtIssuer, UserId, UserRole};
 pub use extractors::Claims;
-use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use snafu::location;
 use tracing::{debug, info, instrument, warn};
 
 pub mod extractors;
@@ -43,7 +44,7 @@ pub fn create_jwt(user: UserId, keys: &Keys, role: UserRole) -> Result<String> {
     };
     encode(&Header::default(), &claims, &keys.encoding).map_err(|e| {
         info!(error = ?e, "Error creating JWT");
-        WebError::InternalServerError("Error creating JWT".to_string())
+        WebError::internal_error("Error creating JWT".to_string(), location!())
     })
 }
 
@@ -56,6 +57,6 @@ fn validate_jwt(jwt: &str, keys: &Keys) -> Result<Claims> {
         .map_err(|e| {
             debug!(error = ?e, "JWT parsing error");
 
-            WebError::InvalidCredentials
+            WebError::invalid_credentials(location!())
         })
 }
