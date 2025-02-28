@@ -1,6 +1,7 @@
-use crate::auth::validate_jwt;
+use crate::auth::{validate_jwt, CrowJwt};
+use crate::db::UserForAuth;
 use crate::error::WebError;
-use crate::types::{AppState, JwtIssuer, UserId, UserRole};
+use crate::types::{AppState, JwtIssuer, TeamId, UserId, UserRole};
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 use axum::{async_trait, RequestPartsExt};
@@ -9,34 +10,43 @@ use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
 use serde::{Deserialize, Serialize};
 use snafu::location;
+use std::fmt::Debug;
 use tracing::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Claims {
+pub struct Claims<T: Debug + Clone = TeamId> {
     pub sub: UserId,
+    pub team: T,
     pub exp: u64,
     pub iss: JwtIssuer,
     pub role: UserRole,
 }
 
-#[async_trait]
-impl FromRequestParts<AppState> for Claims {
-    type Rejection = WebError;
+macro_rules! implement_request_parts {
+    ($generic:ty) => {
+        #[async_trait]
+        impl FromRequestParts<AppState> for Claims<$generic> {
+            type Rejection = WebError;
 
-    async fn from_request_parts(
-        parts: &mut Parts,
-        state: &AppState,
-    ) -> Result<Self, Self::Rejection> {
-        let TypedHeader(Authorization(bearer)) = parts
-            .extract::<TypedHeader<Authorization<Bearer>>>()
-            .await
-            .map_err(|_| WebError::invalid_credentials(location!()))?;
+            async fn from_request_parts(
+                parts: &mut Parts,
+                state: &AppState,
+            ) -> Result<Self, Self::Rejection> {
+                let TypedHeader(Authorization(bearer)) = parts
+                    .extract::<TypedHeader<Authorization<Bearer>>>()
+                    .await
+                    .map_err(|_| WebError::invalid_credentials(location!()))?;
 
-        Self::from_token(state, bearer.token()).await
-    }
+                Self::from_token(state, bearer.token()).await
+            }
+        }
+    };
 }
 
-impl Claims {
+implement_request_parts!(Option<TeamId>);
+implement_request_parts!(TeamId);
+
+impl<T: Debug + Clone> Claims<T> {
     pub fn is_admin(&self) -> bool {
         self.role == UserRole::Admin
     }
@@ -44,19 +54,54 @@ impl Claims {
     pub fn is_admin_opt(claims: &Option<Self>) -> bool {
         claims.as_ref().map(|x| x.role).unwrap_or(UserRole::Regular) == UserRole::Admin
     }
+}
 
+impl Claims<Option<TeamId>> {
     pub async fn from_token(state: &AppState, token: &str) -> Result<Self, WebError> {
-        let mut claims = validate_jwt(token, &state.jwt_keys)?;
+        let (claims, user) = jwt_user_from_token(state, token).await?;
 
-        // Update claims from DB to instantly process role changes (yes, this kind of
-        // defeats normal stateless JWT flows)
-        let Some(user) = state.db.get_user_for_login(&claims.sub).await? else {
-            info!(user = %claims.sub, "User no longer found but tried using valid JWT");
-
-            return Err(WebError::invalid_credentials(location!()));
-        };
-        claims.role = user.role;
-
-        Ok(claims)
+        Ok(Self {
+            sub: claims.sub,
+            team: user.user.team,
+            exp: claims.exp,
+            iss: claims.iss,
+            role: claims.role,
+        })
     }
+}
+
+impl Claims<TeamId> {
+    pub async fn from_token(state: &AppState, token: &str) -> Result<Self, WebError> {
+        let (claims, user) = jwt_user_from_token(state, token).await?;
+
+        let Some(team) = user.user.team else {
+            return Err(WebError::not_in_team(location!()));
+        };
+
+        Ok(Self {
+            sub: claims.sub,
+            team,
+            exp: claims.exp,
+            iss: claims.iss,
+            role: claims.role,
+        })
+    }
+}
+
+async fn jwt_user_from_token(
+    state: &AppState,
+    token: &str,
+) -> Result<(CrowJwt, UserForAuth), WebError> {
+    let mut claims = validate_jwt(token, &state.jwt_keys)?;
+
+    // Update claims from DB to instantly process role changes (yes, this kind of
+    // defeats normal stateless JWT flows)
+    let Some(user) = state.db.get_user_for_login(&claims.sub).await? else {
+        info!(user = %claims.sub, "User no longer found but tried using valid JWT");
+
+        return Err(WebError::invalid_credentials(location!()));
+    };
+    claims.role = user.role;
+
+    Ok((claims, user))
 }

@@ -79,11 +79,7 @@ pub async fn request_revision(
     claims: Claims,
     Path(revision): Path<String>,
 ) -> Result<Response> {
-    let Some(team) = state.db.get_user(&claims.sub).await?.user.team else {
-        return Err(WebError::not_in_team(location!()));
-    };
-
-    queue_task(state, &revision, team).await
+    queue_task(state, &revision, claims.team).await
 }
 
 async fn queue_task(state: AppState, revision: &str, team: TeamId) -> Result<Response> {

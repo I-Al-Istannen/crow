@@ -1,6 +1,6 @@
 use crate::auth::Claims;
 use crate::error::WebError;
-use crate::types::{AppState, RunningTaskState, TaskId};
+use crate::types::{AppState, RunningTaskState, TaskId, TeamId};
 use axum::extract::ws::{Message, WebSocket};
 use axum::extract::{Path, State, WebSocketUpgrade};
 use axum::response::Response;
@@ -145,7 +145,7 @@ async fn read_client_claims(
         .map_err(|_| NoClientHelloSnafu {}.into_error(NoneError))?
         .context(ClientHelloReadSnafu)?;
     let token = client_hello.into_text().context(ClientHelloNoTextSnafu)?;
-    let claims = Claims::from_token(state, &token)
+    let claims = Claims::<TeamId>::from_token(state, &token)
         .await
         .context(ClaimsNotValidSnafu)?;
 

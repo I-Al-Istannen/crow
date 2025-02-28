@@ -5,6 +5,7 @@ use crate::error::{Result, WebError};
 use crate::types::{JwtIssuer, UserId, UserRole};
 pub use extractors::Claims;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use serde::{Deserialize, Serialize};
 use snafu::location;
 use tracing::{debug, info, instrument, warn};
 
@@ -26,6 +27,14 @@ impl Keys {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CrowJwt {
+    pub sub: UserId,
+    pub exp: u64,
+    pub iss: JwtIssuer,
+    pub role: UserRole,
+}
+
 const JWT_ISSUER: &str = "compilers";
 
 #[instrument(level = "debug", skip(keys))]
@@ -36,7 +45,7 @@ pub fn create_jwt(user: UserId, keys: &Keys, role: UserRole) -> Result<String> {
         .expect("Time went backwards")
         .as_secs();
 
-    let claims = Claims {
+    let claims = CrowJwt {
         sub: user,
         exp,
         iss: JwtIssuer(JWT_ISSUER.to_string()),
@@ -49,10 +58,10 @@ pub fn create_jwt(user: UserId, keys: &Keys, role: UserRole) -> Result<String> {
 }
 
 #[instrument(level = "debug", skip(keys))]
-fn validate_jwt(jwt: &str, keys: &Keys) -> Result<Claims> {
+fn validate_jwt(jwt: &str, keys: &Keys) -> Result<CrowJwt> {
     let mut validation = Validation::default();
     validation.set_issuer(&[JWT_ISSUER]);
-    decode::<Claims>(jwt, &keys.decoding, &validation)
+    decode::<CrowJwt>(jwt, &keys.decoding, &validation)
         .map(|x| x.claims)
         .map_err(|e| {
             debug!(error = ?e, "JWT parsing error");

@@ -2,7 +2,9 @@ use crate::auth;
 use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::{Result, WebError};
-use crate::types::{AppState, FullUserForAdmin, OwnUser, Team, TeamIntegrationToken, User, UserId};
+use crate::types::{
+    AppState, FullUserForAdmin, OwnUser, Team, TeamId, TeamIntegrationToken, User, UserId,
+};
 use axum::extract::State;
 use serde::{Deserialize, Serialize};
 use snafu::location;
@@ -11,11 +13,11 @@ use tracing::{info, instrument};
 #[instrument(skip_all)]
 pub async fn show_me_myself(
     State(AppState { db, .. }): State<AppState>,
-    claims: Claims,
+    claims: Claims<Option<TeamId>>,
 ) -> Result<Json<MeResponse>> {
     let user = db.get_user(&claims.sub).await?;
-    let team = match &user.user.team {
-        Some(team) => Some(db.get_team(team).await?),
+    let team = match claims.team {
+        Some(team) => Some(db.get_team(&team).await?),
         None => None,
     };
 
@@ -27,11 +29,7 @@ pub async fn get_integration_status(
     State(state): State<AppState>,
     claims: Claims,
 ) -> Result<Json<IntegrationInfoResponse>> {
-    let user = state.db.get_user(&claims.sub).await?;
-    let Some(team) = user.user.team else {
-        return Err(WebError::not_in_team(location!()));
-    };
-    let token = state.db.get_team_integration_token(&team).await?;
+    let token = state.db.get_team_integration_token(&claims.team).await?;
     let github = state
         .github_app_name
         .map(GithubIntegrationInfoResponse::from_app_name);

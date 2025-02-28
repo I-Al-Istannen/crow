@@ -27,13 +27,9 @@ pub async fn set_test(
 ) -> Result<Json<Test>> {
     let db = &state.db;
 
-    let Some(team) = db.get_user(&claims.sub).await?.user.team else {
-        return Err(WebError::not_in_team(location!()));
-    };
-
     if !claims.is_admin() {
         if let Some(existing) = db.fetch_test(&test_id).await? {
-            if existing.owner != team {
+            if existing.owner != claims.team {
                 return Err(WebError::unauthorized(location!()));
             }
         }
@@ -48,7 +44,7 @@ pub async fn set_test(
             id: test_id,
             expected_output: payload.expected_output,
             input: payload.input,
-            owner: team,
+            owner: claims.team.clone(),
             admin_authored: claims.is_admin(),
             category: payload.category,
         })
@@ -74,16 +70,12 @@ pub async fn delete_test(
     claims: Claims,
     Path(test_id): Path<TestId>,
 ) -> Result<()> {
-    let Some(team) = db.get_user(&claims.sub).await?.user.team else {
-        return Err(WebError::not_in_team(location!()));
-    };
-
     if !claims.is_admin() {
         let Some(test) = db.fetch_test(&test_id).await? else {
             return Err(WebError::not_found(location!()));
         };
 
-        if !claims.is_admin() && test.owner != team {
+        if !claims.is_admin() && test.owner != claims.team {
             return Err(WebError::unauthorized(location!()));
         }
     }
