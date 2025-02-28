@@ -26,7 +26,7 @@
     @mouseleave="mousePos = { x: -100, y: -100 }"
     @mousemove="mousePos = { x: $event.offsetX, y: $event.offsetY }"
   >
-    <a :href="BACKEND_URL + '/login'">
+    <a :href="BACKEND_URL + '/login'" @click="saveFromUrl">
       <Button class="absolute left-1/2 top-1/2 -translate-y-1/2 -translate-x-1/2">Log in</Button>
     </a>
     <img
@@ -45,8 +45,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { computed, ref, shallowRef, watch } from 'vue'
 import { BACKEND_URL } from '@/data/fetching.ts'
 import { Button } from '@/components/ui/button'
+import { PRE_LOGIN_URL_SESSION_STORAGE_KEY } from '@/router'
 import PageContainer from '@/components/PageContainer.vue'
 import { storeToRefs } from 'pinia'
+import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user.ts'
 
 const { loggedIn } = storeToRefs(useUserStore())
@@ -56,6 +58,7 @@ const crowContainer = ref<InstanceType<typeof PageContainer> | null>(null)
 const mousePos = ref<{ x: number; y: number }>({ x: -100, y: -100 })
 
 const loginUrl = computed(() => BACKEND_URL + '/login')
+const currentRoute = useRoute()
 
 watch(
   loggedIn,
@@ -66,6 +69,10 @@ watch(
   },
   { immediate: true },
 )
+
+const saveFromUrl = () => {
+  sessionStorage.setItem(PRE_LOGIN_URL_SESSION_STORAGE_KEY, currentRoute.fullPath)
+}
 
 type Crow = {
   id: string

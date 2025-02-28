@@ -8,6 +8,8 @@ import TaskDetailView from '@/views/TaskDetailView.vue'
 import TeamInfoView from '@/views/TeamInfoView.vue'
 import TestView from '@/views/TestView.vue'
 
+export const PRE_LOGIN_URL_SESSION_STORAGE_KEY = 'pre-login-url'
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [

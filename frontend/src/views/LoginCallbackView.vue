@@ -30,6 +30,7 @@ import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FetchError } from '@/data/fetching.ts'
 import { LoaderCircle } from 'lucide-vue-next'
+import { PRE_LOGIN_URL_SESSION_STORAGE_KEY } from '@/router'
 import PageContainer from '@/components/PageContainer.vue'
 import { useUserStore } from '@/stores/user.ts'
 
@@ -50,7 +51,8 @@ watch(
     error.value = null
     try {
       await userStore.logIn(code, state)
-      await router.replace('/')
+      const originalLocation = sessionStorage.getItem(PRE_LOGIN_URL_SESSION_STORAGE_KEY)
+      await router.replace(originalLocation || '/')
     } catch (e) {
       if (e instanceof FetchError) {
         error.value = e.message
