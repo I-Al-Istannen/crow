@@ -9,6 +9,7 @@ mod error;
 use self::error::Result;
 use crate::auth::get_stored_auth;
 use crate::commands::login::command_login;
+use crate::commands::run_test::CliRunTestArgs;
 use crate::commands::sync_tests::{command_sync_tests, CliSyncTestsArgs};
 use crate::context::CliContext;
 use crate::error::AuthSnafu;
@@ -46,6 +47,8 @@ enum CliCommand {
     Login,
     /// Synchronizes crow tests with a local folder and vice versa
     SyncTests(CliSyncTestsArgs),
+    /// Runs a single test against your compiler locally
+    RunTest(CliRunTestArgs),
 }
 
 // [x] Authentication dance at the beginning
@@ -109,6 +112,7 @@ fn main() -> ExitCode {
         match args.subcommand {
             CliCommand::Login => command_login(client),
             CliCommand::SyncTests(args) => command_sync_tests(args, get_context(client)?),
+            CliCommand::RunTest(args) => commands::run_test::command_run_test(args),
         }
     });
 

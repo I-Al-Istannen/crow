@@ -2,6 +2,7 @@ use super::auth::AuthError;
 use super::commands::sync_tests::SyncTestsError;
 use super::context::CliContextError;
 use snafu::{Location, Snafu};
+use crate::commands::run_test::RunTestError;
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
@@ -24,6 +25,12 @@ pub enum CrowClientError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display("Error running a test at {location}"))]
+    RunTest {
+        source: RunTestError,
+        #[snafu(implicit)]
+        location: Location,
+    }
 }
 
 pub type Result<T> = std::result::Result<T, CrowClientError>;
