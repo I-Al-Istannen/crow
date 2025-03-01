@@ -70,6 +70,7 @@ const CLAP_STYLE: Styles = Styles::styled()
 
 const NO_TASK_BACKOFF: Duration = Duration::from_secs(2);
 
+// noinspection DuplicatedCode
 /// Executor of compiler tasks, crow of judgement.
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None, styles = CLAP_STYLE)]
