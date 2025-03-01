@@ -9,7 +9,7 @@ mod error;
 use self::error::Result;
 use crate::auth::get_stored_auth;
 use crate::commands::login::command_login;
-use crate::commands::run_test::CliRunTestArgs;
+use crate::commands::run_test::{CliRunTestArgs, CliRunTestsArgs};
 use crate::commands::sync_tests::{command_sync_tests, CliSyncTestsArgs};
 use crate::context::CliContext;
 use crate::error::AuthSnafu;
@@ -49,6 +49,8 @@ enum CliCommand {
     SyncTests(CliSyncTestsArgs),
     /// Runs a single test against your compiler locally
     RunTest(CliRunTestArgs),
+    /// Runs all tests against your compiler locally
+    RunTests(CliRunTestsArgs),
 }
 
 // [x] Authentication dance at the beginning
@@ -84,11 +86,11 @@ enum CliCommand {
 //    - Upload test
 //  - [ ] Wish user a good day
 
-// crow-client run-test --test-dir <test dir> --test <test id> --run <compiler run path>
+// [x] crow-client run-test --test-dir <test dir> --test <test id> --run <compiler run path>
 //   - Runs a single test against your local compiler run binary
 //   - Shows you the diff on failure
 
-// crow-client run-tests --test-dir <test dir> --run <compiler run path>
+// [x] crow-client run-tests --test-dir <test dir> --run <compiler run path>
 //   - Executes all tests
 //   - Sequentially (we do not implement the whole executor virtualization stuff)
 
@@ -113,6 +115,7 @@ fn main() -> ExitCode {
             CliCommand::Login => command_login(client),
             CliCommand::SyncTests(args) => command_sync_tests(args, get_context(client)?),
             CliCommand::RunTest(args) => commands::run_test::command_run_test(args),
+            CliCommand::RunTests(args) => commands::run_test::command_run_tests(args),
         }
     });
 

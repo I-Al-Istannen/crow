@@ -105,10 +105,8 @@ pub fn command_sync_tests(args: CliSyncTestsArgs, ctx: CliContext) -> Result<(),
     let test_dir = args.test_dir;
 
     let remote = ctx.get_remote_tests().context(ContextSnafu)?;
-    println!("REM: {:?}", remote);
 
     let local = get_local_tests(&test_dir).context(SyncTestsSnafu)?;
-    println!("LOC: {:?}", local);
 
     info!("Ensuring category directories exist");
     create_category_dirs(&test_dir, &remote.categories).context(SyncTestsSnafu)?;
@@ -129,7 +127,7 @@ pub fn command_sync_tests(args: CliSyncTestsArgs, ctx: CliContext) -> Result<(),
     Ok(())
 }
 
-fn get_local_tests(test_dir: &Path) -> Result<Vec<Test>, SyncTestsError> {
+pub fn get_local_tests(test_dir: &Path) -> Result<Vec<Test>, SyncTestsError> {
     ensure!(
         test_dir.exists(),
         TestDirMissingSnafu {

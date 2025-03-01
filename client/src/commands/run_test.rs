@@ -1,4 +1,5 @@
-use crate::error::{CrowClientError, RunTestSnafu};
+use crate::commands::sync_tests::get_local_tests;
+use crate::error::{CrowClientError, RunTestSnafu, SyncTestsSnafu};
 use clap::Args;
 use console::style;
 use similar::{DiffableStr, TextDiff};
@@ -78,34 +79,114 @@ pub struct CliRunTestArgs {
     /// The directory containing all tests
     #[clap(long = "test-dir", short = 'd')]
     test_dir: PathBuf,
+    /// The id of the test to run
     #[clap(long = "test-id", short = 'i')]
     test_id: String,
+    /// The run binary for your compiler
     #[clap(long = "compiler-run", short = 'c')]
     compiler_run: PathBuf,
+    /// The diff program to use for comparing output. If omitted, the internal diff will be used.
     #[clap(long = "diff-program")]
     diff_program: Option<PathBuf>,
 }
 
-pub fn command_run_test(args: CliRunTestArgs) -> Result<(), CrowClientError> {
-    verify_paths(&args).context(RunTestSnafu)?;
+#[derive(Args, Debug)]
+pub struct CliRunTestsArgs {
+    /// The directory containing all tests
+    #[clap(long = "test-dir", short = 'd')]
+    test_dir: PathBuf,
+    /// The run binary for your compiler
+    #[clap(long = "compiler-run", short = 'c')]
+    compiler_run: PathBuf,
+    /// The diff program to use for comparing output. If omitted, the internal diff will be used.
+    #[clap(long = "diff-program")]
+    diff_program: Option<PathBuf>,
+}
 
-    let (test, expected) = find_test(&args.test_dir, &args.test_id).context(RunTestSnafu)?;
-    let actual = run_compiler(&args.compiler_run, &test).context(RunTestSnafu)?;
+pub fn command_run_tests(args: CliRunTestsArgs) -> Result<(), CrowClientError> {
+    let tests = get_local_tests(&args.test_dir).context(SyncTestsSnafu)?;
 
-    match compute_diff(expected, actual, args.diff_program).context(RunTestSnafu)? {
-        None => {
-            info!("{}", style("Test passed!").bright().bold().green());
+    let mut failures = 0;
+    let mut errors = 0;
+    let mut successes = 0;
+
+    info!("\n{}", style("=".repeat(80)).dim());
+
+    for test in tests {
+        info!(
+            "{}{}",
+            style("Running test ").cyan(),
+            style(&test.id).bold().bright().cyan()
+        );
+        let res = run_test(CliRunTestArgs {
+            test_dir: args.test_dir.clone(),
+            test_id: test.id,
+            compiler_run: args.compiler_run.clone(),
+            diff_program: args.diff_program.clone(),
+        });
+
+        match res {
+            Ok(true) => {
+                successes += 1;
+            }
+            Ok(false) => {
+                failures += 1;
+            }
+            Err(err) => {
+                errors += 1;
+                error!("\n{}", err);
+            }
         }
-        Some(diff) => {
-            error!("{}", style("Test failed!").bright().bold().red());
-            error!("\n{}", diff);
-        }
+        info!("\n{}", style("=".repeat(80)).dim());
     }
+
+    info!(
+        "{}{}{}{}{}{}{}",
+        style("Tests finished. ").bright().cyan(),
+        style(successes).green(),
+        style(" passed, ").bright().cyan(),
+        style(failures).yellow(),
+        style(" failed, ").bright().cyan(),
+        style(errors).red(),
+        style(" errored.").bright().cyan()
+    );
 
     Ok(())
 }
 
-fn verify_paths(args: &CliRunTestArgs) -> Result<(), RunTestError> {
+pub fn command_run_test(args: CliRunTestArgs) -> Result<(), CrowClientError> {
+    run_test(args)?;
+
+    Ok(())
+}
+
+pub fn run_test(args: CliRunTestArgs) -> Result<bool, CrowClientError> {
+    verify_test_dir(&args).context(RunTestSnafu)?;
+
+    let (test, expected) = find_test(&args.test_dir, &args.test_id).context(RunTestSnafu)?;
+    let actual = run_compiler(&args.compiler_run, &test).context(RunTestSnafu)?;
+
+    let success = match compute_diff(expected, actual, args.diff_program).context(RunTestSnafu)? {
+        None => {
+            info!("{}", style("Test passed!").bright().bold().green());
+            true
+        }
+        Some(diff) => {
+            error!(
+                "{}`{}`{}",
+                style("Test ").bright().red(),
+                style(args.test_id).bold().red(),
+                style(" failed!").bright().red()
+            );
+            error!("\n{}", diff);
+            false
+        }
+    };
+
+    Ok(success)
+}
+
+fn verify_test_dir(args: &CliRunTestArgs) -> Result<(), RunTestError> {
     ensure!(
         args.test_dir.exists(),
         TestDirMissingSnafu {
