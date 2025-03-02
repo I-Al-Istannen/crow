@@ -147,12 +147,12 @@ pub fn command_run_tests(args: CliRunTestsArgs) -> Result<(), CrowClientError> {
     info!(
         "{}{}{}{}{}{}{}",
         style("Tests finished. ").bright().cyan(),
-        style(successes).green(),
-        style(" passed, ").bright().cyan(),
-        style(failures).yellow(),
-        style(" failed, ").bright().cyan(),
-        style(errors).red(),
-        style(" errored.").bright().cyan()
+        style(format!("{} passed", successes)).green(),
+        style(", ").bright().cyan(),
+        style(format!("{} failed", failures)).yellow(),
+        style(", ").bright().cyan(),
+        style(format!("{} errored", errors)).red(),
+        style(".").bright().cyan()
     );
 
     if failures > 0 || errors > 0 {
@@ -185,12 +185,12 @@ pub fn run_test(args: CliRunTestArgs) -> Result<bool, CrowClientError> {
         }
         Some(diff) => {
             error!(
-                "{}`{}`{}",
+                "{}`{}`{}\n{}",
                 style("Test ").bright().red(),
                 style(args.test_id).bold().red(),
-                style(" failed!").bright().red()
+                style(" failed!").bright().red(),
+                diff
             );
-            error!("\n{}", diff);
             false
         }
     };
@@ -325,9 +325,9 @@ fn judge_output_internal(expected: &str, actual: &str) -> Option<String> {
         .lines()
         .map(|line| {
             if line.starts_with("-") {
-                format!("{}", style(line).red())
+                format!("{}", style(line).red().bright())
             } else if line.starts_with("+") {
-                format!("{}", style(line).green())
+                format!("{}", style(line).green().bright())
             } else if line.starts_with("@") {
                 format!("{}", style(line).magenta())
             } else {
