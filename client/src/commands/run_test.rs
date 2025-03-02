@@ -153,11 +153,19 @@ pub fn command_run_tests(args: CliRunTestsArgs) -> Result<(), CrowClientError> {
         style(" errored.").bright().cyan()
     );
 
+    if failures > 0 || errors > 0 {
+        std::process::exit(1);
+    }
+
     Ok(())
 }
 
 pub fn command_run_test(args: CliRunTestArgs) -> Result<(), CrowClientError> {
-    run_test(args)?;
+    let res = run_test(args)?;
+
+    if !res {
+        std::process::exit(1);
+    }
 
     Ok(())
 }
