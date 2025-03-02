@@ -44,6 +44,18 @@ impl CliContext {
         Self { auth, client }
     }
 
+    pub fn get_myself(&self) -> Result<Myself, CliContextError> {
+        let res = self
+            .client
+            .get("http://localhost:3000/users/me")
+            .headers(self.get_headers())
+            .send()
+            .context(ReqwestSnafu)?;
+
+        let myself: MyselfResponse = get_json_response(res)?;
+        Ok(myself.user)
+    }
+
     pub fn get_remote_tests(&self) -> Result<RemoteTests, CliContextError> {
         let res = self
             .client
@@ -68,6 +80,35 @@ impl CliContext {
             .context(ReqwestSnafu)?;
 
         get_json_response(res)
+    }
+
+    pub fn upload_test(
+        &self,
+        id: &str,
+        category: &str,
+        input: &str,
+        expected: &str,
+    ) -> Result<(), CliContextError> {
+        let url = Url::from_str("http://localhost:3000/tests/")
+            .expect("url is valid")
+            .join(id)
+            .expect("url is valid after join");
+
+        let res = self
+            .client
+            .put(url)
+            .headers(self.get_headers())
+            .json(&serde_json::json!({
+                "category": category,
+                "input": input,
+                "expectedOutput": expected,
+            }))
+            .send()
+            .context(ReqwestSnafu)?;
+
+        let _: serde_json::Value = get_json_response(res)?;
+
+        Ok(())
     }
 
     fn get_headers(&self) -> HeaderMap {
@@ -145,4 +186,18 @@ impl Test {
 pub struct TestDetail {
     pub expected_output: String,
     pub input: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Myself {
+    pub id: String,
+    pub display_name: String,
+    pub team: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MyselfResponse {
+    user: Myself,
 }

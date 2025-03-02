@@ -25,6 +25,7 @@ pub async fn set_test(
     Path(test_id): Path<TestId>,
     Json(payload): Json<AddTestPayload>,
 ) -> Result<Json<Test>> {
+    // TODO: Validate test id
     let db = &state.db;
 
     if !claims.is_admin() {

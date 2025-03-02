@@ -12,6 +12,7 @@ use crate::auth::get_stored_auth;
 use crate::commands::login::command_login;
 use crate::commands::run_test::{CliRunTestArgs, CliRunTestsArgs};
 use crate::commands::sync_tests::{command_sync_tests, CliSyncTestsArgs};
+use crate::commands::upload::CliUploadTestArgs;
 use crate::context::CliContext;
 use crate::error::AuthSnafu;
 use clap::builder::styling::AnsiColor;
@@ -46,12 +47,15 @@ struct CliArgs {
 enum CliCommand {
     /// Logs you in to crow
     Login,
-    /// Synchronizes crow tests with a local folder and vice versa
+    /// One-way synchronizes crow tests with a local folder.
+    /// Creates git snapshots to prevent data loss.
     SyncTests(CliSyncTestsArgs),
     /// Runs a single test against your compiler locally
     RunTest(CliRunTestArgs),
     /// Runs all tests against your compiler locally
     RunTests(CliRunTestsArgs),
+    /// Uploads a new test or updates an existing to crow
+    UploadTest(CliUploadTestArgs),
 }
 
 // [x] Authentication dance at the beginning
@@ -78,14 +82,14 @@ enum CliCommand {
 //       - show unified diff (?)
 //     - [-] Prompt user to delete tests that do not exist in remote
 //     - [-] CLI args for: prefer-local, prefer-remote, prompt
-//  - [ ] Upload local tests
-//    - Verify there is no meta or user is author
-//    - Prompt for each
-//    - Execute test against reference compiler
-//    - If failed
-//      - Warn user, prompt for continuing upload
-//    - Upload test
 //  - [x] Wish user a good day
+
+// [ ] crow-client upload-test <input file> <output file> [--name <name>] [--category <category>]
+//   - [ ] Prompt for name/category if not given
+//   - [ ] Execute test against reference compiler
+//   - [ ] If failed
+//     - [ ] Warn user, prompt for continuing upload
+//   - [ ] Upload test
 
 // [x] crow-client run-test --test-dir <test dir> --test <test id> --run <compiler run path>
 //   - Runs a single test against your local compiler run binary
@@ -118,6 +122,9 @@ fn main() -> ExitCode {
             CliCommand::SyncTests(args) => command_sync_tests(args, get_context(client)?),
             CliCommand::RunTest(args) => commands::run_test::command_run_test(args),
             CliCommand::RunTests(args) => commands::run_test::command_run_tests(args),
+            CliCommand::UploadTest(args) => {
+                commands::upload::command_upload_test(args, get_context(client)?)
+            }
         }
     });
 

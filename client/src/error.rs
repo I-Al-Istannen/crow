@@ -1,8 +1,9 @@
 use super::auth::AuthError;
 use super::commands::sync_tests::SyncTestsError;
 use super::context::CliContextError;
-use snafu::{Location, Snafu};
 use crate::commands::run_test::RunTestError;
+use crate::commands::upload::UploadTestError;
+use snafu::{Location, Snafu};
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
@@ -28,6 +29,12 @@ pub enum CrowClientError {
     #[snafu(display("Error running a test at {location}"))]
     RunTest {
         source: RunTestError,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Error uploading a test at {location}"))]
+    UploadTest {
+        source: UploadTestError,
         #[snafu(implicit)]
         location: Location,
     },
