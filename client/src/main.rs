@@ -20,7 +20,7 @@ use console::style;
 use reqwest::blocking::Client;
 use snafu::{Report, ResultExt};
 use std::process::ExitCode;
-use tracing::error;
+use tracing::{error, info};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -120,6 +120,12 @@ fn main() -> ExitCode {
     });
 
     let Err(report) = res else {
+        info!(
+            "{}{}{}",
+            style("Goodbye, have a n").green(),
+            style("ice").blue().bright(),
+            style(" day!").green()
+        );
         return ExitCode::SUCCESS;
     };
 
