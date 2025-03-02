@@ -116,15 +116,26 @@ pub struct Test {
 }
 
 impl Test {
+    pub fn path_input(&self, root: &Path) -> PathBuf {
+        root.join(&self.category)
+            .join(format!("{}.crow-test", self.id))
+    }
+
+    pub fn path_meta(&self, root: &Path) -> PathBuf {
+        root.join(&self.category)
+            .join(format!("{}.crow-test.meta", self.id))
+    }
+
+    pub fn path_expected(&self, root: &Path) -> PathBuf {
+        root.join(&self.category)
+            .join(format!("{}.crow-test.expected", self.id))
+    }
 
     pub fn local_file_paths(&self, root: &Path) -> Vec<PathBuf> {
         vec![
-            root.join(&self.category)
-                .join(format!("{}.crow-test", self.id)),
-            root.join(&self.category)
-                .join(format!("{}.crow-test.meta", self.id)),
-            root.join(&self.category)
-                .join(format!("{}.crow-test.expected", self.id)),
+            self.path_input(root),
+            self.path_meta(root),
+            self.path_expected(root),
         ]
     }
 }

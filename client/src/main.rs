@@ -66,10 +66,9 @@ enum CliCommand {
 //         <foo.crow-test>
 //         <foo.crow-test.expected>
 //         <foo.crow-test.meta>     // contains author
-//     - [/] Fetch remote test list:
+//     - [x] Fetch remote test list:
 //       - test id
-//       - hash of input
-//       - hash of output
+//       - hash of input/output
 //     - [x] Download remote-only files:
 //       - create <foo.crow-test>
 //       - create <foo.crow-test.expected>

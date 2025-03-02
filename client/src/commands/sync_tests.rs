@@ -2,6 +2,7 @@ use crate::context::{CliContext, CliContextError, Test};
 use crate::error::{ContextSnafu, CrowClientError, SyncTestsSnafu};
 use clap::Args;
 use console::style;
+use sha2::{Digest, Sha256};
 use snafu::{ensure, Location, OptionExt, ResultExt, Snafu};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -42,6 +43,20 @@ pub enum SyncTestsError {
     ))]
     TestCategoryNotUnicode {
         category: PathBuf,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not read test input file `{}` at {location}", input.display()))]
+    ReadInput {
+        input: PathBuf,
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not read test expected file `{}` at {location}", expected.display()))]
+    ReadExpected {
+        expected: PathBuf,
+        source: std::io::Error,
         #[snafu(implicit)]
         location: Location,
     },
@@ -142,6 +157,27 @@ pub fn command_sync_tests(args: CliSyncTestsArgs, ctx: CliContext) -> Result<(),
             if remote_changed.len() == 1 { "" } else { "s" }
         );
         for test in remote_changed {
+            download_remote_test(&test_dir, test, &ctx).context(SyncTestsSnafu)?;
+        }
+    }
+
+    let inconsistent = get_locally_inconsistent_tests(&test_dir, &local)
+        .context(SyncTestsSnafu)?
+        .into_iter()
+        .filter(|test| {
+            remote.tests.iter().any(|remote| {
+                remote.id == test.id && remote.category == test.category && remote.hash == test.hash
+            })
+        })
+        .collect::<Vec<_>>();
+    if !inconsistent.is_empty() {
+        info!(
+            "{} {} test{}",
+            style(inconsistent.len()).red().bold(),
+            style("locally inconsistent").red().underlined(),
+            if inconsistent.len() == 1 { "" } else { "s" }
+        );
+        for test in inconsistent {
             download_remote_test(&test_dir, test, &ctx).context(SyncTestsSnafu)?;
         }
     }
@@ -315,6 +351,41 @@ fn get_remote_changed_tests<'a>(remote: &'a [Test], local: &[Test]) -> Vec<&'a T
                 .unwrap_or(false)
         })
         .collect()
+}
+
+fn get_locally_inconsistent_tests<'a>(
+    test_dir: &'_ Path,
+    local: &'a [Test],
+) -> Result<Vec<&'a Test>, SyncTestsError> {
+    let mut inconsistent = Vec::new();
+
+    for test in local {
+        let expected_hash = &test.hash;
+
+        let input = test.path_input(test_dir);
+        if !input.exists() {
+            continue;
+        }
+        let input = std::fs::read_to_string(&input).context(ReadInputSnafu { input })?;
+
+        let expected = test.path_expected(test_dir);
+        let expected =
+            std::fs::read_to_string(&expected).context(ReadExpectedSnafu { expected })?;
+
+        let mut actual_hash = Sha256::new();
+        actual_hash.update(expected.as_bytes());
+        actual_hash.update(input.as_bytes());
+        actual_hash.update(test.creator_id.to_string().as_bytes());
+        actual_hash.update([test.admin_authored as u8]);
+        actual_hash.update(test.category.as_bytes());
+        let actual_hash = format!("{:x}", actual_hash.finalize());
+
+        if expected_hash != &actual_hash {
+            inconsistent.push(test);
+        }
+    }
+
+    Ok(inconsistent)
 }
 
 fn delete_local_only_tests(test_dir: &Path, remote_tests: &[Test]) -> Result<(), SyncTestsError> {
