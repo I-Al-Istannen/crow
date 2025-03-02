@@ -5,6 +5,7 @@ mod auth;
 mod commands;
 mod context;
 mod error;
+mod util;
 
 use self::error::Result;
 use crate::auth::get_stored_auth;

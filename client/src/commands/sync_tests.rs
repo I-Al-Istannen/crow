@@ -1,25 +1,50 @@
 use crate::context::{CliContext, CliContextError, Test};
 use crate::error::{ContextSnafu, CrowClientError, SyncTestsSnafu};
+use crate::util::st;
 use clap::Args;
 use console::style;
+use dialoguer::theme::ColorfulTheme;
+use dialoguer::Confirm;
 use sha2::{Digest, Sha256};
-use snafu::{ensure, Location, OptionExt, ResultExt, Snafu};
+use snafu::{ensure, IntoError, Location, NoneError, OptionExt, ResultExt, Snafu};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use tracing::{debug, info};
 use walkdir::WalkDir;
 
 #[derive(Debug, Snafu)]
 pub enum SyncTestsError {
-    #[snafu(display("The test directory `{}` is missing at {location}", test_dir.display()))]
-    TestDirMissing {
+    #[snafu(display("The test directory `{}` is a file at {location}", test_dir.display()))]
+    TestDirIsFile {
         test_dir: PathBuf,
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("The test directory `{}` is a file at {location}", test_dir.display()))]
-    TestDirIsFile {
+    #[snafu(display("Could not create the test directory `{}` at {location}", test_dir.display()))]
+    TestDirCreate {
         test_dir: PathBuf,
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("You aborted the test directory creation at {location}"))]
+    TestDirCreateAborted {
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not run git command to initialize test repo at {location}"))]
+    GitInitSpawn {
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display(
+        "Git command to initialize test repo failed with {code} at {location}:\n`{stderr}`"
+    ))]
+    GitInit {
+        code: i32,
+        stderr: String,
         #[snafu(implicit)]
         location: Location,
     },
@@ -188,12 +213,10 @@ pub fn command_sync_tests(args: CliSyncTestsArgs, ctx: CliContext) -> Result<(),
 }
 
 pub fn get_local_tests(test_dir: &Path) -> Result<Vec<Test>, SyncTestsError> {
-    ensure!(
-        test_dir.exists(),
-        TestDirMissingSnafu {
-            test_dir: test_dir.to_path_buf()
-        }
-    );
+    if !test_dir.exists() {
+        create_test_dir(test_dir)?;
+        initialize_git_repo(test_dir)?;
+    }
     ensure!(
         test_dir.is_dir(),
         TestDirIsFileSnafu {
@@ -208,6 +231,45 @@ pub fn get_local_tests(test_dir: &Path) -> Result<Vec<Test>, SyncTestsError> {
     }
 
     Ok(tests)
+}
+
+fn create_test_dir(test_dir: &Path) -> Result<(), SyncTestsError> {
+    let res = Confirm::with_theme(&ColorfulTheme::default())
+        .with_prompt("Do you want to create the test directory?")
+        .interact();
+    if res.is_err() || !res.unwrap() {
+        return Err(TestDirCreateAbortedSnafu.into_error(NoneError));
+    }
+    std::fs::create_dir_all(test_dir).context(TestDirCreateSnafu {
+        test_dir: test_dir.to_path_buf(),
+    })?;
+    info!("Created test directory");
+    Ok(())
+}
+
+fn initialize_git_repo(test_dir: &Path) -> Result<(), SyncTestsError> {
+    let res = Confirm::with_theme(&ColorfulTheme::default())
+        .with_prompt("Do you want to initialize a git repository updated by crow-client?")
+        .interact();
+
+    if let Ok(true) = res {
+        let output = Command::new("git")
+            .arg("init")
+            .current_dir(test_dir)
+            .output()
+            .context(GitInitSpawnSnafu)?;
+        if !output.status.success() {
+            return Err(GitInitSnafu {
+                code: output.status.code().unwrap_or(-1),
+                stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+            }
+            .into_error(NoneError));
+        }
+
+        info!("Initialized git repository");
+    }
+
+    Ok(())
 }
 
 fn get_local_categories(test_dir: &Path) -> Result<Vec<PathBuf>, SyncTestsError> {
@@ -283,7 +345,10 @@ fn create_category_dirs(test_dir: &Path, categories: &[String]) -> Result<(), Sy
     for category in categories {
         let path = test_dir.join(category);
         if !path.exists() {
-            info!("  Creating dir `{}`", path.display());
+            info!(
+                "{}",
+                st("Creating directory for category ").append(style(category).cyan())
+            );
             std::fs::create_dir(path).context(CreateCategoryDirSnafu { category })?;
         }
     }
@@ -296,9 +361,11 @@ fn download_remote_test(
     context: &CliContext,
 ) -> Result<(), SyncTestsError> {
     info!(
-        "  Downloading `{}`  {}",
-        style(&test.id).bold().green(),
-        style(&test.category).dim().green()
+        "{}",
+        st("  Downloading `")
+            .append(style(&test.id).bold().green())
+            .append("`  ")
+            .append(style(&test.category).dim().green())
     );
     let test_dir = test_dir.join(&test.category);
 

@@ -2,6 +2,7 @@ use crate::auth::{store_auth, validate_token, LoginResult};
 use crate::error::{AuthSnafu, Result};
 use console::style;
 use dialoguer::Password;
+use dialoguer::theme::ColorfulTheme;
 use reqwest::blocking::Client;
 use snafu::ResultExt;
 use tracing::{error, info};
@@ -28,7 +29,7 @@ pub fn command_login(client: Client) -> Result<()> {
 }
 
 fn login_iteration(client: &Client) -> Result<bool> {
-    let token = Password::new()
+    let token = Password::with_theme(&ColorfulTheme::default())
         .with_prompt(style("Backend token").magenta().to_string())
         .interact();
     let Ok(token) = token else {
