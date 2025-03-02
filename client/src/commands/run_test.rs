@@ -111,14 +111,15 @@ pub fn command_run_tests(args: CliRunTestsArgs) -> Result<(), CrowClientError> {
     let mut failures = 0;
     let mut errors = 0;
     let mut successes = 0;
-
-    info!("\n{}", style("=".repeat(80)).dim());
+    let separator_width = 80;
 
     for test in tests {
-        info!(
-            "{}{}",
-            style("Running test ").cyan(),
-            style(&test.id).bold().bright().cyan()
+        let remaining_padding = separator_width - test.id.len() - 2;
+        println!(
+            "{} {} {}",
+            style("=".repeat(remaining_padding / 2)).dim(),
+            style(&test.id).bold().bright().cyan(),
+            style("=".repeat((remaining_padding as f32 / 2.0).ceil() as usize)).dim(),
         );
         let res = run_test(CliRunTestArgs {
             test_dir: args.test_dir.clone(),
@@ -139,8 +140,9 @@ pub fn command_run_tests(args: CliRunTestsArgs) -> Result<(), CrowClientError> {
                 error!("\n{}", err);
             }
         }
-        info!("\n{}", style("=".repeat(80)).dim());
     }
+
+    println!("{}", style("=".repeat(separator_width)).dim());
 
     info!(
         "{}{}{}{}{}{}{}",
