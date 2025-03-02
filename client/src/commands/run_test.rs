@@ -86,8 +86,9 @@ pub struct CliRunTestArgs {
     #[clap(long = "compiler-run", short = 'c')]
     compiler_run: PathBuf,
     /// The diff program to use for comparing output. If omitted, the internal diff will be used.
-    #[clap(long = "diff-program")]
-    diff_program: Option<PathBuf>,
+    /// The diff program must exit with 1 if the files differ and print to stdout.
+    #[clap(long = "diff-tool")]
+    diff_tool: Option<PathBuf>,
 }
 
 #[derive(Args, Debug)]
@@ -99,8 +100,9 @@ pub struct CliRunTestsArgs {
     #[clap(long = "compiler-run", short = 'c')]
     compiler_run: PathBuf,
     /// The diff program to use for comparing output. If omitted, the internal diff will be used.
-    #[clap(long = "diff-program")]
-    diff_program: Option<PathBuf>,
+    /// The diff program must exit with 1 if the files differ and print to stdout.
+    #[clap(long = "diff-tool")]
+    diff_tool: Option<PathBuf>,
 }
 
 pub fn command_run_tests(args: CliRunTestsArgs) -> Result<(), CrowClientError> {
@@ -122,7 +124,7 @@ pub fn command_run_tests(args: CliRunTestsArgs) -> Result<(), CrowClientError> {
             test_dir: args.test_dir.clone(),
             test_id: test.id,
             compiler_run: args.compiler_run.clone(),
-            diff_program: args.diff_program.clone(),
+            diff_tool: args.diff_tool.clone(),
         });
 
         match res {
@@ -166,7 +168,7 @@ pub fn run_test(args: CliRunTestArgs) -> Result<bool, CrowClientError> {
     let (test, expected) = find_test(&args.test_dir, &args.test_id).context(RunTestSnafu)?;
     let actual = run_compiler(&args.compiler_run, &test).context(RunTestSnafu)?;
 
-    let success = match compute_diff(expected, actual, args.diff_program).context(RunTestSnafu)? {
+    let success = match compute_diff(expected, actual, args.diff_tool).context(RunTestSnafu)? {
         None => {
             info!("{}", style("Test passed!").bright().bold().green());
             true
@@ -282,7 +284,7 @@ fn run_compiler(compiler_run: &Path, test: &Path) -> Result<String, RunTestError
 fn compute_diff(
     mut expected: String,
     mut actual: String,
-    diff_program: Option<PathBuf>,
+    diff_tool: Option<PathBuf>,
 ) -> Result<Option<String>, RunTestError> {
     if !expected.ends_with_newline() {
         expected.push('\n');
@@ -291,7 +293,7 @@ fn compute_diff(
         actual.push('\n');
     }
 
-    Ok(match diff_program {
+    Ok(match diff_tool {
         Some(diff_program) => judge_output_diff_driver(expected, actual, diff_program)?,
         None => judge_output_internal(&expected, &actual),
     })
@@ -330,7 +332,7 @@ fn judge_output_internal(expected: &str, actual: &str) -> Option<String> {
 fn judge_output_diff_driver(
     expected: String,
     actual: String,
-    diff_program: PathBuf,
+    diff_tool: PathBuf,
 ) -> Result<Option<String>, RunTestError> {
     let expected_file = NamedTempFile::new().context(ExternalDiffFileCreateSnafu)?;
     let actual_file = NamedTempFile::new().context(ExternalDiffFileCreateSnafu)?;
@@ -338,7 +340,7 @@ fn judge_output_diff_driver(
     std::fs::write(expected_file.path(), expected).context(ExternalDiffFileCreateSnafu)?;
     std::fs::write(actual_file.path(), actual).context(ExternalDiffFileCreateSnafu)?;
 
-    let result = Command::new(diff_program)
+    let result = Command::new(diff_tool)
         .arg(expected_file.path())
         .arg(actual_file.path())
         .output()
