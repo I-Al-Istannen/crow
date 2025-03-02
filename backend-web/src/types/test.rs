@@ -25,4 +25,5 @@ pub struct TestSummary {
     pub creator_name: String,
     pub admin_authored: bool,
     pub category: String,
+    pub hash: String
 }

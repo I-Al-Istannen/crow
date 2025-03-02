@@ -34,6 +34,7 @@ base64 = "0.22.1"
 openidconnect = "4.0.0"
 reqwest = "0.12.12"
 oauth2 = "5.0.0"
+sha2 = "0.10.8"
 
 [lints]
 workspace = true

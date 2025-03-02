@@ -73,7 +73,8 @@ CREATE TABLE Tests
     input           TEXT        NOT NULL,
     owner           VARCHAR(36) NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
     admin_authored  BOOLEAN     NOT NULL,
-    category        VARCHAR(10) NOT NULL
+    category        VARCHAR(10) NOT NULL,
+    hash            VARCHAR(40) NOT NULL
 );
 
 CREATE TABLE ExternalRuns
