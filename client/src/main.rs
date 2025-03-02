@@ -62,7 +62,7 @@ enum CliCommand {
 
 // crow-client sync-tests --test-dir <test folder>
 //   - [x] Auth
-//   - [/] Download new tests
+//   - [x] Download new tests
 //     - [x] List all local files:
 //         <foo.crow-test>
 //         <foo.crow-test.expected>
@@ -73,10 +73,11 @@ enum CliCommand {
 //     - [x] Download remote-only files:
 //       - create <foo.crow-test>
 //       - create <foo.crow-test.expected>
-//     - [ ] Prompt whether to update local test
+//     - [x] Keep track in git to allow user to decide what to do
+//     - [-] Prompt whether to update local test
 //       - show unified diff (?)
-//     - [ ] Prompt user to delete tests that do not exist in remote
-//     - [ ] CLI args for: prefer-local, prefer-remote, prompt
+//     - [-] Prompt user to delete tests that do not exist in remote
+//     - [-] CLI args for: prefer-local, prefer-remote, prompt
 //  - [ ] Upload local tests
 //    - Verify there is no meta or user is author
 //    - Prompt for each
@@ -84,7 +85,7 @@ enum CliCommand {
 //    - If failed
 //      - Warn user, prompt for continuing upload
 //    - Upload test
-//  - [ ] Wish user a good day
+//  - [x] Wish user a good day
 
 // [x] crow-client run-test --test-dir <test dir> --test <test id> --run <compiler run path>
 //   - Runs a single test against your local compiler run binary
@@ -123,7 +124,7 @@ fn main() -> ExitCode {
     let Err(report) = res else {
         info!(
             "{}{}{}",
-            style("Goodbye, have a n").green(),
+            style("Exiting successfully. Goodbye, have a n").green(),
             style("ice").blue().bright(),
             style(" day!").green()
         );

@@ -30,7 +30,7 @@ pub enum CrowClientError {
         source: RunTestError,
         #[snafu(implicit)]
         location: Location,
-    }
+    },
 }
 
 pub type Result<T> = std::result::Result<T, CrowClientError>;

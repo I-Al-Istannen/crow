@@ -6,11 +6,11 @@ use console::style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
 use sha2::{Digest, Sha256};
-use snafu::{ensure, IntoError, Location, NoneError, OptionExt, ResultExt, Snafu};
+use snafu::{ensure, IntoError, Location, NoneError, OptionExt, Report, ResultExt, Snafu};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 use walkdir::WalkDir;
 
 #[derive(Debug, Snafu)]
@@ -44,6 +44,28 @@ pub enum SyncTestsError {
     ))]
     GitInit {
         code: i32,
+        stderr: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not execute git to check the test dir status at {location}"))]
+    GitStatusSpawn {
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not execute git to commit the test dir at {location}"))]
+    GitCommitSpawn {
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display(
+        "Git command to commit test repo failed with exit code {code} at {location}:\n{stdout}\n{stderr}"
+    ))]
+    GitCommit {
+        code: i32,
+        stdout: String,
         stderr: String,
         #[snafu(implicit)]
         location: Location,
@@ -154,8 +176,11 @@ pub struct CliSyncTestsArgs {
 pub fn command_sync_tests(args: CliSyncTestsArgs, ctx: CliContext) -> Result<(), CrowClientError> {
     let test_dir = args.test_dir;
 
-    let remote = ctx.get_remote_tests().context(ContextSnafu)?;
+    if let Err(e) = commit_if_dirty(&test_dir, "backup before sync") {
+        error!("{}", style(Report::from_error(e)).red());
+    }
 
+    let remote = ctx.get_remote_tests().context(ContextSnafu)?;
     let local = get_local_tests(&test_dir).context(SyncTestsSnafu)?;
 
     create_category_dirs(&test_dir, &remote.categories).context(SyncTestsSnafu)?;
@@ -208,6 +233,65 @@ pub fn command_sync_tests(args: CliSyncTestsArgs, ctx: CliContext) -> Result<(),
     }
 
     delete_local_only_tests(&test_dir, &remote.tests).context(SyncTestsSnafu)?;
+
+    commit_if_dirty(&test_dir, "sync tests").context(SyncTestsSnafu)
+}
+
+fn commit_if_dirty(test_dir: &Path, commit_message: &'static str) -> Result<(), SyncTestsError> {
+    if !test_dir.join(".git").exists() {
+        debug!("Test directory is not a git repository");
+        return Ok(());
+    }
+
+    let res = Command::new("git")
+        .arg("status")
+        .arg("--porcelain")
+        .current_dir(test_dir)
+        .output()
+        .context(GitStatusSpawnSnafu)?;
+
+    let stdout = String::from_utf8_lossy(&res.stdout);
+    if stdout.trim().is_empty() {
+        return Ok(());
+    }
+
+    debug!(
+        stdout = %stdout,
+        stderr = %String::from_utf8_lossy(&res.stderr),
+        "Test directory is dirty"
+    );
+
+    run_git_command(test_dir, &["add", "-A"])?;
+    run_git_command(
+        test_dir,
+        &[
+            "commit",
+            "-a",
+            "-m",
+            &format!("crow-client: {commit_message}"),
+        ],
+    )?;
+
+    info!("Committed changes to test directory");
+
+    Ok(())
+}
+
+fn run_git_command(test_dir: &Path, command: &[&str]) -> Result<(), SyncTestsError> {
+    let res = Command::new("git")
+        .args(command)
+        .current_dir(test_dir)
+        .output()
+        .context(GitCommitSpawnSnafu)?;
+
+    if !res.status.success() {
+        return Err(GitCommitSnafu {
+            code: res.status.code().unwrap_or(-1),
+            stdout: String::from_utf8_lossy(&res.stdout).to_string().trim(),
+            stderr: String::from_utf8_lossy(&res.stderr).to_string().trim(),
+        }
+        .into_error(NoneError));
+    }
 
     Ok(())
 }
