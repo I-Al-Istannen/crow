@@ -6,11 +6,11 @@ use console::style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
 use sha2::{Digest, Sha256};
-use snafu::{ensure, IntoError, Location, NoneError, OptionExt, Report, ResultExt, Snafu};
+use snafu::{ensure, IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 use walkdir::WalkDir;
 
 #[derive(Debug, Snafu)]
@@ -67,29 +67,6 @@ pub enum SyncTestsError {
         code: i32,
         stdout: String,
         stderr: String,
-        #[snafu(implicit)]
-        location: Location,
-    },
-    #[snafu(display(
-        "Could not open the test directory `{}` at {location}", test_dir.display())
-    )]
-    TestDirOpen {
-        test_dir: PathBuf,
-        source: std::io::Error,
-        #[snafu(implicit)]
-        location: Location,
-    },
-    #[snafu(display("Could not read a test directory entry at {location}"))]
-    TestDirRead {
-        source: std::io::Error,
-        #[snafu(implicit)]
-        location: Location,
-    },
-    #[snafu(display(
-        "The test category `{}` is not valid unicode at {location}", category.display()
-    ))]
-    TestCategoryNotUnicode {
-        category: PathBuf,
         #[snafu(implicit)]
         location: Location,
     },
@@ -310,8 +287,30 @@ pub fn get_local_tests(test_dir: &Path) -> Result<Vec<Test>, SyncTestsError> {
 
     let mut tests = Vec::new();
 
-    for category in get_local_categories(test_dir)? {
-        tests.extend(get_tests_in_category(&category)?)
+    for entry in WalkDir::new(test_dir).max_depth(2) {
+        let entry = entry.context(TestDirWalkSnafu)?;
+        if !entry.path().is_file() {
+            continue;
+        }
+        let extension = entry.path().extension().and_then(|it| it.to_str());
+        if extension != Some("crow-test") {
+            continue;
+        }
+        let test_path = entry.path();
+        let category = test_path
+            .parent()
+            .and_then(|it| it.file_name())
+            .and_then(|it| it.to_str());
+
+        let Some(category) = category else {
+            warn!(
+                "Skipping test file without category: `{}`",
+                entry.file_name().to_string_lossy()
+            );
+            continue;
+        };
+
+        tests.push(parse_test(category, test_path)?);
     }
 
     Ok(tests)
@@ -354,48 +353,6 @@ fn initialize_git_repo(test_dir: &Path) -> Result<(), SyncTestsError> {
     }
 
     Ok(())
-}
-
-fn get_local_categories(test_dir: &Path) -> Result<Vec<PathBuf>, SyncTestsError> {
-    let mut categories = Vec::new();
-
-    let dir = test_dir.read_dir().context(TestDirOpenSnafu {
-        test_dir: test_dir.to_path_buf(),
-    })?;
-    for entry in dir {
-        let entry = entry.context(TestDirReadSnafu)?;
-        if entry.path().is_dir() {
-            // Found a category
-            categories.push(entry.path());
-        }
-    }
-
-    Ok(categories)
-}
-
-fn get_tests_in_category(category: &Path) -> Result<Vec<Test>, SyncTestsError> {
-    let mut tests = Vec::new();
-    let category_name = category
-        .file_name()
-        .expect("called with .. as arg")
-        .to_str()
-        .context(TestCategoryNotUnicodeSnafu {
-            category: category.to_path_buf(),
-        })?;
-
-    let dir = category.read_dir().context(TestDirOpenSnafu {
-        test_dir: category.to_path_buf(),
-    })?;
-    for entry in dir {
-        let path = entry.context(TestDirReadSnafu)?.path();
-        let extension = path.extension().and_then(|it| it.to_str());
-
-        if path.is_file() && extension == Some("crow-test") {
-            tests.push(parse_test(category_name, &path)?);
-        }
-    }
-
-    Ok(tests)
 }
 
 fn parse_test(category: &str, test_file: &Path) -> Result<Test, SyncTestsError> {
