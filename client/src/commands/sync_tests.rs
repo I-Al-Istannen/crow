@@ -1,9 +1,12 @@
 use crate::context::{CliContext, CliContextError, Test};
 use crate::error::{ContextSnafu, CrowClientError, SyncTestsSnafu};
 use clap::Args;
+use console::style;
 use snafu::{ensure, Location, OptionExt, ResultExt, Snafu};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use tracing::info;
+use tracing::{debug, info};
+use walkdir::WalkDir;
 
 #[derive(Debug, Snafu)]
 pub enum SyncTestsError {
@@ -20,7 +23,7 @@ pub enum SyncTestsError {
         location: Location,
     },
     #[snafu(display(
-        "The test directory `{}` could not be opened at {location}", test_dir.display())
+        "Could not open the test directory `{}` at {location}", test_dir.display())
     )]
     TestDirOpen {
         test_dir: PathBuf,
@@ -28,7 +31,7 @@ pub enum SyncTestsError {
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("Reading of a test directory entry failed at {location}"))]
+    #[snafu(display("Could not read a test directory entry at {location}"))]
     TestDirRead {
         source: std::io::Error,
         #[snafu(implicit)]
@@ -42,7 +45,7 @@ pub enum SyncTestsError {
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("The meta file `{}` could not be read at {location}", meta_file.display()))]
+    #[snafu(display("Could not read meta file `{}` at {location}", meta_file.display()))]
     ReadMeta {
         meta_file: PathBuf,
         source: std::io::Error,
@@ -57,16 +60,11 @@ pub enum SyncTestsError {
         location: Location,
     },
     #[snafu(display(
-        "The meta file `{}` for test `{}` contains category `{actual_category}` but was in the \
-        folder for `{expected_category}` at {location}",
-        meta_file.display(),
-        test_file.display(),
+        "Test id in meta file (`{test_id}`) does not match file name (`{file_name}`) at {location}"
     ))]
-    TestCategoryMismatch {
-        test_file: PathBuf,
-        meta_file: PathBuf,
-        expected_category: String,
-        actual_category: String,
+    TestMetaNameMismatch {
+        test_id: String,
+        file_name: String,
         #[snafu(implicit)]
         location: Location,
     },
@@ -84,10 +82,23 @@ pub enum SyncTestsError {
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("Failed to write test `{test_id}` at {location}"))]
+    #[snafu(display("Could not write test `{test_id}` at {location}"))]
     WriteTest {
         test_id: String,
         source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not delete test file `{}` at {location}", file.display()))]
+    DeleteTestFile {
+        file: PathBuf,
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not walk test directory at {location}"))]
+    TestDirWalk {
+        source: walkdir::Error,
         #[snafu(implicit)]
         location: Location,
     },
@@ -101,19 +112,22 @@ pub struct CliSyncTestsArgs {
 }
 
 pub fn command_sync_tests(args: CliSyncTestsArgs, ctx: CliContext) -> Result<(), CrowClientError> {
-    info!("Syncing tests!");
     let test_dir = args.test_dir;
 
     let remote = ctx.get_remote_tests().context(ContextSnafu)?;
 
     let local = get_local_tests(&test_dir).context(SyncTestsSnafu)?;
 
-    info!("Ensuring category directories exist");
     create_category_dirs(&test_dir, &remote.categories).context(SyncTestsSnafu)?;
 
     let remote_only: Vec<&Test> = get_remote_only_tests(&remote.tests, &local);
     if !remote_only.is_empty() {
-        info!("Downloading {} missing remote tests", remote_only.len());
+        info!(
+            "{} {} test{}",
+            style(remote_only.len()).green().bold(),
+            style("new").green(),
+            if remote_only.len() == 1 { "" } else { "s" }
+        );
         for test in remote_only {
             download_remote_test(&test_dir, test, &ctx).context(SyncTestsSnafu)?;
         }
@@ -121,11 +135,18 @@ pub fn command_sync_tests(args: CliSyncTestsArgs, ctx: CliContext) -> Result<(),
 
     let remote_changed: Vec<&Test> = get_remote_changed_tests(&remote.tests, &local);
     if !remote_changed.is_empty() {
-        info!("Downloading {} changed remote tests", remote_changed.len());
+        info!(
+            "{} {} remote test{}",
+            style(remote_changed.len()).magenta().bold(),
+            style("changed").magenta(),
+            if remote_changed.len() == 1 { "" } else { "s" }
+        );
         for test in remote_changed {
             download_remote_test(&test_dir, test, &ctx).context(SyncTestsSnafu)?;
         }
     }
+
+    delete_local_only_tests(&test_dir, &remote.tests).context(SyncTestsSnafu)?;
 
     Ok(())
 }
@@ -201,17 +222,21 @@ fn parse_test(category: &str, test_file: &Path) -> Result<Test, SyncTestsError> 
         meta_file: meta_file.clone(),
     })?;
 
-    let test: Test = serde_json::from_str(&meta).context(MetaMalformedSnafu {
+    let mut test: Test = serde_json::from_str(&meta).context(MetaMalformedSnafu {
         meta_file: meta_file.clone(),
     })?;
+    test.category = category.to_string();
 
+    // Verify the file name
+    let file_name = test_file
+        .file_stem()
+        .and_then(|it| it.to_str())
+        .unwrap_or("n/a");
     ensure!(
-        test.category == category,
-        TestCategoryMismatchSnafu {
-            test_file,
-            meta_file,
-            expected_category: category,
-            actual_category: test.category
+        test.id == file_name,
+        TestMetaNameMismatchSnafu {
+            test_id: test.id.clone(),
+            file_name: file_name.to_string(),
         }
     );
 
@@ -234,7 +259,11 @@ fn download_remote_test(
     test: &Test,
     context: &CliContext,
 ) -> Result<(), SyncTestsError> {
-    info!("  Downloading `{}`", test.id);
+    info!(
+        "  Downloading `{}`  {}",
+        style(&test.id).bold().green(),
+        style(&test.category).dim().green()
+    );
     let test_dir = test_dir.join(&test.category);
 
     let detail = context
@@ -267,7 +296,11 @@ fn download_remote_test(
 fn get_remote_only_tests<'a>(remote: &'a [Test], local: &[Test]) -> Vec<&'a Test> {
     remote
         .iter()
-        .filter(|remote| !local.iter().any(|local| remote.id == local.id))
+        .filter(|remote| {
+            !local
+                .iter()
+                .any(|local| remote.id == local.id && remote.category == local.category)
+        })
         .collect()
 }
 
@@ -277,9 +310,59 @@ fn get_remote_changed_tests<'a>(remote: &'a [Test], local: &[Test]) -> Vec<&'a T
         .filter(|remote| {
             local
                 .iter()
-                .find(|local| remote.id == local.id)
+                .find(|local| remote.id == local.id && remote.category == local.category)
                 .map(|local| local.hash != remote.hash)
                 .unwrap_or(false)
         })
         .collect()
+}
+
+fn delete_local_only_tests(test_dir: &Path, remote_tests: &[Test]) -> Result<(), SyncTestsError> {
+    let expected_files = remote_tests
+        .iter()
+        .flat_map(|test| test.local_file_paths(test_dir))
+        .collect::<HashSet<_>>();
+
+    let mut to_remove: Vec<PathBuf> = Vec::new();
+
+    for entry in WalkDir::new(test_dir).max_depth(2) {
+        let entry = entry.context(TestDirWalkSnafu)?;
+
+        if expected_files.contains(entry.path()) || !entry.path().is_file() {
+            continue;
+        }
+
+        let hidden = entry
+            .path()
+            .components()
+            .filter_map(|it| it.as_os_str().to_str())
+            .any(|it| it.starts_with("."));
+        if hidden {
+            debug!("Skipping hidden file: {}", entry.path().display());
+            continue;
+        }
+
+        if !entry.file_name().to_string_lossy().contains(".crow-test") {
+            debug!("Skipping non-test file: {}", entry.path().display());
+            continue;
+        }
+
+        to_remove.push(entry.path().to_path_buf());
+    }
+
+    if !to_remove.is_empty() {
+        info!(
+            "{} {} file{} missing on remote",
+            style(to_remove.len()).bold().red(),
+            style("local-only").red(),
+            if to_remove.len() == 1 { "" } else { "s" }
+        );
+
+        for file in to_remove {
+            info!("  {}", style(file.display()).dim().red());
+            std::fs::remove_file(&file).context(DeleteTestFileSnafu { file })?;
+        }
+    }
+
+    Ok(())
 }

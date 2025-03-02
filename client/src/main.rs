@@ -100,6 +100,7 @@ fn main() -> ExitCode {
         .with(
             tracing_subscriber::fmt::layer()
                 .compact()
+                .without_time()
                 .with_target(false),
         )
         .with(

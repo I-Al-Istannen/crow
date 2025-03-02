@@ -5,6 +5,7 @@ use reqwest::{StatusCode, Url};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use snafu::{IntoError, Location, NoneError, ResultExt, Snafu};
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 #[derive(Debug, Snafu)]
@@ -109,8 +110,23 @@ pub struct Test {
     pub id: String,
     pub creator_id: String,
     pub admin_authored: bool,
+    #[serde(skip_serializing, default)]
     pub category: String,
     pub hash: String,
+}
+
+impl Test {
+
+    pub fn local_file_paths(&self, root: &Path) -> Vec<PathBuf> {
+        vec![
+            root.join(&self.category)
+                .join(format!("{}.crow-test", self.id)),
+            root.join(&self.category)
+                .join(format!("{}.crow-test.meta", self.id)),
+            root.join(&self.category)
+                .join(format!("{}.crow-test.expected", self.id)),
+        ]
+    }
 }
 
 #[derive(Debug, Deserialize)]
