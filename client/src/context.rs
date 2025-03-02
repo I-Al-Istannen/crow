@@ -110,6 +110,7 @@ pub struct Test {
     pub creator_id: String,
     pub admin_authored: bool,
     pub category: String,
+    pub hash: String,
 }
 
 #[derive(Debug, Deserialize)]

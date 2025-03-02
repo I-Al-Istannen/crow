@@ -111,15 +111,18 @@ pub fn command_sync_tests(args: CliSyncTestsArgs, ctx: CliContext) -> Result<(),
     info!("Ensuring category directories exist");
     create_category_dirs(&test_dir, &remote.categories).context(SyncTestsSnafu)?;
 
-    let remote_only: Vec<&Test> = remote
-        .tests
-        .iter()
-        .filter(|remote| !local.iter().any(|local| remote.id == local.id))
-        .collect();
-
+    let remote_only: Vec<&Test> = get_remote_only_tests(&remote.tests, &local);
     if !remote_only.is_empty() {
-        info!("Downloading missing remote tests");
+        info!("Downloading {} missing remote tests", remote_only.len());
         for test in remote_only {
+            download_remote_test(&test_dir, test, &ctx).context(SyncTestsSnafu)?;
+        }
+    }
+
+    let remote_changed: Vec<&Test> = get_remote_changed_tests(&remote.tests, &local);
+    if !remote_changed.is_empty() {
+        info!("Downloading {} changed remote tests", remote_changed.len());
+        for test in remote_changed {
             download_remote_test(&test_dir, test, &ctx).context(SyncTestsSnafu)?;
         }
     }
@@ -259,4 +262,24 @@ fn download_remote_test(
     })?;
 
     Ok(())
+}
+
+fn get_remote_only_tests<'a>(remote: &'a [Test], local: &[Test]) -> Vec<&'a Test> {
+    remote
+        .iter()
+        .filter(|remote| !local.iter().any(|local| remote.id == local.id))
+        .collect()
+}
+
+fn get_remote_changed_tests<'a>(remote: &'a [Test], local: &[Test]) -> Vec<&'a Test> {
+    remote
+        .iter()
+        .filter(|remote| {
+            local
+                .iter()
+                .find(|local| remote.id == local.id)
+                .map(|local| local.hash != remote.hash)
+                .unwrap_or(false)
+        })
+        .collect()
 }
