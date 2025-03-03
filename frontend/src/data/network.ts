@@ -2,7 +2,7 @@ import {
   type FinishedCompilerTask,
   FinishedCompilerTaskSchema,
   type FinishedCompilerTaskSummary,
-  FinishedCompilerTaskSummarySchema,
+  FinishedCompilerTaskSummarySchema, type FinishedTest,
   type IntegrationInfoResponse,
   IntegrationInfoResponseSchema,
   type ListTestResponse,
@@ -12,7 +12,7 @@ import {
   type Repo,
   RepoSchema,
   type RequestRevision,
-  RequestRevisionSchema,
+  RequestRevisionSchema, type SetTestResponse, SetTestResponseSchema,
   type ShowMyselfResponse,
   ShowMyselfResponseSchema,
   type TaskId,
@@ -24,7 +24,7 @@ import {
   type TestId,
   TestSchema,
   type WorkItem,
-  WorkItemSchema,
+  WorkItemSchema
 } from '@/types.ts'
 import { QueryClient, useMutation, useQuery } from '@tanstack/vue-query'
 import { type Ref, computed, toRef, toValue } from 'vue'
@@ -43,6 +43,7 @@ type TestPatch = {
   id: TestId
   expectedOutput: string
   category: string
+  ignoreTestTasting: boolean
 }
 
 async function fetchMyself(): Promise<ShowMyselfResponse> {
@@ -221,7 +222,7 @@ export function queryTest(testId: MaybeRefOrGetter<TestId | undefined>, refetchO
   })
 }
 
-export async function fetchSetTest(test: TestPatch): Promise<Test | 'no-permission'> {
+export async function fetchSetTest(test: TestPatch): Promise<SetTestResponse> {
   const response = await fetchWithAuth(`/tests/${encodeURIComponent(test.id)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -229,10 +230,11 @@ export async function fetchSetTest(test: TestPatch): Promise<Test | 'no-permissi
       input: test.input,
       expectedOutput: test.expectedOutput,
       category: test.category,
+      ignoreTestTasting: test.ignoreTestTasting
     }),
   })
   const json = await response.json()
-  return TestSchema.parse(json)
+  return SetTestResponseSchema.parse(json)
 }
 
 export function mutateTest(queryClient: QueryClient) {

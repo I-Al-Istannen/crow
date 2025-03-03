@@ -82,6 +82,32 @@
               <FormMessage />
             </FormItem>
           </FormField>
+          <FormField v-slot="{ value, handleChange }" type="checkbox" name="testTasting">
+            <FormItem class="flex flex-row items-start gap-x-3 space-y-0" v-auto-animate>
+              <FormControl>
+                <Checkbox :checked="value" @update:checked="handleChange" />
+              </FormControl>
+              <div class="space-y-1 leading-none" v-auto-animate>
+                <FormLabel>Test Tasting</FormLabel>
+                <FormDescription>
+                  Run your test against the reference compiler before submitting
+                </FormDescription>
+                <FormMessage />
+              </div>
+              <div class="flex self-center justify-start ml-6 flex-grow" v-auto-animate>
+                <FinishedTestDetailDialog
+                  v-if="clickedTest"
+                  :test="clickedTest"
+                  v-model:dialog-open="failedTastingDialogOpen"
+                />
+                <FinishedTestcaseSummaryIcon
+                  v-if="failedTestTasting !== null"
+                  :test="failedTestTasting"
+                  @test-clicked="handleFailedTastingClick"
+                />
+              </div>
+            </FormItem>
+          </FormField>
           <div class="flex items-center">
             <Button type="submit" :disabled="mutationPending">
               <LoaderCircle class="animate-spin mr-2 -ml-2" v-show="editPending" />
@@ -115,6 +141,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import type { FinishedTest, Test, TestId } from '@/types.ts'
 import {
   FormControl,
   FormDescription,
@@ -131,10 +158,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { Test, TestId } from '@/types.ts'
 import { computed, ref, toRefs, watch } from 'vue'
 import { mutateDeleteTest, mutateTest, queryTests } from '@/data/network.ts'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import FinishedTestDetailDialog from '@/components/FinishedTestDetailDialog.vue'
+import FinishedTestcaseSummaryIcon from '@/components/FinishedTestcaseSummaryIcon.vue'
 import { Input } from '@/components/ui/input'
 import { LoaderCircle } from 'lucide-vue-next'
 import { Textarea } from '@/components/ui/textarea'
@@ -150,6 +179,9 @@ import { z } from 'zod'
 
 const inDeletionProcess = ref(false)
 const editingExisting = ref(false)
+const failedTestTasting = ref<FinishedTest | null>(null)
+const clickedTest = ref<FinishedTest | null>(null)
+const failedTastingDialogOpen = ref<boolean>(false)
 
 const dialogOpen = defineModel<boolean>('open')
 const props = defineProps<{
@@ -197,12 +229,14 @@ const form = useForm({
         .string()
         .min(1, 'Some output would be nice')
         .max(15_000, 'Are you sure you need this?'),
+      testTasting: z.boolean(),
     }),
   ),
 })
 
 watch([dialogOpen, testToEdit], ([open, test]) => {
   editingExisting.value = false
+  failedTestTasting.value = null
 
   if (open && test) {
     editingExisting.value = true
@@ -212,6 +246,7 @@ watch([dialogOpen, testToEdit], ([open, test]) => {
         id: test.id,
         expectedOutput: test.expectedOutput,
         category: test.category,
+        testTasting: true,
       },
     })
   } else if (open) {
@@ -221,6 +256,7 @@ watch([dialogOpen, testToEdit], ([open, test]) => {
         id: undefined,
         expectedOutput: undefined,
         category: undefined,
+        testTasting: true,
       },
     })
   }
@@ -238,15 +274,22 @@ const idTaken = (id: TestId) => {
 }
 
 const onSubmit = form.handleSubmit(async (values) => {
-  await mutateEditTest({
+  const res = await mutateEditTest({
     input: values.input,
     id: values.id,
     expectedOutput: values.expectedOutput,
     category: values.category,
+    ignoreTestTasting: !values.testTasting,
   })
 
-  toast.success(testToEdit?.value !== undefined ? 'Test updated :)' : 'Test created :)')
-  dialogOpen.value = false
+  if (res.type == 'TestAdded') {
+    toast.success(testToEdit?.value !== undefined ? 'Test updated :)' : 'Test created :)')
+    dialogOpen.value = false
+  } else {
+    toast.error('The test failed on the reference compiler')
+    failedTestTasting.value = res
+    form.setFieldError('testTasting', 'Failed on reference compiler. Details are on the right.')
+  }
 })
 
 const deleteTest = async () => {
@@ -262,5 +305,10 @@ const deleteTest = async () => {
   await mutateDelTest(testToEdit?.value?.id)
 
   dialogOpen.value = false
+}
+
+const handleFailedTastingClick = (test: FinishedTest) => {
+  clickedTest.value = test
+  failedTastingDialogOpen.value = true
 }
 </script>

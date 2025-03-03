@@ -179,6 +179,11 @@ export const TestSchema = z.object({
   category: z.string(),
 })
 
+export const SetTestResponseSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('TastingFailed') }).merge(FinishedTestSchema),
+  z.object({ type: z.literal('TestAdded') }).merge(TestSchema),
+])
+
 export const TeamInfoSchema = z.object({
   team: TeamSchema,
   members: z.array(UserSchema),
@@ -218,6 +223,7 @@ export type Runner = z.infer<typeof RunnerSchema>
 export type RunnerUpdate = z.infer<typeof RunnerUpdateSchema>
 export type RunnerUpdateMessage = z.infer<typeof RunnerUpdateMessageSchema>
 export type ShowMyselfResponse = z.infer<typeof ShowMyselfResponseSchema>
+export type SetTestResponse = z.infer<typeof SetTestResponseSchema>
 export type TaskId = z.infer<typeof TaskIdSchema>
 export type Team = z.infer<typeof TeamSchema>
 export type TeamId = z.infer<typeof TeamIdSchema>
