@@ -37,17 +37,22 @@ pub enum CliContextError {
 pub struct CliContext {
     auth: BackendAuth,
     client: Client,
+    backend_url: String,
 }
 
 impl CliContext {
-    pub fn new(auth: BackendAuth, client: Client) -> Self {
-        Self { auth, client }
+    pub fn new(auth: BackendAuth, client: Client, backend_url: String) -> Self {
+        Self {
+            auth,
+            client,
+            backend_url,
+        }
     }
 
     pub fn get_myself(&self) -> Result<Myself, CliContextError> {
         let res = self
             .client
-            .get("http://localhost:3000/users/me")
+            .get(format!("{}/users/me", self.backend_url))
             .headers(self.get_headers())
             .send()
             .context(ReqwestSnafu)?;
@@ -59,7 +64,7 @@ impl CliContext {
     pub fn get_remote_tests(&self) -> Result<RemoteTests, CliContextError> {
         let res = self
             .client
-            .get("http://localhost:3000/tests")
+            .get(format!("{}/tests", self.backend_url))
             .headers(self.get_headers())
             .send()
             .context(ReqwestSnafu)?;
@@ -68,7 +73,7 @@ impl CliContext {
     }
 
     pub fn get_test_detail(&self, id: &str) -> Result<TestDetail, CliContextError> {
-        let url = Url::from_str("http://localhost:3000/tests/")
+        let url = Url::from_str(&format!("{}/tests/", self.backend_url))
             .expect("url is valid")
             .join(id)
             .expect("url is valid after join");
@@ -89,7 +94,7 @@ impl CliContext {
         input: &str,
         expected: &str,
     ) -> Result<(), CliContextError> {
-        let url = Url::from_str("http://localhost:3000/tests/")
+        let url = Url::from_str(&format!("{}/tests/", self.backend_url))
             .expect("url is valid")
             .join(id)
             .expect("url is valid after join");

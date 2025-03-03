@@ -7,9 +7,9 @@ use reqwest::blocking::Client;
 use snafu::ResultExt;
 use tracing::{error, info};
 
-pub fn command_login(client: Client) -> Result<()> {
+pub fn command_login(client: Client, backend_url: &str) -> Result<()> {
     loop {
-        if login_iteration(&client)? {
+        if login_iteration(&client, backend_url)? {
             break;
         }
     }
@@ -28,7 +28,7 @@ pub fn command_login(client: Client) -> Result<()> {
     Ok(())
 }
 
-fn login_iteration(client: &Client) -> Result<bool> {
+fn login_iteration(client: &Client, backend_url: &str) -> Result<bool> {
     let token = Password::with_theme(&ColorfulTheme::default())
         .with_prompt(style("Backend token").magenta().to_string())
         .interact();
@@ -37,7 +37,7 @@ fn login_iteration(client: &Client) -> Result<bool> {
         std::process::exit(1);
     };
 
-    let auth = validate_token(client, token).context(AuthSnafu)?;
+    let auth = validate_token(client, token, backend_url).context(AuthSnafu)?;
 
     let auth = match auth {
         LoginResult::WrongPassword => {

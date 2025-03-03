@@ -90,9 +90,13 @@ pub enum LoginResult {
     Success(BackendAuth),
 }
 
-pub fn validate_token(client: &Client, token: String) -> Result<LoginResult, AuthError> {
+pub fn validate_token(
+    client: &Client,
+    token: String,
+    backend_url: &str,
+) -> Result<LoginResult, AuthError> {
     let res = client
-        .get("http://localhost:3000/users/me")
+        .get(format!("{}/users/me", backend_url))
         .header("Authorization", format!("Bearer {token}"))
         .send()
         .context(ReqwestSnafu)?;
