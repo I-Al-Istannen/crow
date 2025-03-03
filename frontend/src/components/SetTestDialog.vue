@@ -6,7 +6,8 @@
     </DialogTrigger>
     <DialogContent class="max-w-[60dvw] max-h-[80dvh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle>Create a new test</DialogTitle>
+        <DialogTitle v-if="editingExisting">Edit a test</DialogTitle>
+        <DialogTitle v-else>Create a new test</DialogTitle>
         <DialogDescription>Share a test with the world and break some compilers</DialogDescription>
       </DialogHeader>
       <div>
@@ -58,7 +59,7 @@
                 <Textarea
                   v-bind="componentField"
                   class="font-mono whitespace-pre"
-                  placeholder="Output..."
+                  placeholder="Input..."
                 />
               </FormControl>
               <FormDescription>
@@ -148,6 +149,7 @@ import { vAutoAnimate } from '@formkit/auto-animate/vue'
 import { z } from 'zod'
 
 const inDeletionProcess = ref(false)
+const editingExisting = ref(false)
 
 const dialogOpen = defineModel<boolean>('open')
 const props = defineProps<{
@@ -200,7 +202,10 @@ const form = useForm({
 })
 
 watch([dialogOpen, testToEdit], ([open, test]) => {
+  editingExisting.value = false
+
   if (open && test) {
+    editingExisting.value = true
     form.resetForm({
       values: {
         input: test.input,
