@@ -165,12 +165,29 @@ pub struct RunnerWorkResponse {
     pub reset: bool,
 }
 
+
+#[derive(Debug, Clone, Hash, From, PartialEq, Eq, Display, Serialize, Deserialize)]
+pub struct TestTasteId(String);
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkTasteTestTask {
+    pub id: TestTasteId,
+    pub test: CompilerTest,
+    pub image_id: String,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunnerWorkTasteTestResponse {
-    pub test: Option<CompilerTest>,
-    pub id: String,
-    pub image_id: String,
+    pub task: Option<WorkTasteTestTask>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunnerWorkTasteTestDone {
+    pub output: ExecutionOutput,
+    pub id: TestTasteId,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

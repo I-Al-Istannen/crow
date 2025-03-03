@@ -10,7 +10,8 @@ use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
 use shared::{
     CompilerTask, CompilerTest, FinishedCompilerTask, RunnerId, RunnerInfo, RunnerRegisterResponse,
-    RunnerUpdate, RunnerWorkResponse,
+    RunnerUpdate, RunnerWorkResponse, RunnerWorkTasteTestDone, RunnerWorkTasteTestResponse,
+    WorkTasteTestTask,
 };
 use snafu::{ensure, location, IntoError, Location, NoneError, Report, Snafu};
 use tokio_util::io::ReaderStream;
@@ -309,4 +310,42 @@ pub async fn get_work_tar(
     drop(temp_file);
 
     Ok(Body::from_stream(ReaderStream::new(file)).into_response())
+}
+
+#[instrument(skip_all)]
+pub async fn get_test_tasting_work(
+    State(state): State<AppState>,
+) -> Result<Json<RunnerWorkTasteTestResponse>> {
+    let Some(image_id) = state.execution_config.reference_compiler_image else {
+        return Ok(Json(RunnerWorkTasteTestResponse { task: None }));
+    };
+
+    let task = state.test_tasting.lock().unwrap().poll_tasting();
+    let task = task.map(|task| WorkTasteTestTask {
+        id: task.taste_id.clone(),
+        test: CompilerTest {
+            test_id: task.test.id.to_string(),
+            timeout: state.execution_config.test_timeout,
+            run_command: state.execution_config.test_command,
+            expected_output: task.test.expected_output,
+            input: task.test.input,
+        },
+        image_id,
+    });
+
+    Ok(Json(RunnerWorkTasteTestResponse { task }))
+}
+
+#[instrument(skip_all)]
+pub async fn taste_testing_done(
+    State(state): State<AppState>,
+    Json(payload): Json<RunnerWorkTasteTestDone>,
+) -> Result<()> {
+    state
+        .test_tasting
+        .lock()
+        .unwrap()
+        .finish_tasting(payload.id, payload.output);
+
+    Ok(())
 }

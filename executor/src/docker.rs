@@ -104,7 +104,11 @@ pub fn export_image_to_tar(image: &ImageId, target: &Path) -> Result<(), DockerE
         res.status.success(),
         UnknownDockerResponseSnafu {
             message: "while exporting container",
-            response: String::from_utf8_lossy(&res.stderr).to_string(),
+            response: format!(
+                "stdout: {}\nstderr: {}",
+                String::from_utf8_lossy(&res.stdout),
+                String::from_utf8_lossy(&res.stderr)
+            ),
         }
     );
 

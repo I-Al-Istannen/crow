@@ -375,7 +375,14 @@ fn run_test_impl(
 
     let res = match res {
         Ok(res) => res,
-        Err(e) => return Ok(test_run_error_to_output(start, task_id, test.test_id, e)),
+        Err(e) => {
+            return Ok(test_run_error_to_output(
+                start,
+                task_id.to_string(),
+                test.test_id,
+                e,
+            ))
+        }
     };
 
     let execution = FinishedExecution {

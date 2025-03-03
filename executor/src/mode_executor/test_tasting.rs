@@ -3,7 +3,7 @@ use crate::docker::ImageId;
 use crate::mode_executor::CliExecutorArgs;
 use crate::{task_executor, AnyError, Endpoints, ReqwestSnafu, NO_TASK_BACKOFF};
 use reqwest::blocking::Client;
-use shared::{RunnerInfo, RunnerWorkTasteTestResponse};
+use shared::{RunnerInfo, RunnerWorkTasteTestDone, RunnerWorkTasteTestResponse};
 use snafu::{Report, ResultExt};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -75,7 +75,7 @@ impl super::Iteration for TestTastingState {
             }
             Ok(task) => task,
         };
-        let Some(test) = task.test else {
+        let Some(task) = task.task else {
             let current_backoff = &mut NO_TASK_BACKOFF.clone();
             info!(backoff = ?current_backoff, "No test received");
             super::backoff(current_backoff, shutdown_requested);
@@ -84,19 +84,23 @@ impl super::Iteration for TestTastingState {
         let task_id = task.id;
 
         info!(
-            task = task_id,
-            test = test.test_id,
+            task = %task_id,
+            test = %task.test.test_id,
             "Received test to taste"
         );
         let res = task_executor::run_test(
-            task_id.clone(),
+            task_id.to_string(),
             &ImageId(task.image_id),
-            test,
+            task.test,
             shutdown_requested.clone(),
             self.container.clone(),
         );
+        let res = RunnerWorkTasteTestDone {
+            output: res,
+            id: task_id.clone(),
+        };
 
-        info!(id = task_id, res = ?res, "Task finished");
+        info!(id = %task_id, res = ?res, "Task finished");
         client
             .post(&endpoints.done_taste_test)
             .json(&res)

@@ -16,6 +16,7 @@ test_command = ["sh", "-c", "echo 'Hello test!' && sleep 10"]
 build_timeout = "5m"
 test_timeout = "10m"
 local_repo_path = "target/repos"
+reference_compiler_image = "alpine:latest"
 
 [github]
 status_check_interval = "10s"

@@ -18,6 +18,7 @@ pub struct Runner {
     pub info: RunnerInfo,
     pub working_on: Option<WorkItem>,
     pub last_ping: SystemTime,
+    pub test_taster: bool
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,6 +30,7 @@ pub struct RunnerForFrontend {
     #[serde(serialize_with = "serialize_system_time")]
     #[serde(deserialize_with = "deserialize_system_time")]
     pub last_seen: SystemTime,
+    pub test_taster: bool
 }
 
 impl From<&Runner> for RunnerForFrontend {
@@ -38,6 +40,7 @@ impl From<&Runner> for RunnerForFrontend {
             info: value.info.info.clone(),
             working_on: value.working_on.clone(),
             last_seen: value.last_ping,
+            test_taster: value.test_taster
         }
     }
 }
@@ -188,6 +191,7 @@ impl Executor {
                 info: runner_info.clone(),
                 working_on: None,
                 last_ping: SystemTime::now(),
+                test_taster: runner_info.test_taster,
             },
         );
 

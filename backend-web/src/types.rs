@@ -14,6 +14,7 @@ pub use self::task::FinishedCompilerTaskSummary;
 pub use self::test::Test;
 pub use self::test::TestId;
 pub use self::test::TestSummary;
+pub use self::test_tasting::TestTasting;
 pub use self::user::FullUserForAdmin;
 pub use self::user::OwnUser;
 pub use self::user::Team;
@@ -36,6 +37,7 @@ mod external;
 mod repo;
 mod task;
 mod test;
+mod test_tasting;
 mod user;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,6 +50,7 @@ pub struct AppState {
     pub execution_config: ExecutionConfig,
     pub test_config: TestConfig,
     pub executor: Arc<Mutex<Executor>>,
+    pub test_tasting: Arc<Mutex<TestTasting>>,
     pub local_repos: LocalRepos,
     pub github_app_name: Option<String>,
     pub oidc: Oidc,
@@ -69,6 +72,7 @@ impl AppState {
             execution_config,
             test_config,
             executor: Executor::new(),
+            test_tasting: TestTasting::new(),
             local_repos,
             github_app_name,
             oidc,

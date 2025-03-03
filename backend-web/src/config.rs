@@ -30,8 +30,15 @@ pub struct ExecutionConfig {
     pub build_timeout: Duration,
     #[serde(deserialize_with = "parse_duration")]
     pub test_timeout: Duration,
+    pub reference_compiler_image: Option<String>,
 
     pub local_repo_path: PathBuf,
+}
+
+impl ExecutionConfig {
+    pub fn tasting_disabled(&self) -> bool {
+        self.reference_compiler_image.is_none()
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
