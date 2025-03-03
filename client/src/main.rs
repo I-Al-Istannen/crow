@@ -84,12 +84,12 @@ enum CliCommand {
 //     - [-] CLI args for: prefer-local, prefer-remote, prompt
 //  - [x] Wish user a good day
 
-// [ ] crow-client upload-test <input file> <output file> [--name <name>] [--category <category>]
-//   - [ ] Prompt for name/category if not given
+// [x] crow-client upload-test <input file> <output file> [--name <name>] [--category <category>]
+//   - [x] Prompt for name/category if not given
 //   - [ ] Execute test against reference compiler
 //   - [ ] If failed
 //     - [ ] Warn user, prompt for continuing upload
-//   - [ ] Upload test
+//   - [x] Upload test
 
 // [x] crow-client run-test --test-dir <test dir> --test <test id> --run <compiler run path>
 //   - Runs a single test against your local compiler run binary

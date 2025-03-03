@@ -30,6 +30,14 @@
           backend-naersk = naersk'.buildPackage {
             version = (pkgs.lib.importTOML ./Cargo.toml).workspace.package.version;
             src = gitignoreSource ./.;
+
+            buildInputs = [
+              pkgs.dbus
+            ];
+
+            nativeBuildInputs = [
+              pkgs.pkg-config
+            ];
           };
         in
         rec {
@@ -40,6 +48,10 @@
           executor = pkgs.runCommand "executor" { } ''
             mkdir -p $out/bin
             cp ${backend-naersk}/bin/executor $out/bin
+          '';
+          client = pkgs.runCommand "client" { } ''
+            mkdir -p $out/bin
+            cp ${backend-naersk}/bin/client $out/bin
           '';
           frontend = pkgs.buildNpmPackage {
             pname = "frontend";
