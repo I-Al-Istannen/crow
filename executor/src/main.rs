@@ -4,7 +4,7 @@
 #![allow(unsafe_code)]
 
 use crate::containers::{ContainerCreateError, TestRunError, WaitForContainerError};
-use crate::mode_executor::{CliExecutorArgs, run_executor};
+use crate::mode_executor::{run_executor, CliExecutorArgs};
 use clap::builder::Styles;
 use clap::builder::styling::AnsiColor;
 use clap::{Parser, Subcommand};
@@ -88,22 +88,26 @@ enum CliCommand {
 
 struct Endpoints {
     done: String,
+    done_taste_test: String,
     ping: String,
     register: String,
     tar: String,
     update: String,
     work: String,
+    work_taste_test: String
 }
 
 impl Endpoints {
     pub fn new(base: &str) -> Self {
         Self {
             done: format!("{}/executor/done", base),
+            done_taste_test: format!("{}/executor/done-taste-test", base),
             ping: format!("{}/executor/ping", base),
             register: format!("{}/executor/register", base),
             tar: format!("{}/executor/request-tar", base),
             update: format!("{}/executor/update", base),
             work: format!("{}/executor/request-work", base),
+            work_taste_test: format!("{}/executor/request-work-taste-test", base),
         }
     }
 }

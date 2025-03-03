@@ -1,35 +1,46 @@
-use crate::task_executor::{ExecutingTask, execute_task};
-use crate::{
-    AnyError, Endpoints, NO_TASK_BACKOFF, ReqwestSnafu, TempFileSnafu, ThreadPoolBuildSnafu,
-};
+use crate::{AnyError, Endpoints, ReqwestSnafu};
 use clap::Args;
-use rayon::{ThreadPool, ThreadPoolBuilder};
 use reqwest::blocking::{Client, ClientBuilder};
-use shared::{RunnerInfo, RunnerUpdate, RunnerWorkResponse};
+use shared::{RunnerInfo, RunnerUpdate};
 use snafu::{Report, ResultExt};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Receiver;
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 use tracing::{info, warn};
 
+mod test_compiler;
+mod test_tasting;
+
+pub trait Iteration {
+    fn iteration(
+        &mut self,
+        args: &CliExecutorArgs,
+        endpoints: &Endpoints,
+        current_backoff: &mut Duration,
+        shutdown_requested: &Arc<AtomicBool>,
+        client: &Client,
+        runner_info: &RunnerInfo,
+    ) -> Result<(), AnyError>;
+}
+
 #[derive(Args, Debug)]
 pub struct CliExecutorArgs {
     /// A unique name for this runner
-    id: String,
+    pub id: String,
     /// The runner token of the server
-    token: String,
+    pub token: String,
     /// Endpoint to poll for work updates
-    endpoint: String,
+    pub endpoint: String,
+    /// If set, this executor will request the reference compiler and then only accept tests
+    /// to validate against it
+    #[clap(long, default_value = "false")]
+    pub test_taster: bool,
 }
 
 pub fn run_executor(args: CliExecutorArgs) -> Result<(), AnyError> {
     let endpoints = Endpoints::new(&args.endpoint);
-
-    let thread_pool = ThreadPoolBuilder::new()
-        .build()
-        .context(ThreadPoolBuildSnafu)?;
 
     let mut current_backoff = Duration::from_secs(1);
     let shutdown_requested = Arc::new(AtomicBool::new(false));
@@ -39,14 +50,26 @@ pub fn run_executor(args: CliExecutorArgs) -> Result<(), AnyError> {
 
     let client = ClientBuilder::new().build().context(ReqwestSnafu)?;
 
+    let mut iteration: Box<dyn Iteration> = if args.test_taster {
+        Box::new(test_tasting::TestTastingState::new())
+    } else {
+        Box::new(test_compiler::TestCompilerState::new()?)
+    };
+
     while !shutdown_requested.load(Ordering::Relaxed) {
-        let res = iteration(
+        let runner_info = RunnerInfo {
+            id: args.id.clone().into(),
+            info: "hey".to_string(),
+            current_task: None,
+            test_taster: args.test_taster,
+        };
+        let res = iteration.iteration(
             &args,
             &endpoints,
-            &thread_pool,
             &mut current_backoff,
             &shutdown_requested,
             &client,
+            &runner_info,
         );
         if let Err(e) = res {
             // Emergency wait to prevent busy loops
@@ -80,106 +103,6 @@ fn start_periodic_pings(endpoints: &Endpoints, args: &CliExecutorArgs) {
                 .context(ReqwestSnafu);
         }
     });
-}
-
-fn iteration(
-    args: &CliExecutorArgs,
-    endpoints: &Endpoints,
-    thread_pool: &ThreadPool,
-    current_backoff: &mut Duration,
-    shutdown_requested: &Arc<AtomicBool>,
-    client: &Client,
-) -> Result<(), AnyError> {
-    let runner_info = RunnerInfo {
-        id: args.id.clone().into(),
-        info: "hey".to_string(),
-        current_task: None,
-    };
-    client
-        .post(&endpoints.register)
-        .basic_auth(&args.id, Some(&args.token))
-        .json(&runner_info)
-        .send()
-        .context(ReqwestSnafu)?;
-
-    let response = match client
-        .post(&endpoints.work)
-        .json(&runner_info)
-        .basic_auth(&args.id, Some(&args.token))
-        .send()
-    {
-        Err(e) => {
-            warn!(
-                error = ?Report::from_error(e),
-                endpoint = %endpoints.work,
-                next_retry = ?current_backoff,
-                "Failed to request work"
-            );
-            backoff(current_backoff, shutdown_requested);
-            return Ok(());
-        }
-        Ok(response) => response,
-    };
-    if !response.status().is_success() {
-        warn!(
-            status = %response.status(),
-            endpoint = %endpoints.work,
-            next_retry = ?current_backoff,
-            "Failed to request work"
-        );
-        backoff(current_backoff, shutdown_requested);
-        return Ok(());
-    }
-    let task = match response.json::<RunnerWorkResponse>() {
-        Err(e) => {
-            warn!(
-                error = ?Report::from_error(e),
-                endpoint = %endpoints.work,
-                next_retry = ?current_backoff,
-                "Failed to parse task"
-            );
-            backoff(current_backoff, shutdown_requested);
-            return Ok(());
-        }
-        Ok(task) => task,
-    };
-    let Some(task) = task.task else {
-        let current_backoff = &mut NO_TASK_BACKOFF.clone();
-        info!(backoff = ?current_backoff, "No task received");
-        backoff(current_backoff, shutdown_requested);
-        return Ok(());
-    };
-    let task_id = task.task_id.clone();
-
-    info!(id = task_id, "Received task");
-    let (tx, rx) = std::sync::mpsc::channel();
-    let source_tar = tempfile::NamedTempFile::new().context(TempFileSnafu)?;
-    client
-        .get(&endpoints.tar)
-        .basic_auth(&args.id, Some(&args.token))
-        .send()
-        .context(ReqwestSnafu)?
-        .copy_to(&mut source_tar.as_file())
-        .context(ReqwestSnafu)?;
-
-    let task = ExecutingTask {
-        inner: task,
-        pool: thread_pool,
-        aborted: shutdown_requested.clone(),
-        message_channel: tx,
-    };
-    start_update_listener(args, endpoints, rx);
-    let res = execute_task(task, source_tar.into_temp_path());
-
-    info!(id = task_id, res = ?res, "Task finished");
-    client
-        .post(&endpoints.done)
-        .json(&res)
-        .basic_auth(&args.id, Some(&args.token))
-        .send()
-        .context(ReqwestSnafu)?;
-
-    Ok(())
 }
 
 fn start_update_listener(
@@ -227,7 +150,7 @@ fn register_termination_handler(stop_requested: &Arc<AtomicBool>) {
     }
 }
 
-fn backoff(current_backoff: &mut Duration, shutdown_requested: &Arc<AtomicBool>) {
+pub fn backoff(current_backoff: &mut Duration, shutdown_requested: &Arc<AtomicBool>) {
     // We need to be responsive to stop requests (CTRL+C), so we can't just sleep for
     // the full duration
     let target = Instant::now() + *current_backoff;

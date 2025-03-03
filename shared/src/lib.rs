@@ -138,6 +138,7 @@ pub struct RunnerInfo {
     pub id: RunnerId,
     pub info: String,
     pub current_task: Option<String>,
+    pub test_taster: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -162,6 +163,14 @@ pub enum RunnerUpdate {
 pub struct RunnerWorkResponse {
     pub task: Option<CompilerTask>,
     pub reset: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunnerWorkTasteTestResponse {
+    pub test: Option<CompilerTest>,
+    pub id: String,
+    pub image_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

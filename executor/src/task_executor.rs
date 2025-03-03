@@ -1,20 +1,23 @@
 use crate::containers::{
-    ContainerCreateError, IntegrateSourceError, TaskContainer, TestRunError, WaitForContainerError,
+    Built, ContainerCreateError, IntegrateSourceError, TaskContainer, TestRunError,
+    WaitForContainerError,
 };
 use crate::docker::ImageId;
 use crate::test_validation;
 use rayon::ThreadPool;
 use shared::{
-    AbortedExecution, CompilerTask, ExecutionOutput, FinishedCompilerTask, FinishedExecution,
-    FinishedTaskInfo, FinishedTest, InternalError, RunnerUpdate,
+    AbortedExecution, CompilerTask, CompilerTest, ExecutionOutput, FinishedCompilerTask,
+    FinishedExecution, FinishedTaskInfo, FinishedTest, InternalError, RunnerUpdate,
 };
 use snafu::{Location, Report, ResultExt, Snafu};
+use std::cell::RefCell;
 use std::path::Path;
+use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, mpsc};
-use std::time::{Instant, SystemTime};
+use std::sync::{mpsc, Arc};
+use std::time::{Duration, Instant, SystemTime};
 use tempfile::TempPath;
-use tracing::error;
+use tracing::{error, info};
 
 #[derive(Debug, Snafu)]
 pub enum TaskRunError {
@@ -300,4 +303,91 @@ fn execution_output_from_wait_error(error: &WaitForContainerError) -> Option<Exe
     }
 
     None
+}
+
+pub fn run_test(
+    task_id: String,
+    image_id: &ImageId,
+    test: CompilerTest,
+    shutdown_requested: Arc<AtomicBool>,
+    base_container: Rc<RefCell<Option<TaskContainer<Built>>>>,
+) -> ExecutionOutput {
+    let test_id = test.test_id.clone();
+    let start = Instant::now();
+    let res = run_test_impl(
+        task_id.clone(),
+        image_id,
+        test,
+        shutdown_requested,
+        base_container,
+    );
+
+    match res {
+        Ok(res) => res,
+        Err(e) => {
+            let report = Report::from_error(e);
+            error!(
+                error = ?report,
+                task_id = task_id.as_str(),
+                test_id = test_id.as_str(),
+                "Internal error while setting up test"
+            );
+
+            ExecutionOutput::Error(InternalError {
+                runtime: start.elapsed(),
+                message: format!("Internal error while setting up test:\n{}", report),
+            })
+        }
+    }
+}
+
+fn run_test_impl(
+    task_id: String,
+    image_id: &ImageId,
+    test: CompilerTest,
+    shutdown_requested: Arc<AtomicBool>,
+    base_container: Rc<RefCell<Option<TaskContainer<Built>>>>,
+) -> Result<ExecutionOutput, TaskRunError> {
+    if base_container.borrow().is_none() {
+        info!("Creating reference compiler container");
+        // We have nothing really to do here, so we just use `true` as the builder.
+        let container = TaskContainer::new(image_id, &["true".to_string()])
+            .context(ContainerCreateSnafu)?
+            .run()
+            .context(ContainerRunSnafu)?;
+        let container = container
+            .wait_for_build(Duration::from_secs(10), shutdown_requested.clone())
+            .context(WaitForBuildSnafu)?;
+
+        *base_container.borrow_mut() = Some(container);
+    }
+    let base_container = base_container.borrow();
+    let base_container = base_container.as_ref().unwrap();
+
+    let start = Instant::now();
+    let res = base_container.run_test(
+        &test.run_command,
+        &test.input,
+        Path::new("input.🦆"),
+        test.timeout,
+        shutdown_requested.clone(),
+    );
+
+    let res = match res {
+        Ok(res) => res,
+        Err(e) => return Ok(test_run_error_to_output(start, task_id, test.test_id, e)),
+    };
+
+    let execution = FinishedExecution {
+        stdout: res.stdout,
+        stderr: res.stderr,
+        runtime: res.runtime,
+        exit_status: res.exit_status.code(),
+    };
+
+    Ok(test_validation::judge_output(
+        &test,
+        res.exit_status,
+        execution,
+    ))
 }
