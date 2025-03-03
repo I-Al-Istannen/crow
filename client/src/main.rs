@@ -39,6 +39,8 @@ const CLAP_STYLE: Styles = Styles::styled()
 #[command(version, about, long_about = None, styles = CLAP_STYLE)]
 #[command(propagate_version = true)]
 struct CliArgs {
+    #[clap(long, default_value = "http://localhost:5173")]
+    frontend_url: String,
     #[clap(long, default_value = "http://127.0.0.1:3000")]
     backend_url: String,
     #[clap(subcommand)]
@@ -119,17 +121,19 @@ fn main() -> ExitCode {
         let args = CliArgs::parse();
         let client = Client::new();
         let backend_url = &args.backend_url;
+        let frontend_url = &args.frontend_url;
 
         match args.subcommand {
             CliCommand::Login => command_login(client, backend_url),
             CliCommand::SyncTests(args) => {
-                command_sync_tests(args, get_context(backend_url, client)?)
+                command_sync_tests(args, get_context(backend_url, frontend_url, client)?)
             }
             CliCommand::RunTest(args) => commands::run_test::command_run_test(args),
             CliCommand::RunTests(args) => commands::run_test::command_run_tests(args),
-            CliCommand::UploadTest(args) => {
-                commands::upload::command_upload_test(args, get_context(backend_url, client)?)
-            }
+            CliCommand::UploadTest(args) => commands::upload::command_upload_test(
+                args,
+                get_context(backend_url, frontend_url, client)?,
+            ),
         }
     });
 
@@ -148,10 +152,11 @@ fn main() -> ExitCode {
     ExitCode::FAILURE
 }
 
-fn get_context(backend_url: &str, client: Client) -> Result<CliContext> {
+fn get_context(backend_url: &str, frontend_url: &str, client: Client) -> Result<CliContext> {
     Ok(CliContext::new(
-        get_stored_auth().context(AuthSnafu)?,
+        get_stored_auth(frontend_url).context(AuthSnafu)?,
         client,
         backend_url.to_string(),
+        frontend_url.to_string(),
     ))
 }

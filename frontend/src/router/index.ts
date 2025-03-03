@@ -7,6 +7,7 @@ import RepoView from '@/views/RepoView.vue'
 import TaskDetailView from '@/views/TaskDetailView.vue'
 import TeamInfoView from '@/views/TeamInfoView.vue'
 import TestView from '@/views/TestView.vue'
+import CliAuthView from '@/views/CliAuthView.vue'
 
 export const PRE_LOGIN_URL_SESSION_STORAGE_KEY = 'pre-login-url'
 
@@ -78,6 +79,15 @@ const router = createRouter({
       component: LoginCallbackView,
       meta: {
         name: 'Login callback',
+        hidden: true,
+      },
+    },
+    {
+      path: '/cli-auth',
+      name: 'cli-auth',
+      component: CliAuthView,
+      meta: {
+        name: 'Cli authentication',
         hidden: true,
       },
     },

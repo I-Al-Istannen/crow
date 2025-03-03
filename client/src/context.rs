@@ -38,14 +38,21 @@ pub struct CliContext {
     auth: BackendAuth,
     client: Client,
     backend_url: String,
+    frontend_url: String,
 }
 
 impl CliContext {
-    pub fn new(auth: BackendAuth, client: Client, backend_url: String) -> Self {
+    pub fn new(
+        auth: BackendAuth,
+        client: Client,
+        backend_url: String,
+        frontend_url: String,
+    ) -> Self {
         Self {
             auth,
             client,
             backend_url,
+            frontend_url,
         }
     }
 
@@ -57,7 +64,7 @@ impl CliContext {
             .send()
             .context(ReqwestSnafu)?;
 
-        let myself: MyselfResponse = get_json_response(res)?;
+        let myself: MyselfResponse = self.get_json_response(res)?;
         Ok(myself.user)
     }
 
@@ -69,7 +76,7 @@ impl CliContext {
             .send()
             .context(ReqwestSnafu)?;
 
-        get_json_response(res)
+        self.get_json_response(res)
     }
 
     pub fn get_test_detail(&self, id: &str) -> Result<TestDetail, CliContextError> {
@@ -84,7 +91,7 @@ impl CliContext {
             .send()
             .context(ReqwestSnafu)?;
 
-        get_json_response(res)
+        self.get_json_response(res)
     }
 
     pub fn upload_test(
@@ -111,7 +118,7 @@ impl CliContext {
             .send()
             .context(ReqwestSnafu)?;
 
-        let _: serde_json::Value = get_json_response(res)?;
+        let _: serde_json::Value = self.get_json_response(res)?;
 
         Ok(())
     }
@@ -126,21 +133,24 @@ impl CliContext {
 
         header_map
     }
-}
 
-fn get_json_response<T: DeserializeOwned>(response: Response) -> Result<T, CliContextError> {
-    if response.status() == StatusCode::UNAUTHORIZED {
-        display_login()
-    }
-    if response.status() == StatusCode::OK {
-        return response.json::<T>().context(DeserializationSnafu);
-    }
+    fn get_json_response<T: DeserializeOwned>(
+        &self,
+        response: Response,
+    ) -> Result<T, CliContextError> {
+        if response.status() == StatusCode::UNAUTHORIZED {
+            display_login(&self.frontend_url)
+        }
+        if response.status() == StatusCode::OK {
+            return response.json::<T>().context(DeserializationSnafu);
+        }
 
-    Err(BackendStatusCodeSnafu {
-        status_code: response.status(),
-        message: response.text().unwrap_or("N/A".to_string()),
+        Err(BackendStatusCodeSnafu {
+            status_code: response.status(),
+            message: response.text().unwrap_or("N/A".to_string()),
+        }
+        .into_error(NoneError))
     }
-    .into_error(NoneError))
 }
 
 #[derive(Debug, Deserialize)]
@@ -196,13 +206,12 @@ pub struct TestDetail {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Myself {
-    pub id: String,
     pub display_name: String,
     pub team: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct MyselfResponse {
-    user: Myself,
+pub struct MyselfResponse {
+    pub user: Myself,
 }

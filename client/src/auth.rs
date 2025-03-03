@@ -1,3 +1,5 @@
+use crate::context::MyselfResponse;
+use crate::util::st;
 use console::style;
 use keyring::Entry;
 use reqwest::blocking::Client;
@@ -58,12 +60,12 @@ pub enum AuthError {
     },
 }
 
-pub fn get_stored_auth() -> Result<BackendAuth, AuthError> {
+pub fn get_stored_auth(frontend_url: &str) -> Result<BackendAuth, AuthError> {
     let entry = Entry::new("crow-client", "backend-auth").context(EntryNameInvalidSnafu)?;
 
     let token = match entry.get_password() {
         Ok(token) => token,
-        Err(keyring::Error::NoEntry) => display_login(),
+        Err(keyring::Error::NoEntry) => display_login(frontend_url),
         Err(keyring::Error::Ambiguous(creds)) => {
             return Err(AmbiguousSnafu { count: creds.len() }.into_error(NoneError));
         }
@@ -73,21 +75,34 @@ pub fn get_stored_auth() -> Result<BackendAuth, AuthError> {
     Ok(BackendAuth(token))
 }
 
-pub fn display_login() -> ! {
+pub fn display_login(frontend_url: &str) -> ! {
+    let me = match std::env::current_exe() {
+        Err(_) => "crow-client".to_string(),
+        Ok(exe) => exe
+            .file_name()
+            .map(|f| f.to_string_lossy().to_string())
+            .unwrap_or("crow-client".to_string()),
+    };
     error!(
-        "{}{}",
-        style("Unauthenticated. Please authenticate at ").red(),
-        style("http://localhost:5173/cli-auth")
-            .underlined()
-            .bright()
-            .red()
+        "{}",
+        st(style("Unauthenticated.").red())
+            .append(" Please authenticate at ")
+            .append(
+                style(format!("{frontend_url}/cli-auth"))
+                    .bright()
+                    .bold()
+                    .cyan()
+            )
+            .append(" and then use the '")
+            .append(style(format!("{me} login")).bold().cyan())
+            .append("' command to authenticate."),
     );
     std::process::exit(1);
 }
 
 pub enum LoginResult {
     WrongPassword,
-    Success(BackendAuth),
+    Success { name: String, auth: BackendAuth },
 }
 
 pub fn validate_token(
@@ -106,7 +121,11 @@ pub fn validate_token(
     }
 
     if res.status() == StatusCode::OK {
-        return Ok(LoginResult::Success(BackendAuth(token)));
+        let me = res.json::<MyselfResponse>().context(ReqwestSnafu)?;
+        return Ok(LoginResult::Success {
+            name: me.user.display_name,
+            auth: BackendAuth(token),
+        });
     }
 
     Err(LoginStatusCodeSnafu {

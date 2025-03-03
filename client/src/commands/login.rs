@@ -1,8 +1,8 @@
 use crate::auth::{store_auth, validate_token, LoginResult};
 use crate::error::{AuthSnafu, Result};
 use console::style;
-use dialoguer::Password;
 use dialoguer::theme::ColorfulTheme;
+use dialoguer::Password;
 use reqwest::blocking::Client;
 use snafu::ResultExt;
 use tracing::{error, info};
@@ -14,15 +14,10 @@ pub fn command_login(client: Client, backend_url: &str) -> Result<()> {
         }
     }
 
-    info!("{}", style("Successfully logged in!").bright().green());
+    info!("Successfully logged in!");
     info!(
-        "{}",
-        style(
-            "Your password is now cached in your systems keyring. \
-            Further commands will work without authentication"
-        )
-        .bright()
-        .green()
+        "Your password is now cached in your system keyring. \
+        Further commands will work without authentication."
     );
 
     Ok(())
@@ -39,15 +34,17 @@ fn login_iteration(client: &Client, backend_url: &str) -> Result<bool> {
 
     let auth = validate_token(client, token, backend_url).context(AuthSnafu)?;
 
-    let auth = match auth {
+    let (auth, name) = match auth {
         LoginResult::WrongPassword => {
             error!("{}", style("Wrong token").red());
             return Ok(false);
         }
-        LoginResult::Success(auth) => auth,
+        LoginResult::Success { auth, name } => (auth, name),
     };
 
     store_auth(auth).context(AuthSnafu)?;
+
+    info!("Welcome, {}!", style(name).green().bold().bright());
 
     Ok(true)
 }
