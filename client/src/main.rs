@@ -15,6 +15,7 @@ use crate::commands::sync_tests::{command_sync_tests, CliSyncTestsArgs};
 use crate::commands::upload::CliUploadTestArgs;
 use crate::context::CliContext;
 use crate::error::AuthSnafu;
+use crate::util::st;
 use clap::builder::styling::AnsiColor;
 use clap::builder::Styles;
 use clap::{Parser, Subcommand};
@@ -137,19 +138,38 @@ fn main() -> ExitCode {
         }
     });
 
-    let Err(report) = res else {
-        info!(
-            "{}{}{}",
-            style("Exiting successfully. Goodbye, have a n").green(),
-            style("ice").blue().bright(),
-            style(" day!").green()
-        );
-        return ExitCode::SUCCESS;
+    let res = match res {
+        Ok(false) => ExitCode::FAILURE,
+        Ok(true) => ExitCode::SUCCESS,
+        Err(report) => {
+            error!("\n{}", style(report).bright().red());
+            ExitCode::FAILURE
+        }
     };
 
-    error!("\n{}", style(report.to_string()).bright().red());
+    println!();
 
-    ExitCode::FAILURE
+    if res == ExitCode::SUCCESS {
+        info!(
+            "{}",
+            st("Exiting ")
+                .append(style("successfully").green())
+                .append(". Goodbye, have a n")
+                .append(style("ice").blue().bright())
+                .append(" day!")
+        );
+    } else {
+        info!(
+            "{}",
+            st("Exiting ")
+                .append(style("unsuccessfully").red())
+                .append(". Goodbye, have a n")
+                .append(style("ice").blue().bright())
+                .append(" day!")
+        );
+    }
+
+    res
 }
 
 fn get_context(backend_url: &str, frontend_url: &str, client: Client) -> Result<CliContext> {

@@ -1,9 +1,10 @@
 use crate::commands::sync_tests::get_local_tests;
 use crate::error::{CrowClientError, RunTestSnafu, SyncTestsSnafu};
+use crate::util::color_diff;
 use clap::Args;
 use console::style;
 use similar::{DiffableStr, TextDiff};
-use snafu::{ensure, IntoError, Location, NoneError, ResultExt, Snafu};
+use snafu::{ensure, IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use tempfile::NamedTempFile;
@@ -105,7 +106,7 @@ pub struct CliRunTestsArgs {
     diff_tool: Option<PathBuf>,
 }
 
-pub fn command_run_tests(args: CliRunTestsArgs) -> Result<(), CrowClientError> {
+pub fn command_run_tests(args: CliRunTestsArgs) -> Result<bool, CrowClientError> {
     let tests = get_local_tests(&args.test_dir).context(SyncTestsSnafu)?;
 
     let mut failures = 0;
@@ -121,7 +122,7 @@ pub fn command_run_tests(args: CliRunTestsArgs) -> Result<(), CrowClientError> {
             style(&test.id).bold().bright().cyan(),
             style("=".repeat((remaining_padding as f32 / 2.0).ceil() as usize)).dim(),
         );
-        let res = run_test(CliRunTestArgs {
+        let res = command_run_test(CliRunTestArgs {
             test_dir: args.test_dir.clone(),
             test_id: test.id,
             compiler_run: args.compiler_run.clone(),
@@ -137,7 +138,7 @@ pub fn command_run_tests(args: CliRunTestsArgs) -> Result<(), CrowClientError> {
             }
             Err(err) => {
                 errors += 1;
-                error!("\n{}", err);
+                error!("\n{}", style(Report::from_error(err)).red());
             }
         }
     }
@@ -155,24 +156,10 @@ pub fn command_run_tests(args: CliRunTestsArgs) -> Result<(), CrowClientError> {
         style(".").bright().cyan()
     );
 
-    if failures > 0 || errors > 0 {
-        std::process::exit(1);
-    }
-
-    Ok(())
+    Ok(failures == 0 && errors == 0)
 }
 
-pub fn command_run_test(args: CliRunTestArgs) -> Result<(), CrowClientError> {
-    let res = run_test(args)?;
-
-    if !res {
-        std::process::exit(1);
-    }
-
-    Ok(())
-}
-
-pub fn run_test(args: CliRunTestArgs) -> Result<bool, CrowClientError> {
+pub fn command_run_test(args: CliRunTestArgs) -> Result<bool, CrowClientError> {
     verify_test_dir(&args).context(RunTestSnafu)?;
 
     let (test, expected) = find_test(&args.test_dir, &args.test_id).context(RunTestSnafu)?;
@@ -320,23 +307,7 @@ fn judge_output_internal(expected: &str, actual: &str) -> Option<String> {
         .context_radius(5)
         .header("missing from yours", "extraneous in yours");
 
-    let diff = diff
-        .to_string()
-        .lines()
-        .map(|line| {
-            if line.starts_with("-") {
-                format!("{}", style(line).red().bright())
-            } else if line.starts_with("+") {
-                format!("{}", style(line).green().bright())
-            } else if line.starts_with("@") {
-                format!("{}", style(line).magenta())
-            } else {
-                line.to_string()
-            }
-        })
-        .collect::<Vec<String>>();
-
-    Some(diff.join("\n"))
+    Some(color_diff(diff))
 }
 
 fn judge_output_diff_driver(

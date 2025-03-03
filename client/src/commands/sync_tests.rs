@@ -150,7 +150,10 @@ pub struct CliSyncTestsArgs {
     test_dir: PathBuf,
 }
 
-pub fn command_sync_tests(args: CliSyncTestsArgs, ctx: CliContext) -> Result<(), CrowClientError> {
+pub fn command_sync_tests(
+    args: CliSyncTestsArgs,
+    ctx: CliContext,
+) -> Result<bool, CrowClientError> {
     let test_dir = args.test_dir;
 
     if let Err(e) = commit_if_dirty(&test_dir, "backup before sync") {
@@ -211,7 +214,9 @@ pub fn command_sync_tests(args: CliSyncTestsArgs, ctx: CliContext) -> Result<(),
 
     delete_local_only_tests(&test_dir, &remote.tests).context(SyncTestsSnafu)?;
 
-    commit_if_dirty(&test_dir, "sync tests").context(SyncTestsSnafu)
+    commit_if_dirty(&test_dir, "sync tests").context(SyncTestsSnafu)?;
+
+    Ok(true)
 }
 
 fn commit_if_dirty(test_dir: &Path, commit_message: &'static str) -> Result<(), SyncTestsError> {

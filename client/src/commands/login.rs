@@ -7,7 +7,7 @@ use reqwest::blocking::Client;
 use snafu::ResultExt;
 use tracing::{error, info};
 
-pub fn command_login(client: Client, backend_url: &str) -> Result<()> {
+pub fn command_login(client: Client, backend_url: &str) -> Result<bool> {
     loop {
         if login_iteration(&client, backend_url)? {
             break;
@@ -20,7 +20,7 @@ pub fn command_login(client: Client, backend_url: &str) -> Result<()> {
         Further commands will work without authentication."
     );
 
-    Ok(())
+    Ok(true)
 }
 
 fn login_iteration(client: &Client, backend_url: &str) -> Result<bool> {

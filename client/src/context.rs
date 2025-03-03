@@ -1,12 +1,17 @@
 use crate::auth::{display_login, BackendAuth};
+use indicatif::ProgressBar;
 use reqwest::blocking::{Client, Response};
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{StatusCode, Url};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use shared::FinishedTest;
 use snafu::{IntoError, Location, NoneError, ResultExt, Snafu};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread;
 
 #[derive(Debug, Snafu)]
 pub enum CliContextError {
@@ -100,27 +105,47 @@ impl CliContext {
         category: &str,
         input: &str,
         expected: &str,
-    ) -> Result<(), CliContextError> {
+        should_taste_test: bool,
+    ) -> Result<SetTestResponse, CliContextError> {
         let url = Url::from_str(&format!("{}/tests/", self.backend_url))
             .expect("url is valid")
             .join(id)
             .expect("url is valid after join");
 
-        let res = self
-            .client
-            .put(url)
-            .headers(self.get_headers())
-            .json(&serde_json::json!({
-                "category": category,
-                "input": input,
-                "expectedOutput": expected,
-            }))
-            .send()
-            .context(ReqwestSnafu)?;
+        let res = thread::scope(|s| {
+            let show_progress_bar = Arc::new(AtomicBool::new(true));
+            let show_progress_bar_clone = show_progress_bar.clone();
 
-        let _: serde_json::Value = self.get_json_response(res)?;
+            let progress_task = s.spawn(move || {
+                let spinner = ProgressBar::new_spinner().with_message("Uploading test");
+                while show_progress_bar_clone.load(Ordering::Acquire) {
+                    spinner.tick();
+                    thread::sleep(std::time::Duration::from_millis(100));
+                }
+                spinner.finish_with_message("Request completed");
+            });
+            let computing_task = s.spawn(move || {
+                self.client
+                    .put(url)
+                    .headers(self.get_headers())
+                    .json(&serde_json::json!({
+                        "category": category,
+                        "input": input,
+                        "expectedOutput": expected,
+                        "ignoreTestTasting": !should_taste_test,
+                    }))
+                    .send()
+                    .context(ReqwestSnafu)
+            });
+            let res = computing_task.join().expect("computing task panicked");
+            show_progress_bar.store(false, Ordering::Release);
+            progress_task.join().expect("progress task panicked");
 
-        Ok(())
+            res
+        });
+        let res = res?;
+
+        self.get_json_response(res)
     }
 
     fn get_headers(&self) -> HeaderMap {
@@ -214,4 +239,11 @@ pub struct Myself {
 #[serde(rename_all = "camelCase")]
 pub struct MyselfResponse {
     pub user: Myself,
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "type")]
+pub enum SetTestResponse {
+    TestAdded(#[allow(dead_code)] serde_json::Value),
+    TastingFailed(FinishedTest),
 }

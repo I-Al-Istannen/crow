@@ -1,12 +1,14 @@
-use crate::context::{CliContext, CliContextError, RemoteTests};
+use crate::context::{CliContext, CliContextError, RemoteTests, SetTestResponse};
 use crate::error::{ContextSnafu, CrowClientError, UploadTestSnafu};
 use clap::Args;
 use console::style;
 use dialoguer::theme::ColorfulTheme;
-use dialoguer::{FuzzySelect, Input, Select};
+use dialoguer::{Confirm, FuzzySelect, Input, Select};
+use shared::{ExecutionOutput, FinishedTest};
 use snafu::{IntoError, Location, NoneError, ResultExt, Snafu};
 use std::path::PathBuf;
-use tracing::info;
+use tracing::{error, info};
+use crate::util::color_diff;
 
 #[derive(Debug, Snafu)]
 pub enum UploadTestError {
@@ -67,7 +69,7 @@ pub struct CliUploadTestArgs {
 pub fn command_upload_test(
     args: CliUploadTestArgs,
     ctx: CliContext,
-) -> Result<(), CrowClientError> {
+) -> Result<bool, CrowClientError> {
     let remote_tests = ctx.get_remote_tests().context(ContextSnafu)?;
     let myself = ctx.get_myself().context(ContextSnafu)?;
     let Some(my_team) = myself.team else {
@@ -100,13 +102,24 @@ pub fn command_upload_test(
             .context(UploadTestSnafu);
     }
 
-    ctx.upload_test(&name, &category, &input, &output)
+    let should_taste_test = prompt_should_taste_test().context(UploadTestSnafu)?;
+
+    let res = ctx
+        .upload_test(&name, &category, &input, &output, should_taste_test)
         .context(UploadingSnafu)
         .context(UploadTestSnafu)?;
 
-    info!("Test uploaded {}", style("successfully").green().bright());
-
-    Ok(())
+    Ok(match res {
+        SetTestResponse::TestAdded(_) => {
+            info!("Test uploaded {}", style("successfully").green().bright());
+            true
+        }
+        SetTestResponse::TastingFailed(test) => {
+            error!("Test failed test tasting");
+            print_finished_test(test);
+            false
+        }
+    })
 }
 
 fn prompt_test_category(categories: &[String]) -> Result<String, UploadTestError> {
@@ -182,5 +195,48 @@ fn validate_test_name(input: &str) -> Result<(), &'static str> {
         Ok(())
     } else {
         Err("Test id must only contain alphanumerics, dashes, underscores or spaces")
+    }
+}
+
+fn prompt_should_taste_test() -> Result<bool, UploadTestError> {
+    let selected = Confirm::with_theme(&ColorfulTheme::default())
+        .with_prompt("Should the test be ran against the reference compiler before submitting?")
+        .interact_opt();
+
+    let Ok(Some(should_taste_test)) = selected else {
+        return Err(UserAbortSnafu {
+            what: "test tasting confirmation",
+        }
+        .into_error(NoneError));
+    };
+
+    Ok(should_taste_test)
+}
+
+fn print_finished_test(test: FinishedTest) {
+    match test.output {
+        ExecutionOutput::Aborted(e) => {
+            error!("The test execution was {}", style("aborted").dim());
+            error!("Stdout:\n{}", style(e.stdout));
+            error!("Stderr:\n{}", style(e.stderr).red());
+        }
+        ExecutionOutput::Error(e) => {
+            error!("Crow encountered an {}", style("internal error").red());
+            error!("\n{}", style(e.message).red());
+        }
+        ExecutionOutput::Success(_) => {}
+        ExecutionOutput::Failure(f) => {
+            error!(
+                "Your test {} on the reference compiler",
+                style("failed").yellow()
+            );
+            error!("Stdout:\n{}", style(f.stdout));
+            error!("Stderr:\n{}", style(color_diff(f.stderr)).red());
+        }
+        ExecutionOutput::Timeout(t) => {
+            error!("Your test {}", style("timed out").red());
+            error!("Stdout:\n{}", style(t.stdout));
+            error!("Stderr:\n{}", style(t.stderr).red());
+        }
     }
 }

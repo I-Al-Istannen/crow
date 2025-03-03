@@ -1,3 +1,4 @@
+use console::style;
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, Default)]
@@ -18,4 +19,24 @@ impl StyledText {
 
 pub fn st<T: Display>(start: T) -> StyledText {
     StyledText(start.to_string())
+}
+
+pub fn color_diff<T: Display>(diff: T) -> String {
+    let diff = diff
+        .to_string()
+        .lines()
+        .map(|line| {
+            if line.starts_with("-") {
+                format!("{}", style(line).red().bright())
+            } else if line.starts_with("+") {
+                format!("{}", style(line).green().bright())
+            } else if line.starts_with("@") {
+                format!("{}", style(line).magenta())
+            } else {
+                line.to_string()
+            }
+        })
+        .collect::<Vec<String>>();
+
+    diff.join("\n")
 }
