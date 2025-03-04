@@ -148,6 +148,10 @@ pub struct CliSyncTestsArgs {
     /// The directory containing all tests
     #[clap(long = "test-dir", short = 'd')]
     test_dir: PathBuf,
+    /// Automatically commit before and after syncing, if there were changes.
+    /// This allows you to undo accidental changes.
+    #[clap(short, long, default_value = "false")]
+    commit_changes: bool,
 }
 
 pub fn command_sync_tests(
@@ -156,8 +160,10 @@ pub fn command_sync_tests(
 ) -> Result<bool, CrowClientError> {
     let test_dir = args.test_dir;
 
-    if let Err(e) = commit_if_dirty(&test_dir, "backup before sync") {
-        error!("{}", style(Report::from_error(e)).red());
+    if args.commit_changes {
+        if let Err(e) = commit_if_dirty(&test_dir, "backup before sync") {
+            error!("{}", style(Report::from_error(e)).red());
+        }
     }
 
     let remote = ctx.get_remote_tests().context(ContextSnafu)?;
@@ -186,7 +192,7 @@ pub fn command_sync_tests(
             style("changed").magenta(),
             if remote_changed.len() == 1 { "" } else { "s" }
         );
-        for test in remote_changed {
+        for test in &remote_changed {
             download_remote_test(&test_dir, test, &ctx).context(SyncTestsSnafu)?;
         }
     }
@@ -207,14 +213,23 @@ pub fn command_sync_tests(
             style("locally inconsistent").red().underlined(),
             if inconsistent.len() == 1 { "" } else { "s" }
         );
-        for test in inconsistent {
+        for test in &inconsistent {
             download_remote_test(&test_dir, test, &ctx).context(SyncTestsSnafu)?;
         }
     }
 
-    delete_local_only_tests(&test_dir, &remote.tests).context(SyncTestsSnafu)?;
+    let deleted_any = delete_local_only_tests(&test_dir, &remote.tests).context(SyncTestsSnafu)?;
 
-    commit_if_dirty(&test_dir, "sync tests").context(SyncTestsSnafu)?;
+    if args.commit_changes {
+        commit_if_dirty(&test_dir, "sync tests").context(SyncTestsSnafu)?;
+    } else if deleted_any || !inconsistent.is_empty() || !remote_changed.is_empty() {
+        warn!(
+            "{}",
+            st("Existing files were changed or deleted. Run with '")
+                .append(style("--commit-changes").cyan())
+                .append("' to automatically commit before and after a sync.")
+        );
+    }
 
     Ok(true)
 }
@@ -501,7 +516,7 @@ fn get_locally_inconsistent_tests<'a>(
     Ok(inconsistent)
 }
 
-fn delete_local_only_tests(test_dir: &Path, remote_tests: &[Test]) -> Result<(), SyncTestsError> {
+fn delete_local_only_tests(test_dir: &Path, remote_tests: &[Test]) -> Result<bool, SyncTestsError> {
     let expected_files = remote_tests
         .iter()
         .flat_map(|test| test.local_file_paths(test_dir))
@@ -542,11 +557,11 @@ fn delete_local_only_tests(test_dir: &Path, remote_tests: &[Test]) -> Result<(),
             if to_remove.len() == 1 { "" } else { "s" }
         );
 
-        for file in to_remove {
+        for file in &to_remove {
             info!("  {}", style(file.display()).dim().red());
             std::fs::remove_file(&file).context(DeleteTestFileSnafu { file })?;
         }
     }
 
-    Ok(())
+    Ok(!to_remove.is_empty())
 }
