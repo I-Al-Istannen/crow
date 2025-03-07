@@ -559,7 +559,7 @@ fn delete_local_only_tests(test_dir: &Path, remote_tests: &[Test]) -> Result<boo
 
         for file in &to_remove {
             info!("  {}", style(file.display()).dim().red());
-            std::fs::remove_file(&file).context(DeleteTestFileSnafu { file })?;
+            std::fs::remove_file(file).context(DeleteTestFileSnafu { file })?;
         }
     }
 

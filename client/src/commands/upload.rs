@@ -1,5 +1,6 @@
 use crate::context::{CliContext, CliContextError, RemoteTests, SetTestResponse};
 use crate::error::{ContextSnafu, CrowClientError, UploadTestSnafu};
+use crate::util::color_diff;
 use clap::Args;
 use console::style;
 use dialoguer::theme::ColorfulTheme;
@@ -8,7 +9,6 @@ use shared::{ExecutionOutput, FinishedTest};
 use snafu::{IntoError, Location, NoneError, ResultExt, Snafu};
 use std::path::PathBuf;
 use tracing::{error, info};
-use crate::util::color_diff;
 
 #[derive(Debug, Snafu)]
 pub enum UploadTestError {
@@ -64,6 +64,9 @@ pub struct CliUploadTestArgs {
     /// The test category
     #[clap(short, long)]
     category: Option<String>,
+    /// Whether to run tests against the reference compiler before submitting
+    #[clap(long)]
+    taste_test: Option<bool>,
 }
 
 pub fn command_upload_test(
@@ -102,7 +105,10 @@ pub fn command_upload_test(
             .context(UploadTestSnafu);
     }
 
-    let should_taste_test = prompt_should_taste_test().context(UploadTestSnafu)?;
+    let should_taste_test = match args.taste_test {
+        None => prompt_should_taste_test().context(UploadTestSnafu)?,
+        Some(val) => val
+    };
 
     let res = ctx
         .upload_test(&name, &category, &input, &output, should_taste_test)
