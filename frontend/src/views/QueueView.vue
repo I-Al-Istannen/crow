@@ -41,7 +41,11 @@
                       {{ runner.id }}
                     </span>
                     <span class="ml-4 text-sm text-muted-foreground">
-                      pinged {{ formatApproxDuration(currentTime, runner.lastSeen.getTime()) }} ago
+                      pinged
+                      <span class="min-w-[3ch] inline-block">
+                        {{ formatApproxDuration(currentTime, runner.lastSeen.getTime()) }}
+                      </span>
+                      ago
                     </span>
                   </div>
                   <span class="text-sm text-muted-foreground flex justify-between">
