@@ -20,7 +20,7 @@
   </Card>
 
   <BuildOutputOverview :task-or-output="task" v-if="task" />
-  <TestOverview :tests="tests" v-if="tests && task" />
+  <TestOverview :tests="tests" of-whom="yours" v-if="tests && task" />
 </template>
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'

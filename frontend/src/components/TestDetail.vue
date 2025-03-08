@@ -7,6 +7,7 @@
         <div class="font-medium mb-2">Test tasting</div>
         <FinishedTestDetailDialog
           :test="testTastingError"
+          of-whom="reference"
           v-model:dialog-open="failedTastingDialogOpen"
         />
         <FinishedTestcaseSummaryIcon

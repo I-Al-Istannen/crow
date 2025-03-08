@@ -8,7 +8,11 @@
       No tests were run during this task.
     </CardContent>
     <CardContent class="flex flex-row gap-1 flex-wrap" v-else>
-      <FinishedTestDetailDialog :test="clickedTest" v-model:dialog-open="dialogOpen" />
+      <FinishedTestDetailDialog
+        :test="clickedTest"
+        :of-whom="ofWhom"
+        v-model:dialog-open="dialogOpen"
+      />
       <FinishedTestcaseIcon
         v-for="test in sortedTests"
         :key="test.testId"
@@ -32,9 +36,10 @@ const dialogOpen = ref<boolean>(false)
 
 const props = defineProps<{
   tests: (FinishedTest | ExecutingTest)[]
+  ofWhom: 'reference' | 'yours'
 }>()
 
-const { tests } = toRefs(props)
+const { ofWhom, tests } = toRefs(props)
 
 const sortedTests = computed(() =>
   tests.value.slice().sort((a, b) => a.testId.localeCompare(b.testId)),

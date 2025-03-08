@@ -99,6 +99,6 @@ const routes = computed(() =>
 
 const doLogout = async () => {
   useUserStore().logOut()
-  await router.push("/")
+  await router.push('/')
 }
 </script>

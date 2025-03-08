@@ -98,6 +98,7 @@
                 <FinishedTestDetailDialog
                   v-if="clickedTest"
                   :test="clickedTest"
+                  of-whom="reference"
                   v-model:dialog-open="failedTastingDialogOpen"
                 />
                 <FinishedTestcaseSummaryIcon

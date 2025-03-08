@@ -10,7 +10,7 @@
         </DialogDescription>
       </DialogHeader>
       <div>
-        <ProcessOutputDisplay :output="test.output" subject="The test" />
+        <ProcessOutputDisplay :output="test.output" :of-whom="ofWhom" subject="The test" />
       </div>
     </DialogContent>
   </Dialog>
@@ -33,7 +33,8 @@ const dialogOpen = defineModel<boolean>('dialogOpen')
 
 const props = defineProps<{
   test?: FinishedTest
+  ofWhom: 'reference' | 'yours'
 }>()
 
-const { test } = toRefs(props)
+const { test, ofWhom } = toRefs(props)
 </script>

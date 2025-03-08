@@ -5,7 +5,7 @@
       <CardDescription>Output from building your compiler</CardDescription>
     </CardHeader>
     <CardContent v-if="buildOutput">
-      <ProcessOutputDisplay subject="Your compiler build" :output="buildOutput" />
+      <ProcessOutputDisplay subject="Your compiler build" of-whom="yours" :output="buildOutput" />
     </CardContent>
   </Card>
 </template>

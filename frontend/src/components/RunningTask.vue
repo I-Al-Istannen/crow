@@ -20,7 +20,7 @@
       v-if="status === 'OPEN' && buildExecutionOutput"
       :task-or-output="buildExecutionOutput"
     />
-    <TestOverview v-if="status === 'OPEN' && testingStarted" :tests="tests" />
+    <TestOverview v-if="status === 'OPEN' && testingStarted" of-whom="yours" :tests="tests" />
   </div>
 </template>
 

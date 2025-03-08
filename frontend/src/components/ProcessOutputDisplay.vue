@@ -20,7 +20,14 @@
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="stdout" v-if="buildOutput.stdout.length > 0">
-        <AccordionTrigger>Stdout</AccordionTrigger>
+        <AccordionTrigger>
+          <span>
+            Stdout
+            <span v-if="ofWhomText" class="text-sm text-muted-foreground">
+              {{ ofWhomText }}
+            </span>
+          </span>
+        </AccordionTrigger>
         <AccordionContent>
           <pre class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto">{{
             buildOutput.stdout
@@ -28,7 +35,14 @@
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="stderr" v-if="buildOutput.stderr.length > 0">
-        <AccordionTrigger>Stderr</AccordionTrigger>
+        <AccordionTrigger>
+          <span>
+            Stderr
+            <span v-if="ofWhomText" class="text-sm text-muted-foreground">
+              {{ ofWhomText }}
+            </span>
+          </span>
+        </AccordionTrigger>
         <AccordionContent>
           <pre class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto"><span
             class="block"
@@ -59,14 +73,26 @@ import { formatDuration } from '@/lib/utils.ts'
 const props = defineProps<{
   output: ExecutionOutput
   subject: string
+  // Whose stdout/stderr it is
+  ofWhom: 'reference' | 'yours'
 }>()
 
-const { output, subject } = toRefs(props)
+const { ofWhom, output, subject } = toRefs(props)
 
 const buildOutput = computed(() => getBuildOutput(output.value))
 
 const stderrLines = computed(() => {
   return buildOutput.value.stderr.split('\n')
+})
+
+const ofWhomText = computed(() => {
+  if (ofWhom.value === 'reference') {
+    return ' of the reference compiler'
+  }
+  if (ofWhom.value === 'yours') {
+    return ' of your compiler'
+  }
+  return null
 })
 
 function getBuildOutput(task: ExecutionOutput): {

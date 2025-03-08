@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AllTasksView from '@/views/AllTasksView.vue'
+import CliAuthView from '@/views/CliAuthView.vue'
 import HomeView from '@/views/HomeView.vue'
 import LoginCallbackView from '@/views/LoginCallbackView.vue'
 import QueueView from '@/views/QueueView.vue'
@@ -7,7 +8,6 @@ import RepoView from '@/views/RepoView.vue'
 import TaskDetailView from '@/views/TaskDetailView.vue'
 import TeamInfoView from '@/views/TeamInfoView.vue'
 import TestView from '@/views/TestView.vue'
-import CliAuthView from '@/views/CliAuthView.vue'
 
 export const PRE_LOGIN_URL_SESSION_STORAGE_KEY = 'pre-login-url'
 
