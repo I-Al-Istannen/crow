@@ -17,7 +17,7 @@
       </Button>
       <Button variant="link" v-if="resultingTaskId">
         <RouterLink
-          class="bg-gradient-to-r from-blue-500 via-violet-500 to-rose-600 bg-clip-text text-transparent animate-gradient-x"
+          class="gradient-primary"
           :to="{ name: 'task-detail', params: { taskId: resultingTaskId } }"
         >
           Take me to the task

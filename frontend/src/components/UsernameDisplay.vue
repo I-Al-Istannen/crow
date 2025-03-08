@@ -1,12 +1,5 @@
 <template>
-  <span
-    class="font-medium"
-    :class="[
-      me?.id === id
-        ? 'animate-gradient-x bg-gradient-to-r from-blue-500 via-violet-500 to-rose-600 bg-clip-text text-transparent'
-        : '',
-    ]"
-  >
+  <span class="font-medium" :class="[me?.id === id ? 'gradient-primary' : '']">
     {{ displayName }}
   </span>
   <span class="text-muted-foreground"> ({{ id }})</span>

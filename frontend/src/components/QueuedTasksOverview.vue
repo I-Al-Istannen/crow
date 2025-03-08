@@ -74,7 +74,7 @@ const router = useRouter()
 const currentTime = useTimestamp({ interval: 2500 })
 
 function getRunner(runners: Runner[], taskId: TaskId) {
-  return runners.find((it) => it.workingOn?.id === taskId)
+  return runners.find((it) => it.workingOn?.type === 'Testing' && it.workingOn?.id === taskId)
 }
 
 // Sadly table rows can not be wrapped in `<a>` tags, so we need to emulate links using JS...

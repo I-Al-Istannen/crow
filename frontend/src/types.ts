@@ -125,11 +125,16 @@ export const WorkItemSchema = z.object({
   insertTime: z.number().transform((ms) => new Date(ms)),
 })
 
+export const RunnerWorkingOnSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('TestTasting') }),
+  z.object({ type: z.literal('Testing') }).merge(WorkItemSchema),
+])
+
 // Out of order due to dependencies
 export const RunnerSchema = z.object({
   id: RunnerIdSchema,
   info: z.string(),
-  workingOn: WorkItemSchema.nullish(),
+  workingOn: RunnerWorkingOnSchema.nullish(),
   lastSeen: z.number().transform((ms) => new Date(ms)),
   testTaster: z.boolean(),
 })
@@ -248,4 +253,5 @@ export type TestId = z.infer<typeof TestIdSchema>
 export type TestSummary = z.infer<typeof TestSummarySchema>
 export type User = z.infer<typeof UserSchema>
 export type UserId = z.infer<typeof UserIdSchema>
+export type RunnerWorkingOn = z.infer<typeof RunnerWorkingOnSchema>
 export type WorkItem = z.infer<typeof WorkItemSchema>

@@ -46,7 +46,9 @@
                   </div>
                   <span class="text-sm text-muted-foreground flex justify-between">
                     <span>{{ runner.info }}</span>
-                    <span v-if="runner.workingOn" class="font-medium">active</span>
+                    <span v-if="runner.workingOn" class="font-medium gradient-primary">
+                      active
+                    </span>
                     <span v-else>idle</span>
                   </span>
                 </div>
