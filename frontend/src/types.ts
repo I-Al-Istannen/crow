@@ -179,6 +179,17 @@ export const TestSchema = z.object({
   category: z.string(),
 })
 
+export const TestTastingResultSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('Success') }),
+  z.object({ type: z.literal('Failure'), output: ExecutionOutputSchema }),
+])
+
+export const TestWithTestTastingSchema = TestSchema.merge(
+  z.object({
+    testTastingResult: TestTastingResultSchema.nullable(),
+  }),
+)
+
 export const SetTestResponseSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('TastingFailed') }).merge(FinishedTestSchema),
   z.object({ type: z.literal('TestAdded') }).merge(TestSchema),
@@ -195,7 +206,7 @@ export const TestSummarySchema = z.object({
   creatorName: z.string(),
   adminAuthored: z.boolean(),
   category: z.string(),
-  testTasteSuccess: z.boolean().nullable()
+  testTasteSuccess: z.boolean().nullable(),
 })
 
 export const ListTestResponseSchema = z.object({
@@ -231,6 +242,7 @@ export type TeamId = z.infer<typeof TeamIdSchema>
 export type TeamInfo = z.infer<typeof TeamInfoSchema>
 export type TeamIntegrationToken = z.infer<typeof TeamIntegrationTokenSchema>
 export type Test = z.infer<typeof TestSchema>
+export type TestWithTestTasting = z.infer<typeof TestWithTestTastingSchema>
 export type TestId = z.infer<typeof TestIdSchema>
 export type TestSummary = z.infer<typeof TestSummarySchema>
 export type User = z.infer<typeof UserSchema>

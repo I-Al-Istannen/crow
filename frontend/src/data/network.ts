@@ -2,7 +2,7 @@ import {
   type FinishedCompilerTask,
   FinishedCompilerTaskSchema,
   type FinishedCompilerTaskSummary,
-  FinishedCompilerTaskSummarySchema, type FinishedTest,
+  FinishedCompilerTaskSummarySchema,
   type IntegrationInfoResponse,
   IntegrationInfoResponseSchema,
   type ListTestResponse,
@@ -12,7 +12,9 @@ import {
   type Repo,
   RepoSchema,
   type RequestRevision,
-  RequestRevisionSchema, type SetTestResponse, SetTestResponseSchema,
+  RequestRevisionSchema,
+  type SetTestResponse,
+  SetTestResponseSchema,
   type ShowMyselfResponse,
   ShowMyselfResponseSchema,
   type TaskId,
@@ -20,14 +22,14 @@ import {
   TeamIdSchema,
   type TeamInfo,
   TeamInfoSchema,
-  type Test,
   type TestId,
-  TestSchema,
+  type TestWithTestTasting,
+  TestWithTestTastingSchema,
   type WorkItem,
-  WorkItemSchema
+  WorkItemSchema,
 } from '@/types.ts'
 import { QueryClient, useMutation, useQuery } from '@tanstack/vue-query'
-import { type Ref, computed, toRef, toValue } from 'vue'
+import { computed, type Ref, toRef, toValue } from 'vue'
 import type { MaybeRefOrGetter } from '@vueuse/core'
 import { fetchWithAuth } from '@/data/fetching.ts'
 import { storeToRefs } from 'pinia'
@@ -198,13 +200,13 @@ export function queryTests() {
   })
 }
 
-export async function fetchTestDetail(testId: TestId): Promise<Test | null> {
+export async function fetchTestDetail(testId: TestId): Promise<TestWithTestTasting | null> {
   const response = await fetchWithAuth(`/tests/${encodeURIComponent(testId)}`)
   if (response.status === 404) {
     return null
   }
   const json = await response.json()
-  return TestSchema.parse(json)
+  return TestWithTestTastingSchema.parse(json)
 }
 
 export function queryTest(testId: MaybeRefOrGetter<TestId | undefined>, refetchOnMount?: boolean) {
@@ -230,7 +232,7 @@ export async function fetchSetTest(test: TestPatch): Promise<SetTestResponse> {
       input: test.input,
       expectedOutput: test.expectedOutput,
       category: test.category,
-      ignoreTestTasting: test.ignoreTestTasting
+      ignoreTestTasting: test.ignoreTestTasting,
     }),
   })
   const json = await response.json()

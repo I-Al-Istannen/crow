@@ -3,6 +3,7 @@
     <HoverCardTrigger
       class="w-[2em] h-[2em] flex justify-center items-center text-white rounded cursor-pointer"
       :class="[statusColor(testType(test), 'bg')]"
+      v-bind="$attrs"
       @click="'output' in test ? handleTestClick(test) : undefined"
     >
       <LucideCheck v-if="testType(test) === 'Success'" />
