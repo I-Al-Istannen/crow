@@ -65,7 +65,7 @@ pub async fn get_team_info(
     claims: Claims,
     Path(team_id): Path<TeamId>,
 ) -> Result<Json<TeamInfo>> {
-    if !claims.is_admin() || claims.team != team_id {
+    if !claims.is_admin() && claims.team != team_id {
         return Err(WebError::unauthorized(location!()));
     }
 
