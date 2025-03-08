@@ -34,6 +34,13 @@ impl super::Iteration for TestTastingState {
         client: &Client,
         runner_info: &RunnerInfo,
     ) -> Result<(), AnyError> {
+        client
+            .post(&endpoints.register)
+            .basic_auth(&args.id, Some(&args.token))
+            .json(&runner_info)
+            .send()
+            .context(ReqwestSnafu)?;
+
         let response = match client
             .post(&endpoints.work_taste_test)
             .json(runner_info)
