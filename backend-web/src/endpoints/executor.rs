@@ -9,7 +9,7 @@ use axum_extra::headers::authorization::Basic;
 use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
 use shared::{
-    CompilerTask, CompilerTest, FinishedCompilerTask, RunnerId, RunnerInfo, RunnerRegisterResponse,
+    CompilerTask, CompilerTest, FinishedCompilerTask, RunnerId, RunnerInfo,
     RunnerUpdate, RunnerWorkResponse, RunnerWorkTasteTestDone, RunnerWorkTasteTestResponse,
     WorkTasteTestTask,
 };
@@ -87,7 +87,7 @@ pub async fn runner_register(
     State(state): State<AppState>,
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
     Json(runner): Json<RunnerInfo>,
-) -> Result<Json<RunnerRegisterResponse>> {
+) -> Result<()> {
     let runner_id = auth.username().to_string();
     ensure!(
         runner.id.to_string() == runner_id,
@@ -97,15 +97,9 @@ pub async fn runner_register(
         }
     );
 
-    let task = state.executor.lock().unwrap().register_runner(&runner);
-    let current_task = runner.current_task.map(|it| it.into());
+    state.executor.lock().unwrap().register_runner(&runner);
 
-    if task != current_task {
-        info!(runner = %runner.id, task = ?task, "Runner task changed, resetting it");
-        return Ok(Json(RunnerRegisterResponse { reset: true }));
-    }
-
-    Ok(Json(RunnerRegisterResponse { reset: false }))
+    Ok(())
 }
 
 #[instrument(skip_all)]
@@ -315,12 +309,14 @@ pub async fn get_work_tar(
 #[instrument(skip_all)]
 pub async fn get_test_tasting_work(
     State(state): State<AppState>,
+    TypedHeader(auth): TypedHeader<Authorization<Basic>>,
 ) -> Result<Json<RunnerWorkTasteTestResponse>> {
     let Some(image_id) = state.execution_config.reference_compiler_image else {
         return Ok(Json(RunnerWorkTasteTestResponse { task: None }));
     };
+    let runner_id = auth.username().to_string().into();
 
-    let task = state.test_tasting.lock().unwrap().poll_tasting();
+    let task = state.test_tasting.lock().unwrap().poll_tasting(runner_id);
     let task = task.map(|task| WorkTasteTestTask {
         id: task.taste_id.clone(),
         test: CompilerTest {

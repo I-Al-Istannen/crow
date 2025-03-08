@@ -1,7 +1,7 @@
 use crate::types::Test;
 use serde::{Deserialize, Serialize};
-use shared::{ExecutionOutput, TestTasteId};
-use std::collections::HashMap;
+use shared::{ExecutionOutput, RunnerId, TestTasteId};
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tokio::sync::oneshot;
@@ -10,7 +10,7 @@ use tracing::error;
 
 pub struct TestTasting {
     open_tastings: Vec<OpenTestTaste>,
-    in_progress_tastings: HashMap<TestTasteId, OpenTestTaste>,
+    in_progress_tastings: HashMap<TestTasteId, (OpenTestTaste, RunnerId)>,
     _drop_guard: oneshot::Sender<()>,
 }
 
@@ -35,7 +35,7 @@ impl TestTasting {
                         .lock()
                         .unwrap()
                         .in_progress_tastings
-                        .retain(|_, taste| !taste.expired());
+                        .retain(|_, (taste, _)| !taste.expired());
                     result_clone
                         .lock()
                         .unwrap()
@@ -53,6 +53,13 @@ impl TestTasting {
         result
     }
 
+    pub fn get_tasting_runners(&self) -> HashSet<RunnerId> {
+        self.in_progress_tastings
+            .values()
+            .map(|(_, runner_id)| runner_id.clone())
+            .collect()
+    }
+
     pub fn add_tasting(&mut self, test: Test) -> oneshot::Receiver<ExecutionOutput> {
         let (tx, rx) = oneshot::channel();
         self.open_tastings.push(OpenTestTaste {
@@ -65,18 +72,19 @@ impl TestTasting {
         rx
     }
 
-    pub fn poll_tasting(&mut self) -> Option<TestTastingTask> {
+    pub fn poll_tasting(&mut self, runner_id: RunnerId) -> Option<TestTastingTask> {
         let taste = self.open_tastings.pop()?;
         let test = taste.test.clone();
         let id = taste.id.clone();
 
-        self.in_progress_tastings.insert(taste.id.clone(), taste);
+        self.in_progress_tastings
+            .insert(taste.id.clone(), (taste, runner_id));
 
         Some(TestTastingTask { test, taste_id: id })
     }
 
     pub fn finish_tasting(&mut self, id: TestTasteId, output: ExecutionOutput) {
-        if let Some(taste) = self.in_progress_tastings.remove(&id) {
+        if let Some((taste, _)) = self.in_progress_tastings.remove(&id) {
             let _ = taste.result_channel.send(output);
         } else {
             error!(

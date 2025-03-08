@@ -21,12 +21,19 @@ pub struct Runner {
     pub test_taster: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type")]
+pub enum RunnerWorkForFrontend {
+    Testing(WorkItem),
+    TestTasting,
+}
+
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunnerForFrontend {
     pub id: RunnerId,
     pub info: String,
-    pub working_on: Option<WorkItem>,
+    pub working_on: Option<RunnerWorkForFrontend>,
     #[serde(serialize_with = "serialize_system_time")]
     #[serde(deserialize_with = "deserialize_system_time")]
     pub last_seen: SystemTime,
@@ -38,7 +45,7 @@ impl From<&Runner> for RunnerForFrontend {
         Self {
             id: value.info.id.clone(),
             info: value.info.info.clone(),
-            working_on: value.working_on.clone(),
+            working_on: value.working_on.clone().map(RunnerWorkForFrontend::Testing),
             last_seen: value.last_ping,
             test_taster: value.test_taster,
         }
@@ -113,7 +120,7 @@ pub enum ExecutorError {
     },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ExecutorInfo {
     pub runners: Vec<RunnerForFrontend>,
     pub in_progress: Vec<(TaskId, usize)>,
@@ -157,13 +164,21 @@ impl Executor {
         res
     }
 
-    pub fn get_runners(&self) -> Vec<RunnerForFrontend> {
-        self.runners.values().map(|it| it.into()).collect()
+    pub fn get_runners(&self, tasting_runners: HashSet<RunnerId>) -> Vec<RunnerForFrontend> {
+        let mut result: Vec<RunnerForFrontend> = self.runners.values().map(|it| it.into()).collect();
+
+        for runner in &mut result {
+            if tasting_runners.contains(&runner.id) {
+                runner.working_on = Some(RunnerWorkForFrontend::TestTasting);
+            }
+        }
+
+        result
     }
 
-    pub fn info(&self) -> ExecutorInfo {
+    pub fn info(&self, tasting_runners: HashSet<RunnerId>) -> ExecutorInfo {
         ExecutorInfo {
-            runners: self.get_runners(),
+            runners: self.get_runners(tasting_runners),
             in_progress: self
                 .in_progress
                 .iter()
@@ -178,13 +193,7 @@ impl Executor {
         }
     }
 
-    pub fn register_runner(&mut self, runner_info: &RunnerInfo) -> Option<TaskId> {
-        if let Some(runner) = self.runners.get_mut(&runner_info.id) {
-            runner.info = runner_info.clone();
-            runner.last_ping = SystemTime::now();
-            return runner.working_on.as_ref().map(|it| it.id.clone());
-        }
-
+    pub fn register_runner(&mut self, runner_info: &RunnerInfo) {
         self.runners.insert(
             runner_info.id.clone(),
             Runner {
@@ -194,8 +203,6 @@ impl Executor {
                 test_taster: runner_info.test_taster,
             },
         );
-
-        None
     }
 
     pub fn get_running_task(&self, id: &TaskId) -> Option<RunningTaskState> {

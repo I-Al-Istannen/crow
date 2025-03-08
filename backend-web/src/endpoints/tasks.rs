@@ -113,7 +113,9 @@ pub async fn get_queue(
     _claims: Claims,
 ) -> Result<Json<QueueResponse>> {
     let queue = state.db.get_queued_tasks().await?;
-    let runners = state.executor.lock().unwrap().get_runners();
+    let tasting_runners = state.test_tasting.lock().unwrap().get_tasting_runners();
+
+    let runners = state.executor.lock().unwrap().get_runners(tasting_runners);
 
     Ok(Json(QueueResponse { queue, runners }))
 }
@@ -170,7 +172,8 @@ pub async fn executor_info(
     State(state): State<AppState>,
     _claims: Claims,
 ) -> Result<Json<ExecutorInfo>> {
-    Ok(Json(state.executor.lock().unwrap().info()))
+    let tasting_runners = state.test_tasting.lock().unwrap().get_tasting_runners();
+    Ok(Json(state.executor.lock().unwrap().info(tasting_runners)))
 }
 
 #[derive(Debug, Clone, Serialize)]
