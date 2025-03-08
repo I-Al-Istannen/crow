@@ -13,9 +13,9 @@ use crate::error::{Result, SqlxSnafu};
 use crate::types::{
     CreatedExternalRun, ExternalRunId, ExternalRunStatus, FinishedCompilerTaskSummary,
     FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, TeamInfo, TeamIntegrationToken, Test,
-    TestId, TestSummary, UserId, WorkItem,
+    TestId, TestSummary, TestWithTasteTesting, UserId, WorkItem,
 };
-use shared::FinishedCompilerTask;
+use shared::{ExecutionOutput, FinishedCompilerTask};
 use snafu::ResultExt;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
 use sqlx::{query, Pool, Sqlite, SqlitePool};
@@ -191,9 +191,18 @@ impl Database {
         task::get_top_task_per_team(&*pool).await
     }
 
-    pub async fn add_test(&self, test: Test) -> Result<Test> {
+    pub async fn add_test(
+        &self,
+        test: Test,
+        test_tasting: Option<ExecutionOutput>,
+    ) -> Result<Test> {
         let pool = self.write_lock().await;
-        test::add_test(&mut *pool.acquire().await.context(SqlxSnafu)?, test).await
+        test::add_test(
+            &mut *pool.acquire().await.context(SqlxSnafu)?,
+            test,
+            test_tasting,
+        )
+        .await
     }
 
     pub async fn get_test_summaries(&self) -> Result<Vec<TestSummary>> {
@@ -209,6 +218,14 @@ impl Database {
     pub async fn fetch_test(&self, test_id: &TestId) -> Result<Option<Test>> {
         let pool = self.read_lock().await;
         test::fetch_test(&mut *pool.acquire().await.context(SqlxSnafu)?, test_id).await
+    }
+
+    pub async fn fetch_test_with_tasting(
+        &self,
+        test_id: &TestId,
+    ) -> Result<Option<TestWithTasteTesting>> {
+        let pool = self.read_lock().await;
+        test::fetch_test_with_tasting(&mut *pool.acquire().await.context(SqlxSnafu)?, test_id).await
     }
 
     pub async fn delete_test(&self, test_id: &TestId) -> Result<()> {

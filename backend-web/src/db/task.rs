@@ -204,6 +204,18 @@ pub(super) async fn get_task_ids(con: &mut SqliteConnection) -> Result<Vec<TaskI
 
 #[instrument(skip_all)]
 async fn get_execution(con: &mut SqliteConnection, execution_id: &str) -> Result<ExecutionOutput> {
+    let Some(execution) = fetch_execution(con, execution_id).await? else {
+        return Err(WebError::not_found(location!()));
+    };
+
+    Ok(execution)
+}
+
+#[instrument(skip_all)]
+pub(super) async fn fetch_execution(
+    con: &mut SqliteConnection,
+    execution_id: &str,
+) -> Result<Option<ExecutionOutput>> {
     let execution = query!(
         r#"
         SELECT
@@ -224,10 +236,10 @@ async fn get_execution(con: &mut SqliteConnection, execution_id: &str) -> Result
     .context(SqlxSnafu)?;
 
     let Some(execution) = execution else {
-        return Err(WebError::not_found(location!()));
+        return Ok(None);
     };
 
-    Ok(match execution.result {
+    Ok(Some(match execution.result {
         ExecutionExitStatus::Aborted => ExecutionOutput::Aborted(AbortedExecution {
             stdout: execution.stdout,
             stderr: execution.stderr,
@@ -255,11 +267,11 @@ async fn get_execution(con: &mut SqliteConnection, execution_id: &str) -> Result
             runtime: Duration::from_millis(execution.duration_ms),
             exit_status: execution.exit_code,
         }),
-    })
+    }))
 }
 
 #[instrument(skip_all)]
-async fn record_execution_output(
+pub(super) async fn record_execution_output(
     con: &mut SqliteConnection,
     e: &ExecutionOutput,
 ) -> Result<String> {

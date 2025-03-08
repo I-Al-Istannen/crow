@@ -77,6 +77,14 @@ CREATE TABLE Tests
     hash            VARCHAR(40) NOT NULL
 );
 
+CREATE TABLE TestTastingResults
+(
+    test_id      VARCHAR(120) NOT NULL REFERENCES Tests (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    execution_id VARCHAR(36)  NOT NULL REFERENCES ExecutionResults (execution_id) ON DELETE CASCADE ON UPDATE CASCADE,
+
+    PRIMARY KEY (test_id)
+);
+
 CREATE TABLE ExternalRuns
 (
     task_id  VARCHAR(36)  NOT NULL,

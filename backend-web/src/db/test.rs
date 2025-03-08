@@ -1,12 +1,19 @@
-use sha2::{Digest, Sha256};
 use crate::error::{Result, SqlxSnafu, WebError};
-use crate::types::{TeamId, Test, TestId, TestSummary};
+use crate::types::{ExecutionExitStatus, TeamId, Test, TestId, TestSummary, TestWithTasteTesting};
+use sha2::{Digest, Sha256};
+use shared::ExecutionOutput;
 use snafu::{location, ResultExt};
-use sqlx::{query, query_as, SqliteConnection};
+use sqlx::{query, query_as, Acquire, Sqlite, SqliteConnection};
 use tracing::{info_span, instrument, Instrument};
 
 #[instrument(skip_all)]
-pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<Test> {
+pub(super) async fn add_test(
+    con: impl Acquire<'_, Database = Sqlite>,
+    test: Test,
+    test_tasting: Option<ExecutionOutput>,
+) -> Result<Test> {
+    let mut con = con.begin().await.context(SqlxSnafu)?;
+
     let mut hash = Sha256::new();
     hash.update(test.expected_output.as_bytes());
     hash.update(test.input.as_bytes());
@@ -41,6 +48,23 @@ pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<T
     .await
     .context(SqlxSnafu)?;
 
+    if let Some(output) = test_tasting {
+        let execution_id = super::task::record_execution_output(&mut con, &output).await?;
+        query!(
+            r#"
+            INSERT INTO TestTastingResults (test_id, execution_id) VALUES (?, ?)
+            ON CONFLICT DO UPDATE SET
+                execution_id = excluded.execution_id
+            "#,
+            test.id,
+            execution_id
+        )
+        .execute(&mut *con)
+        .instrument(info_span!("sqlx_add_test_tasting"))
+        .await
+        .context(SqlxSnafu)?;
+    }
+
     let test = query_as!(
         Test,
         r#"
@@ -55,10 +79,12 @@ pub(super) async fn add_test(con: &mut SqliteConnection, test: Test) -> Result<T
         WHERE id = ?"#,
         test.id
     )
-    .fetch_one(con)
+    .fetch_one(&mut *con)
     .instrument(info_span!("sqlx_add_get_test"))
     .await
     .context(SqlxSnafu)?;
+
+    con.commit().await.context(SqlxSnafu)?;
 
     Ok(test)
 }
@@ -95,10 +121,15 @@ pub(super) async fn get_tests_summaries(con: &mut SqliteConnection) -> Result<Ve
             Teams.id as "creator_id!: TeamId",
             Tests.admin_authored,
             Tests.category,
-            Tests.hash
+            Tests.hash,
+            (SELECT ER.result == ? FROM TestTastingResults TTR
+                JOIN ExecutionResults ER ON ER.execution_id = TTR.execution_id 
+                WHERE test_id = Tests.id
+            ) as "test_taste_success?: bool"
         FROM Tests
         JOIN Teams ON Tests.owner = Teams.id
-        "#
+        "#,
+        ExecutionExitStatus::Success
     )
     .fetch_all(con)
     .instrument(info_span!("sqlx_get_test_summaries"))
@@ -132,6 +163,39 @@ pub(super) async fn fetch_test(
     .context(SqlxSnafu)?;
 
     Ok(test)
+}
+
+#[instrument(skip_all)]
+pub(super) async fn fetch_test_with_tasting(
+    con: impl Acquire<'_, Database = Sqlite>,
+    test_id: &TestId,
+) -> Result<Option<TestWithTasteTesting>> {
+    let mut con = con.begin().await.context(SqlxSnafu)?;
+
+    let Some(test) = fetch_test(&mut con, test_id).await? else {
+        return Ok(None);
+    };
+
+    let execution_id = query!(
+        "SELECT execution_id FROM TestTastingResults WHERE test_id = ?",
+        test_id
+    )
+    .map(|it| it.execution_id)
+    .fetch_optional(&mut *con)
+    .await
+    .context(SqlxSnafu)?;
+
+    let test_tasting_result = match execution_id {
+        Some(execution_id) => super::task::fetch_execution(&mut con, &execution_id)
+            .await?
+            .map(|it| it.into()),
+        None => None,
+    };
+
+    Ok(Some(TestWithTasteTesting {
+        test,
+        test_tasting_result,
+    }))
 }
 
 #[instrument(skip_all)]

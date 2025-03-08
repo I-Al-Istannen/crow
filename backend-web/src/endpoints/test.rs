@@ -1,7 +1,7 @@
 use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::{Result, WebError};
-use crate::types::{AppState, Test, TestId, TestSummary};
+use crate::types::{AppState, Test, TestId, TestSummary, TestWithTasteTesting};
 use axum::extract::{Path, State};
 use serde::{Deserialize, Serialize};
 use shared::{ExecutionOutput, FinishedTest};
@@ -51,7 +51,24 @@ pub async fn set_test(
     };
 
     // Let the reference compiler taste it first
-    if !state.execution_config.tasting_disabled() && !payload.ignore_test_tasting {
+    let taste_testing_result = do_test_tasting(&state, &test).await?;
+
+    if let Some(result) = &taste_testing_result {
+        if !matches!(result, ExecutionOutput::Success(_)) && !payload.ignore_test_tasting {
+            return Ok(Json(SetTestResponse::TastingFailed(FinishedTest {
+                test_id: test.id.to_string(),
+                output: result.clone(),
+            })));
+        }
+    }
+
+    Ok(Json(SetTestResponse::TestAdded(
+        db.add_test(test, taste_testing_result).await?,
+    )))
+}
+
+async fn do_test_tasting(state: &AppState, test: &Test) -> Result<Option<ExecutionOutput>> {
+    if !state.execution_config.tasting_disabled() {
         let taste_result = state.test_tasting.lock().unwrap().add_tasting(test.clone());
         let taste_result = match taste_result.await {
             Ok(output) => output,
@@ -63,17 +80,11 @@ pub async fn set_test(
             }
         };
 
-        if !matches!(taste_result, ExecutionOutput::Success(_)) {
-            return Ok(Json(SetTestResponse::TastingFailed(FinishedTest {
-                test_id: test.id.to_string(),
-                output: taste_result,
-            })));
-        }
+        return Ok(Some(taste_result));
     } else {
         debug!(test_id = %test.id, "Tasting disabled, skipping it for");
     }
-
-    Ok(Json(SetTestResponse::TestAdded(db.add_test(test).await?)))
+    Ok(None)
 }
 
 #[instrument(skip_all)]
@@ -81,8 +92,8 @@ pub async fn get_test(
     State(AppState { db, .. }): State<AppState>,
     _claims: Claims,
     Path(test_id): Path<TestId>,
-) -> Result<Json<Test>> {
-    let Some(test) = db.fetch_test(&test_id).await? else {
+) -> Result<Json<TestWithTasteTesting>> {
+    let Some(test) = db.fetch_test_with_tasting(&test_id).await? else {
         return Err(WebError::not_found(location!()));
     };
     Ok(Json(test))

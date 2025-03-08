@@ -6,13 +6,13 @@ mod team;
 mod test;
 mod user;
 
+pub use self::executor::get_test_tasting_work;
 pub use self::executor::get_work;
 pub use self::executor::get_work_tar;
 pub use self::executor::runner_done;
 pub use self::executor::runner_ping;
 pub use self::executor::runner_register;
 pub use self::executor::runner_update;
-pub use self::executor::get_test_tasting_work;
 pub use self::executor::taste_testing_done;
 pub use self::oidc::login_oidc;
 pub use self::oidc::login_oidc_callback;
