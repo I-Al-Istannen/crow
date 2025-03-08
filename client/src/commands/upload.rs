@@ -64,7 +64,7 @@ pub struct CliUploadTestArgs {
     /// The test category
     #[clap(short, long)]
     category: Option<String>,
-    /// Whether to run tests against the reference compiler before submitting
+    /// Should the test be only submitted if it works with the reference compiler?
     #[clap(long)]
     taste_test: Option<bool>,
 }
@@ -206,7 +206,7 @@ fn validate_test_name(input: &str) -> Result<(), &'static str> {
 
 fn prompt_should_taste_test() -> Result<bool, UploadTestError> {
     let selected = Confirm::with_theme(&ColorfulTheme::default())
-        .with_prompt("Should the test be ran against the reference compiler before submitting?")
+        .with_prompt("Should the test be only submitted if it works with the reference compiler?")
         .interact_opt();
 
     let Ok(Some(should_taste_test)) = selected else {

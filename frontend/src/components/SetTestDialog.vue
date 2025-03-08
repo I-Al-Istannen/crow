@@ -90,7 +90,7 @@
               <div class="space-y-1 leading-none" v-auto-animate>
                 <FormLabel>Test Tasting</FormLabel>
                 <FormDescription>
-                  Run your test against the reference compiler before submitting
+                  Only submit the test if it works against the reference compiler
                 </FormDescription>
                 <FormMessage />
               </div>
