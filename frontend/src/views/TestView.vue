@@ -9,7 +9,11 @@
           </CardDescription>
         </div>
         <div>
-          <SetTestDialog :test-to-edit="testToEdit" v-model:open="testSetDialogOpen">
+          <SetTestDialog
+            :test-to-edit="testToEdit"
+            v-model:open="testSetDialogOpen"
+            @test-deleted="handleTestDeleted"
+          >
             <Button variant="secondary" :disabled="testToEditLoading">Create new test</Button>
           </SetTestDialog>
         </div>
@@ -105,7 +109,7 @@ import {
   LucidePencil,
   LucideShieldCheck,
 } from 'lucide-vue-next'
-import type { Test, TestSummary } from '@/types.ts'
+import type { Test, TestId, TestSummary } from '@/types.ts'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { computed, ref, watch } from 'vue'
 import { fetchTestDetail, queryTests } from '@/data/network.ts'
@@ -167,5 +171,9 @@ function sortTests(tests?: TestSummary[]): TestSummary[] | undefined {
     }
     return a.id.localeCompare(b.id)
   })
+}
+
+const handleTestDeleted = (testId: TestId) => {
+  expandedTests.value = expandedTests.value.filter((id) => id !== testId)
 }
 </script>

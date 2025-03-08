@@ -199,6 +199,10 @@ const mutationPending = computed(() => editPending.value || deletePending.value)
 const tests = computed(() => testResponse.value?.tests)
 const categories = computed(() => testResponse.value?.categories)
 
+const emit = defineEmits<{
+  'test-deleted': [test_id: TestId]
+}>()
+
 const { start: startDeleteResetTimeout } = useTimeoutFn(
   () => {
     inDeletionProcess.value = false
@@ -303,6 +307,7 @@ const deleteTest = async () => {
     return
   }
 
+  emit('test-deleted', testToEdit?.value?.id)
   await mutateDelTest(testToEdit?.value?.id)
 
   dialogOpen.value = false
