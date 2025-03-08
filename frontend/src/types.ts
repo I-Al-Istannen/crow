@@ -131,6 +131,7 @@ export const RunnerSchema = z.object({
   info: z.string(),
   workingOn: WorkItemSchema.nullish(),
   lastSeen: z.number().transform((ms) => new Date(ms)),
+  testTaster: z.boolean(),
 })
 
 export const QueueResponseSchema = z.object({

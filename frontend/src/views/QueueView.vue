@@ -15,28 +15,44 @@
         <div v-if="isLoading">Loading data...</div>
         <div v-if="!queueResponse && isFetched">Loading failed</div>
         <div v-if="queueResponse !== undefined">
-          <div>
-            <div
-              class="p-2 leading-none tracking-tight inline-block"
-              :class="['rounded-xl', 'border', 'bg-card', 'text-card-foreground']"
-              v-for="runner in queueResponse.runners"
-              :key="runner.id"
-            >
-              <span class="flex flex-col justify-center">
-                <span class="mb-1 font-medium">
-                  {{ runner.id }}
-                  <span class="ml-4 text-sm text-muted-foreground">
-                    pinged {{ formatApproxDuration(currentTime, runner.lastSeen.getTime()) }} ago
+          <TooltipProvider>
+            <div class="flex gap-2">
+              <div
+                class="p-2 leading-none tracking-tight flex flex-row gap-2 items-center"
+                :class="['rounded-xl', 'border', 'bg-card', 'text-card-foreground']"
+                v-for="runner in queueResponse.runners"
+                :key="runner.id"
+              >
+                <Tooltip v-if="runner.testTaster">
+                  <TooltipTrigger as-child>
+                    <LucideCandy :size="16" />
+                  </TooltipTrigger>
+                  <TooltipContent>This runner focuses solely on test tasting</TooltipContent>
+                </Tooltip>
+                <Tooltip v-else>
+                  <TooltipTrigger as-child>
+                    <LucideBriefcaseBusiness :size="16" />
+                  </TooltipTrigger>
+                  <TooltipContent>This runner runs tests against your submissions</TooltipContent>
+                </Tooltip>
+                <div class="flex flex-col justify-center">
+                  <div class="mb-1 font-medium flex gap-2 items-center justify-between">
+                    <span>
+                      {{ runner.id }}
+                    </span>
+                    <span class="ml-4 text-sm text-muted-foreground">
+                      pinged {{ formatApproxDuration(currentTime, runner.lastSeen.getTime()) }} ago
+                    </span>
+                  </div>
+                  <span class="text-sm text-muted-foreground flex justify-between">
+                    <span>{{ runner.info }}</span>
+                    <span v-if="runner.workingOn" class="font-medium">active</span>
+                    <span v-else>idle</span>
                   </span>
-                </span>
-                <span class="text-sm text-muted-foreground flex justify-between">
-                  <span>{{ runner.info }}</span>
-                  <span v-if="runner.workingOn" class="font-medium">active</span>
-                  <span v-else>idle</span>
-                </span>
-              </span>
+                </div>
+              </div>
             </div>
-          </div>
+          </TooltipProvider>
           <QueuedTasksOverview :queue="queueResponse.queue" :runners="queueResponse.runners" />
         </div>
       </CardContent>
@@ -46,9 +62,10 @@
 
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { LucideBriefcaseBusiness, LucideCandy, LucideLoaderCircle } from 'lucide-vue-next'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { computed, ref, watch } from 'vue'
 import { formatApproxDuration, formatDuration } from '../lib/utils.ts'
-import { LucideLoaderCircle } from 'lucide-vue-next'
 import PageContainer from '@/components/PageContainer.vue'
 import QueuedTasksOverview from '@/components/QueuedTasksOverview.vue'
 import { queryQueue } from '@/data/network.ts'
