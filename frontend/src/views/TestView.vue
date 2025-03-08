@@ -23,11 +23,34 @@
               <AccordionItem v-for="test in displayedTests" :key="test.id" :value="test.id">
                 <AccordionTrigger>
                   <span class="flex items-center gap-1">
+                    <Tooltip v-if="test.testTasteSuccess">
+                      <TooltipTrigger as-child>
+                        <LucideBadgeCheck :size="16" class="text-green-600" />
+                      </TooltipTrigger>
+                      <TooltipContent>This check passed on the reference compiler</TooltipContent>
+                    </Tooltip>
+                    <Tooltip v-if="test.testTasteSuccess === false">
+                      <TooltipTrigger>
+                        <LucideBadgeX :size="16" class="text-red-500" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        This check failed on the reference compiler. Open it for more details about
+                        the failure.
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip v-if="test.testTasteSuccess === null">
+                      <TooltipTrigger>
+                        <LucideBadgeAlert :size="16" class="text-gray-400" />
+                      </TooltipTrigger>
+                      <TooltipContent
+                        >This test was never run against the reference compiler</TooltipContent
+                      >
+                    </Tooltip>
                     {{ test.id }}
                     <span class="text-sm text-muted-foreground">by {{ test.creatorName }}</span>
                     <Tooltip v-if="test.adminAuthored">
                       <TooltipTrigger as-child>
-                        <LucideBadgeCheck :size="16" />
+                        <LucideShieldCheck :size="16" />
                       </TooltipTrigger>
                       <TooltipContent>Created by an administrator</TooltipContent>
                     </Tooltip>
@@ -75,7 +98,13 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { LucideBadgeCheck, LucidePencil } from 'lucide-vue-next'
+import {
+  LucideBadgeAlert,
+  LucideBadgeCheck,
+  LucideBadgeX,
+  LucidePencil,
+  LucideShieldCheck,
+} from 'lucide-vue-next'
 import type { Test, TestSummary } from '@/types.ts'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { computed, ref, watch } from 'vue'

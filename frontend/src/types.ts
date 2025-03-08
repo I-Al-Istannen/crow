@@ -195,6 +195,7 @@ export const TestSummarySchema = z.object({
   creatorName: z.string(),
   adminAuthored: z.boolean(),
   category: z.string(),
+  testTasteSuccess: z.boolean().nullable()
 })
 
 export const ListTestResponseSchema = z.object({
