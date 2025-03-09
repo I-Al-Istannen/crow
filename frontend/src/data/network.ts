@@ -179,6 +179,7 @@ export function queryTeamInfo(teamId: MaybeRefOrGetter<TeamId | undefined>) {
     queryKey: ['team', teamId],
     queryFn: () => fetchTeamInfo(toValue(teamId)!),
     enabled: computed(() => enabled.value && loggedIn.value),
+    retry: true,
     meta: {
       purpose: 'fetching team information',
     },

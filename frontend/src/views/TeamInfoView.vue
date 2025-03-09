@@ -5,9 +5,14 @@
         <CardTitle>Team Overview</CardTitle>
         <CardDescription>Information about a team and its members</CardDescription>
       </CardHeader>
-      <CardContent v-if="isLoading"> Loading team information...</CardContent>
-      <CardContent v-if="isFetched && info === null"> Team not found</CardContent>
-      <CardContent v-if="isFetched && info">
+      <CardContent>
+        <DataLoadingExplanation
+          :is-loading="isLoading"
+          :failure-count="failureCount"
+          :failure-reason="failureReason"
+        />
+      </CardContent>
+      <CardContent v-if="info">
         <span class="font-medium">{{ info.team.displayName }}</span>
         <span class="text-muted-foreground"> ({{ info.team.id }})</span>
         consists of
@@ -23,6 +28,7 @@
 
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
 import PageContainer from '@/components/PageContainer.vue'
 import type { TeamId } from '@/types.ts'
 import UsernameDisplay from '@/components/UsernameDisplay.vue'
@@ -33,5 +39,5 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 const teamId = computed(() => (route.params.teamId ? (route.params.teamId as TeamId) : undefined))
 
-const { data: info, isFetched, isLoading } = queryTeamInfo(teamId)
+const { data: info, isLoading, failureCount, failureReason } = queryTeamInfo(teamId)
 </script>
