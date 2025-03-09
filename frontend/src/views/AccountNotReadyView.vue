@@ -1,21 +1,36 @@
 <template>
   <PageContainer v-if="loggedIn">
-    <Card>
+    <Card v-if="isLoadingMyself || error">
       <CardHeader>
         <CardTitle>Hey there, traveller</CardTitle>
-        <CardDescription v-if="!loggedIn">Sadly, crow requires authentication.</CardDescription>
-        <CardDescription v-else>You need to be part of a team</CardDescription>
+        <CardDescription>Loading your user information...</CardDescription>
+      </CardHeader>
+      <CardContent class="text-muted-foreground">
+        <div v-if="isLoadingMyself">
+          <span>Loading</span>
+          <LucideLoaderCircle :size="16" class="animate-spin inline ml-2" />
+        </div>
+        <div v-if="failureCount > 0">
+          <span class="text-red-500 opacity-80">
+            Loading failed {{ failureCount }} time{{ failureCount > 1 ? 's' : '' }}.
+          </span>
+          <span class="text-black">crow</span> will retry periodically or you can refresh the page.
+          <br />
+          The last failure was
+          <code class="text-sm bg-accent p-1 rounded-md">{{ failureReason }}</code>
+        </div>
+      </CardContent>
+    </Card>
+    <Card v-else>
+      <CardHeader>
+        <CardTitle>Hey there, traveller</CardTitle>
+        <CardDescription>You need to be part of a team</CardDescription>
       </CardHeader>
       <CardContent>
-        <a :href="loginUrl" v-if="!loggedIn">
-          <Button v-if="!loggedIn">Log in</Button>
-        </a>
-        <div v-else>
-          It seems like you are not yet part of a team :)
-          <br />
-          You will be assigned by the course administrators. If you believe this is an error, feel
-          encouraged to report it!
-        </div>
+        It seems like you are not yet part of a team :)
+        <br />
+        You will be assigned by the course administrators. If you believe this is an error, feel
+        encouraged to report it!
       </CardContent>
     </Card>
   </PageContainer>
@@ -42,11 +57,13 @@
 
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { computed, ref, shallowRef, watch } from 'vue'
+import { ref, shallowRef, watch } from 'vue'
 import { BACKEND_URL } from '@/data/fetching.ts'
 import { Button } from '@/components/ui/button'
+import { LucideLoaderCircle } from 'lucide-vue-next'
 import { PRE_LOGIN_URL_SESSION_STORAGE_KEY } from '@/router'
 import PageContainer from '@/components/PageContainer.vue'
+import { queryMyself } from '@/data/network.ts'
 import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user.ts'
@@ -57,8 +74,8 @@ const lastAnimationTime = ref<number>(0)
 const crowContainer = ref<InstanceType<typeof PageContainer> | null>(null)
 const mousePos = ref<{ x: number; y: number }>({ x: -100, y: -100 })
 
-const loginUrl = computed(() => BACKEND_URL + '/login')
 const currentRoute = useRoute()
+const { isLoading: isLoadingMyself, error, failureCount, failureReason } = queryMyself()
 
 watch(
   loggedIn,

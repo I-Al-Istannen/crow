@@ -63,7 +63,8 @@ export function queryMyself() {
   return useQuery({
     queryKey: ['userinfo'],
     queryFn: fetchMyself,
-    refetchInterval: 10 * 60 * 1000, // 10 minutes
+    refetchInterval: 2 * 60 * 1000, // 2 minutes
+    retry: true,
     meta: {
       purpose: 'fetching user information',
     },

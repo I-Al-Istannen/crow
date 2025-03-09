@@ -2,6 +2,7 @@
   <div>
     <Toaster :rich-colors="true" position="top-center" class="pointer-events-auto" />
     <NavBar />
+    <div v-if="isFetching" class="h-1 w-full bg-gradient-primary" />
     <RouterView v-if="route.name === 'oidc-callback' || accountReady" />
     <AccountNotReadyView v-else />
   </div>
@@ -17,7 +18,7 @@ import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user.ts'
 import { watch } from 'vue'
 
-const { data: myself } = queryMyself()
+const { data: myself, isFetching } = queryMyself()
 const { team, user, accountReady } = storeToRefs(useUserStore())
 const route = useRoute()
 

@@ -89,4 +89,7 @@
   .gradient-primary {
     @apply bg-gradient-to-r from-blue-500 via-violet-500 to-rose-600 bg-clip-text text-transparent animate-gradient-x;
   }
+  .bg-gradient-primary {
+    @apply bg-gradient-to-r from-blue-500 via-violet-500 to-rose-600 animate-gradient-x;
+  }
 }
