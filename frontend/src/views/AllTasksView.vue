@@ -7,8 +7,12 @@
           <CardDescription>View all runs that ever ran against your code</CardDescription>
         </div>
         <div class="mr-2">
-          <Command class="border" v-model:search-term="searchTerm">
-            <CommandInput ref="searchInput" placeholder="Search for a run..." />
+          <Command class="border">
+            <CommandInput
+              v-model="searchTerm"
+              ref="searchInput"
+              placeholder="Search for a run..."
+            />
           </Command>
         </div>
       </CardHeader>
@@ -46,6 +50,7 @@ import FinishedTaskOverview from '@/components/FinishedTaskOverview.vue'
 import PageContainer from '@/components/PageContainer.vue'
 import PaginationControls from '@/components/PaginationControls.vue'
 import { queryRecentTasks } from '@/data/network.ts'
+import { useFilter } from 'reka-ui'
 import { useMagicKeys } from '@vueuse/core'
 
 const displayedTasks = ref<FinishedCompilerTaskSummary[]>([])
@@ -54,6 +59,8 @@ const searchTerm = ref<string>('')
 
 const { data: allData, isFetched, isLoading } = queryRecentTasks(0)
 
+const { contains } = useFilter({ sensitivity: 'base' })
+
 const data = computed(() => {
   if (!allData.value) {
     return undefined
@@ -61,9 +68,9 @@ const data = computed(() => {
 
   return allData.value.filter(
     (task) =>
-      task.info.taskId.includes(searchTerm.value) ||
-      task.info.revisionId.includes(searchTerm.value) ||
-      task.info.commitMessage.includes(searchTerm.value),
+      contains(task.info.taskId, searchTerm.value) ||
+      contains(task.info.revisionId, searchTerm.value) ||
+      contains(task.info.commitMessage, searchTerm.value),
   )
 })
 

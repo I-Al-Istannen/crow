@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { type HTMLAttributes, computed } from 'vue'
-import { PaginationEllipsis, type PaginationEllipsisProps } from 'radix-vue'
-import { DotsHorizontalIcon } from '@radix-icons/vue'
+import { PaginationEllipsis, type PaginationEllipsisProps } from 'reka-ui'
+import { MoreHorizontal } from 'lucide-vue-next'
 import { cn } from '@/lib/utils'
 
 const props = defineProps<PaginationEllipsisProps & { class?: HTMLAttributes['class'] }>()
@@ -19,7 +19,7 @@ const delegatedProps = computed(() => {
     :class="cn('w-9 h-9 flex items-center justify-center', props.class)"
   >
     <slot>
-      <DotsHorizontalIcon />
+      <MoreHorizontal />
     </slot>
   </PaginationEllipsis>
 </template>

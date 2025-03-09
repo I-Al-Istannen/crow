@@ -30,7 +30,7 @@
       <div>
         <Select
           :model-value="itemsPerPage + ''"
-          @update:model-value="itemsPerPage = parseInt($event)"
+          @update:model-value="itemsPerPage = parseInt($event as string)"
         >
           <SelectTrigger>
             <SelectValue placeholder="Hello" />
@@ -62,7 +62,7 @@ import {
   PaginationNext,
   PaginationPrev,
 } from '@/components/ui/pagination'
-import { PaginationList, PaginationListItem } from 'radix-vue'
+import { PaginationList, PaginationListItem } from 'reka-ui'
 import {
   Select,
   SelectContent,

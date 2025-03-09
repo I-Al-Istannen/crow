@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DropdownMenuLabel, type DropdownMenuLabelProps, useForwardProps } from 'radix-vue'
+import { DropdownMenuLabel, type DropdownMenuLabelProps, useForwardProps } from 'reka-ui'
 import { type HTMLAttributes, computed } from 'vue'
 import { cn } from '@/lib/utils'
 

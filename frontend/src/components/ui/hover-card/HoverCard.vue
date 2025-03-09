@@ -4,7 +4,7 @@ import {
   type HoverCardRootEmits,
   type HoverCardRootProps,
   useForwardPropsEmits,
-} from 'radix-vue'
+} from 'reka-ui'
 
 const props = defineProps<HoverCardRootProps>()
 const emits = defineEmits<HoverCardRootEmits>()
