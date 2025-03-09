@@ -196,6 +196,7 @@ export function queryTests() {
     queryKey: ['tests'],
     queryFn: fetchTests,
     refetchInterval: 2 * 60 * 1000, // 2 minutes
+    retry: true,
     meta: {
       purpose: 'fetching test summaries',
     },

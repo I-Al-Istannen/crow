@@ -19,9 +19,12 @@
         </div>
       </CardHeader>
       <CardContent v-auto-animate>
-        <div v-if="isLoading">Loading tests...</div>
-        <div v-if="isFetched && tests === undefined">Loading failed</div>
-        <div v-if="isFetched && tests !== undefined">
+        <DataLoadingExplanation
+          :is-loading="isLoading"
+          :failure-count="failureCount"
+          :failure-reason="failureReason"
+        />
+        <div v-if="tests">
           <TooltipProvider>
             <Accordion type="multiple" v-model="expandedTests">
               <AccordionItem v-for="test in displayedTests" :key="test.id" :value="test.id">
@@ -115,6 +118,7 @@ import { computed, ref, watch } from 'vue'
 import { fetchTestDetail, queryTests } from '@/data/network.ts'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
 import PageContainer from '@/components/PageContainer.vue'
 import PaginationControls from '@/components/PaginationControls.vue'
 import SetTestDialog from '@/components/SetTestDialog.vue'
@@ -131,7 +135,7 @@ const testToEditLoading = ref(false)
 const displayedTests = ref<TestSummary[]>([])
 
 const { team } = storeToRefs(useUserStore())
-const { data: testResp, isFetched, isLoading } = queryTests()
+const { data: testResp, isLoading, failureCount, failureReason } = queryTests()
 
 const tests = computed(() => sortTests(testResp.value?.tests))
 
