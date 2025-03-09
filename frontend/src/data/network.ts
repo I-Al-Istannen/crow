@@ -129,6 +129,7 @@ export function queryRecentTasks(count?: number) {
     queryKey: ['recent-tasks'],
     queryFn: () => fetchGetRecentTasks(count == undefined ? 10 : count),
     refetchInterval: 2 * 60 * 1000, // 2 minutes
+    retry: true,
     meta: {
       purpose: 'fetching recent tasks',
     },
@@ -385,6 +386,7 @@ export function queryTopTaskPerTeam() {
   return useQuery({
     queryKey: ['top-task'],
     queryFn: fetchTopTaskPerTeam,
+    retry: true,
     meta: {
       purpose: 'fetching top task per team',
     },
