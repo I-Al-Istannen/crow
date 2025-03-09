@@ -5,7 +5,7 @@
         <CardTitle>Hey there, traveller</CardTitle>
         <CardDescription>Loading your user information...</CardDescription>
       </CardHeader>
-      <CardContent class="text-muted-foreground">
+      <CardContent>
         <DataLoadingExplanation
           :is-loading="isLoadingMyself"
           :failure-count="failureCount"

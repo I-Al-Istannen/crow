@@ -1,9 +1,9 @@
 <template>
-  <div v-if="isLoading">
+  <div v-if="isLoading" v-bind="$attrs" class="text-muted-foreground">
     <span>Loading</span>
     <LucideLoaderCircle :size="16" class="animate-spin inline ml-2" />
   </div>
-  <div v-if="failureCount > 0">
+  <div v-if="failureCount > 0" v-bind="$attrs" class="text-muted-foreground">
     <span class="text-red-500 opacity-80">
       Loading failed {{ failureCount }} time{{ failureCount > 1 ? 's' : '' }}.
     </span>
