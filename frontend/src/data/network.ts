@@ -288,6 +288,7 @@ export function queryQueue(refetchIntervalMs: number) {
     queryFn: fetchQueue,
     refetchInterval: refetchIntervalMs,
     staleTime: 1000,
+    retry: true,
     meta: {
       purpose: 'fetching the queue',
     },

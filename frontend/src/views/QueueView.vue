@@ -12,9 +12,12 @@
         </div>
       </CardHeader>
       <CardContent v-auto-animate>
-        <div v-if="isLoading">Loading data...</div>
-        <div v-if="!queueResponse && isFetched">Loading failed</div>
-        <div v-if="queueResponse !== undefined">
+        <DataLoadingExplanation
+          :is-loading="isLoading"
+          :failure-count="failureCount"
+          :failure-reason="failureReason"
+        />
+        <div v-if="queueResponse">
           <TooltipProvider>
             <div class="flex gap-2">
               <div
@@ -72,6 +75,7 @@ import { LucideBriefcaseBusiness, LucideCandy, LucideLoaderCircle } from 'lucide
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { computed, ref, watch } from 'vue'
 import { formatApproxDuration, formatDuration } from '../lib/utils.ts'
+import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
 import PageContainer from '@/components/PageContainer.vue'
 import QueuedTasksOverview from '@/components/QueuedTasksOverview.vue'
 import { queryQueue } from '@/data/network.ts'
@@ -81,7 +85,13 @@ import { vAutoAnimate } from '@formkit/auto-animate/vue'
 const currentTime = useTimestamp({ interval: 500 })
 const nextRefetch = ref(Date.now())
 
-const { data: queueResponse, isFetched, isLoading, isFetching } = queryQueue(15 * 1000)
+const {
+  data: queueResponse,
+  isLoading,
+  isFetching,
+  failureCount,
+  failureReason,
+} = queryQueue(15 * 1000)
 
 const nextRefetchTime = computed(() => {
   const delta = nextRefetch.value - currentTime.value
