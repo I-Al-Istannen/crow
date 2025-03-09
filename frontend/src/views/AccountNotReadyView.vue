@@ -6,19 +6,11 @@
         <CardDescription>Loading your user information...</CardDescription>
       </CardHeader>
       <CardContent class="text-muted-foreground">
-        <div v-if="isLoadingMyself">
-          <span>Loading</span>
-          <LucideLoaderCircle :size="16" class="animate-spin inline ml-2" />
-        </div>
-        <div v-if="failureCount > 0">
-          <span class="text-red-500 opacity-80">
-            Loading failed {{ failureCount }} time{{ failureCount > 1 ? 's' : '' }}.
-          </span>
-          <span class="text-black">crow</span> will retry periodically or you can refresh the page.
-          <br />
-          The last failure was
-          <code class="text-sm bg-accent p-1 rounded-md">{{ failureReason }}</code>
-        </div>
+        <DataLoadingExplanation
+          :is-loading="isLoadingMyself"
+          :failure-count="failureCount"
+          :failure-reason="failureReason"
+        />
       </CardContent>
     </Card>
     <Card v-else>
@@ -60,7 +52,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ref, shallowRef, watch } from 'vue'
 import { BACKEND_URL } from '@/data/fetching.ts'
 import { Button } from '@/components/ui/button'
-import { LucideLoaderCircle } from 'lucide-vue-next'
+import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
 import { PRE_LOGIN_URL_SESSION_STORAGE_KEY } from '@/router'
 import PageContainer from '@/components/PageContainer.vue'
 import { queryMyself } from '@/data/network.ts'

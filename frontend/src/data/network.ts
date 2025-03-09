@@ -88,6 +88,7 @@ export function queryRepo(team: MaybeRefOrGetter<TeamId | undefined>) {
   return useQuery({
     queryKey: ['repo', team],
     queryFn: () => fetchRepo(toValue(team)!),
+    retry: true,
     meta: {
       purpose: 'fetching your repository',
     },
@@ -363,6 +364,7 @@ export function queryIntegrationStatus(_teamId: MaybeRefOrGetter<TeamId | undefi
   return useQuery({
     queryKey: ['integrations', _teamId],
     queryFn: fetchIntegrationStatus,
+    retry: true,
     meta: {
       purpose: 'fetching integration status',
     },

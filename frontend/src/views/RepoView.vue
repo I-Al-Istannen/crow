@@ -6,8 +6,12 @@
         <CardDescription>Change your repository URL and crows behaviour</CardDescription>
       </CardHeader>
       <CardContent>
-        <div v-if="isLoading">Requesting repo information...</div>
-        <SetupRepo v-show="isFetched" :repo="repo" />
+        <DataLoadingExplanation
+          :is-loading="isLoadingRepo"
+          :failure-count="repoFailureCount"
+          :failure-reason="repoFailureReason"
+        />
+        <SetupRepo v-show="repo" :repo="repo" />
       </CardContent>
     </Card>
     <Card v-if="repo">
@@ -16,24 +20,25 @@
         <CardDescription>Add a specific commit of your repository to the queue</CardDescription>
       </CardHeader>
       <CardContent>
-        <Tabs default-value="manual">
+        <DataLoadingExplanation
+          :is-loading="isLoadingIntegration"
+          :failure-count="integrationFailureCount"
+          :failure-reason="integrationFailureReason"
+        />
+        <Tabs default-value="manual" v-if="integrationStatus">
           <TabsList>
             <TabsTrigger value="manual">Manually</TabsTrigger>
-            <TabsTrigger value="github" v-if="integrationStatus?.github">GitHub App</TabsTrigger>
+            <TabsTrigger value="github" v-if="integrationStatus.github">GitHub App</TabsTrigger>
             <TabsTrigger value="token">Build your own integration</TabsTrigger>
           </TabsList>
           <TabsContent value="manual">
             <SubmitRevision />
           </TabsContent>
-          <TabsContent value="github" v-if="integrationStatus?.github">
-            <TeamIntegrationGithub :app-url="integrationStatus?.github.url" />
+          <TabsContent value="github" v-if="integrationStatus.github">
+            <TeamIntegrationGithub :app-url="integrationStatus.github.url" />
           </TabsContent>
           <TabsContent value="token">
-            <TeamIntegrationToken
-              v-if="integrationStatus"
-              :team-integration-token="integrationStatus?.token"
-            />
-            <span v-else class="text-muted-foreground text-sm">Not in a team</span>
+            <TeamIntegrationToken :team-integration-token="integrationStatus.token" />
           </TabsContent>
         </Tabs>
       </CardContent>
@@ -45,6 +50,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { queryIntegrationStatus, queryRepo } from '@/data/network.ts'
+import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
 import PageContainer from '@/components/PageContainer.vue'
 import SetupRepo from '@/components/SetupRepo.vue'
 import SubmitRevision from '@/components/SubmitRevision.vue'
@@ -58,7 +64,17 @@ import { vAutoAnimate } from '@formkit/auto-animate/vue'
 const { team } = storeToRefs(useUserStore())
 const teamId = computed(() => team.value?.id)
 
-const { data: repo, isFetched, isLoading } = queryRepo(teamId)
+const {
+  data: repo,
+  isLoading: isLoadingRepo,
+  failureCount: repoFailureCount,
+  failureReason: repoFailureReason,
+} = queryRepo(teamId)
 
-const { data: integrationStatus } = queryIntegrationStatus(teamId)
+const {
+  data: integrationStatus,
+  isLoading: isLoadingIntegration,
+  failureCount: integrationFailureCount,
+  failureReason: integrationFailureReason,
+} = queryIntegrationStatus(teamId)
 </script>
