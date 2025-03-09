@@ -18,9 +18,15 @@
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div v-if="hasTriedFetching && taskStatus === null">
+        <div v-if="hasLoadedOnce && taskStatus === null" class="mb-2">
           It looks like no task with this ID exists. Maybe it isn't running or finished yet?
         </div>
+        <!-- Below to not cause as many layout shifts-->
+        <DataLoadingExplanation
+          :is-loading="isFetching"
+          :failure-count="failureCount"
+          :failure-reason="failureReason"
+        />
         <div v-if="taskStatus === 'queued' && queuedTask">
           This task has been queued since
           <span class="font-medium">
@@ -34,7 +40,6 @@
           The last update of this page was at
           <span class="font-medium"> {{ formatTime(lastUpdate) }} </span>.
         </div>
-        <div v-if="isFetching && !hasTriedFetching">Loading data...</div>
       </CardContent>
     </Card>
   </PageContainer>
@@ -47,6 +52,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { fetchQueuedTask, fetchRunningTaskExists, fetchTaskExists } from '@/data/network.ts'
 import { formatDurationBetween, formatTime } from '../lib/utils.ts'
 import { useIntervalFn, useTimestamp } from '@vueuse/core'
+import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
 import FinishedTask from '@/components/FinishedTask.vue'
 import PageContainer from '@/components/PageContainer.vue'
 import RunningTask from '@/components/RunningTask.vue'
@@ -59,11 +65,13 @@ const taskId = computed(() => (route.params?.taskId ? (route.params.taskId as Ta
 const { loggedIn } = storeToRefs(useUserStore())
 
 const taskStatus = ref<'queued' | 'running' | 'finished' | null>(null)
-const hasTriedFetching = ref(false)
 const isFetching = ref(false)
+const hasLoadedOnce = ref(false)
 const initDone = ref(false)
 const queuedTask = ref<WorkItem | null>(null)
 const lastUpdate = ref<Date | null>(null)
+const failureReason = ref<Error | null>(null)
+const failureCount = ref<number>(0)
 
 const { pause, resume } = useIntervalFn(
   async () => {
@@ -101,16 +109,19 @@ async function iteration() {
     }
 
     isFetching.value = true
-
     for (const func of getUpdateOrder()) {
       if (await func(taskId.value)) {
         break
       }
     }
     lastUpdate.value = new Date()
-  } finally {
-    hasTriedFetching.value = true
+    failureReason.value = null
+    failureCount.value = 0
     isFetching.value = false
+    hasLoadedOnce.value = true
+  } catch (e) {
+    failureReason.value = e as Error
+    failureCount.value++
   }
 }
 
