@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT execution_id FROM TestTastingResults WHERE test_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "execution_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b35cbc73b18534c730772796ccb9689b29667fc2e7249d9a1cf8e42a1e76e775"
+}

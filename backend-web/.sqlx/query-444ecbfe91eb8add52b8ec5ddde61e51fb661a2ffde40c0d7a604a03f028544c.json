@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            Tests.id as \"id!: TestId\",\n            Teams.display_name as \"creator_name\",\n            Teams.id as \"creator_id!: TeamId\",\n            Tests.admin_authored,\n            Tests.category,\n            Tests.hash,\n            (SELECT ER.result == ? FROM TestTastingResults TTR\n                JOIN ExecutionResults ER ON ER.execution_id = TTR.execution_id \n                WHERE test_id = Tests.id\n            ) as \"test_taste_success?: bool\"\n        FROM Tests\n        JOIN Teams ON Tests.owner = Teams.id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: TestId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "creator_name",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "creator_id!: TeamId",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "admin_authored",
+        "ordinal": 3,
+        "type_info": "Bool"
+      },
+      {
+        "name": "category",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "hash",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "test_taste_success?: bool",
+        "ordinal": 6,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "444ecbfe91eb8add52b8ec5ddde61e51fb661a2ffde40c0d7a604a03f028544c"
+}
