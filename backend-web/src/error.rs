@@ -28,7 +28,7 @@ pub trait HttpError: Debug + snafu::AsErrorSource + Send + Sync {
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum WebError {
-    #[snafu(display("No permissions to access this resource at {location}"))]
+    #[snafu(display("No permission to access this resource at {location}"))]
     Unauthorized {
         #[snafu(implicit)]
         location: Location,
