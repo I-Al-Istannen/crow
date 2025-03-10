@@ -64,7 +64,6 @@ export function queryMyself() {
     queryKey: ['userinfo'],
     queryFn: fetchMyself,
     refetchInterval: 2 * 60 * 1000, // 2 minutes
-    retry: true,
     meta: {
       purpose: 'fetching user information',
     },
@@ -88,7 +87,6 @@ export function queryRepo(team: MaybeRefOrGetter<TeamId | undefined>) {
   return useQuery({
     queryKey: ['repo', team],
     queryFn: () => fetchRepo(toValue(team)!),
-    retry: true,
     meta: {
       purpose: 'fetching your repository',
     },
@@ -129,7 +127,6 @@ export function queryRecentTasks(count?: number) {
     queryKey: ['recent-tasks'],
     queryFn: () => fetchGetRecentTasks(count == undefined ? 10 : count),
     refetchInterval: 2 * 60 * 1000, // 2 minutes
-    retry: true,
     meta: {
       purpose: 'fetching recent tasks',
     },
@@ -179,7 +176,6 @@ export function queryTeamInfo(teamId: MaybeRefOrGetter<TeamId | undefined>) {
     queryKey: ['team', teamId],
     queryFn: () => fetchTeamInfo(toValue(teamId)!),
     enabled: computed(() => enabled.value && loggedIn.value),
-    retry: true,
     meta: {
       purpose: 'fetching team information',
     },
@@ -197,7 +193,6 @@ export function queryTests() {
     queryKey: ['tests'],
     queryFn: fetchTests,
     refetchInterval: 2 * 60 * 1000, // 2 minutes
-    retry: true,
     meta: {
       purpose: 'fetching test summaries',
     },
@@ -289,7 +284,6 @@ export function queryQueue(refetchIntervalMs: number) {
     queryFn: fetchQueue,
     refetchInterval: refetchIntervalMs,
     staleTime: 1000,
-    retry: true,
     meta: {
       purpose: 'fetching the queue',
     },
@@ -368,7 +362,6 @@ export function queryIntegrationStatus(_teamId: MaybeRefOrGetter<TeamId | undefi
   return useQuery({
     queryKey: ['integrations', _teamId],
     queryFn: fetchIntegrationStatus,
-    retry: true,
     meta: {
       purpose: 'fetching integration status',
     },
@@ -389,7 +382,6 @@ export function queryTopTaskPerTeam() {
   return useQuery({
     queryKey: ['top-task'],
     queryFn: fetchTopTaskPerTeam,
-    retry: true,
     meta: {
       purpose: 'fetching top task per team',
     },

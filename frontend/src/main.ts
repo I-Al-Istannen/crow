@@ -2,10 +2,11 @@ import './assets/index.css'
 import './assets/fonts.css'
 
 import { MutationCache, QueryCache, VueQueryPlugin } from '@tanstack/vue-query'
+import { hydrateUserStore, useUserStore } from '@/stores/user.ts'
 import App from './App.vue'
+import { FetchError } from '@/data/fetching.ts'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { hydrateUserStore } from '@/stores/user.ts'
 import router from './router'
 import { toast } from 'vue-sonner'
 
@@ -15,6 +16,16 @@ app.use(createPinia())
 app.use(router)
 app.use(VueQueryPlugin, {
   queryClientConfig: {
+    defaultOptions: {
+      queries: {
+        retry: (_, error) => {
+          if (error instanceof FetchError && error.status === 401) {
+            useUserStore().validateToken()
+          }
+          return true
+        },
+      },
+    },
     queryCache: new QueryCache({
       onError: (error, query) => {
         toast.error('Error ' + (query.meta?.purpose || 'during request'), {

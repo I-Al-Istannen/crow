@@ -6,7 +6,7 @@ export class FetchError extends Error {
   readonly status: number
 
   constructor(message: string, status: number) {
-    super(message)
+    super(`(HTTP ${status}) ${message}`)
     this.status = status
   }
 }
@@ -27,8 +27,12 @@ export async function fetchWithError(
     !(extra?.extraSuccessStatus && extra.extraSuccessStatus.includes(response.status))
   ) {
     // TODO: Prettify WebErrors
-    const text = await response.text().catch(() => 'unknown')
-    throw new FetchError(`Failed to fetch: ${response.status} (${text})`, response.status)
+    let text = await response.text().catch(() => 'unknown')
+    try {
+      const json = JSON.parse(text)
+      text = json.error
+    } catch {}
+    throw new FetchError(text, response.status)
   }
   return response
 }
@@ -48,25 +52,4 @@ export async function fetchWithAuth(
   }
 
   return fetchWithError(url, requestConfig, extra)
-}
-
-const MAX_RETRIES = 3
-const HTTP_STATUS_TO_NOT_RETRY = [400, 404]
-
-export function doNotRetryPermanentErrors(failureCount: number, error: unknown): boolean {
-  if (failureCount > MAX_RETRIES) {
-    return false
-  }
-
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'status' in error &&
-    HTTP_STATUS_TO_NOT_RETRY.includes(error.status as number)
-  ) {
-    console.log(`Aborting retry due to ${error.status} status`)
-    return false
-  }
-
-  return true
 }

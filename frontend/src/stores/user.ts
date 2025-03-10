@@ -1,5 +1,5 @@
 import { type Team, type User, UserSchema } from '@/types.ts'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { fetchWithError } from '@/data/fetching.ts'
 
@@ -36,7 +36,37 @@ export const useUserStore = defineStore('user', () => {
     localStorage.removeItem('userStore')
   }
 
-  return { accountReady, token, team, user, loggedIn, logIn, logOut }
+  watch(token, () => {
+    validateToken()
+  })
+
+  function validateToken() {
+    if (!token.value) {
+      return
+    }
+    const parts = token.value.split('.')
+    if (parts.length !== 3) {
+      token.value = null
+      return
+    }
+    try {
+      const payload = JSON.parse(atob(parts[1]))
+      const expiry = new Date(payload['exp'] * 1000)
+      const secondsToExpiry = (expiry.getTime() - new Date().getTime()) / 1000
+      if (secondsToExpiry < 15 * 60) {
+        console.log(
+          'Your login token expires in less than 15 minutes, logging out',
+          secondsToExpiry,
+        )
+        token.value = null
+      }
+    } catch (e) {
+      console.log('Failed to parse login token', e)
+      token.value = null
+    }
+  }
+
+  return { accountReady, token, team, user, loggedIn, logIn, logOut, validateToken }
 })
 
 export function hydrateUserStore() {
