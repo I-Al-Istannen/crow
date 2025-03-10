@@ -9,9 +9,8 @@ use axum_extra::headers::authorization::Basic;
 use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
 use shared::{
-    CompilerTask, CompilerTest, FinishedCompilerTask, RunnerId, RunnerInfo,
-    RunnerUpdate, RunnerWorkResponse, RunnerWorkTasteTestDone, RunnerWorkTasteTestResponse,
-    WorkTasteTestTask,
+    CompilerTask, CompilerTest, FinishedCompilerTask, RunnerId, RunnerInfo, RunnerUpdate,
+    RunnerWorkResponse, RunnerWorkTasteTestDone, RunnerWorkTasteTestResponse, WorkTasteTestTask,
 };
 use snafu::{ensure, location, IntoError, Location, NoneError, Report, Snafu};
 use tokio_util::io::ReaderStream;

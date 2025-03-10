@@ -1,8 +1,9 @@
+use super::Path;
 use crate::auth::Claims;
 use crate::error::WebError;
 use crate::types::{AppState, RunningTaskState, TaskId, TeamId};
 use axum::extract::ws::{Message, WebSocket};
-use axum::extract::{Path, State, WebSocketUpgrade};
+use axum::extract::{State, WebSocketUpgrade};
 use axum::response::Response;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};

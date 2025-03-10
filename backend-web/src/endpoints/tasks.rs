@@ -1,11 +1,11 @@
+use super::{Json, Path};
 use crate::auth::Claims;
-use crate::endpoints::Json;
 use crate::error::{Result, WebError};
 use crate::types::{
     AppState, ExecutorInfo, FinishedCompilerTaskSummary, QueuedTaskStatus, RunnerForFrontend,
     TaskId, TeamId, WorkItem,
 };
-use axum::extract::{Path, State};
+use axum::extract::State;
 use axum::response::{IntoResponse, Response};
 use axum_extra::headers::authorization::Bearer;
 use axum_extra::headers::Authorization;

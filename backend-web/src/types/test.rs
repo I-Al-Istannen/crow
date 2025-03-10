@@ -1,11 +1,25 @@
 use crate::types::TeamId;
 use derive_more::{Display, From};
-use serde::{Deserialize, Serialize};
-use shared::ExecutionOutput;
+use serde::de::Error;
+use serde::{Deserialize, Deserializer, Serialize};
+use shared::{validate_test_id, ExecutionOutput};
 
-#[derive(Debug, Clone, Hash, From, PartialEq, Eq, Display, Serialize, Deserialize, sqlx::Type)]
+#[derive(Debug, Clone, Hash, From, PartialEq, Eq, Display, Serialize, sqlx::Type)]
 #[sqlx(transparent)]
 pub struct TestId(String);
+
+impl<'de> Deserialize<'de> for TestId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let test_id: String = Deserialize::deserialize(deserializer)?;
+        if let Err(e) = validate_test_id(&test_id) {
+            return Err(Error::custom(e));
+        }
+        Ok(Self(test_id))
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]

@@ -41,8 +41,8 @@ pub use self::user::list_users;
 pub use self::user::login;
 pub use self::user::show_me_myself;
 use crate::error::{HttpError, WebError};
-use axum::extract::rejection::JsonRejection;
-use axum::extract::FromRequest;
+use axum::extract::rejection::{JsonRejection, PathRejection};
+use axum::extract::{FromRequest, FromRequestParts};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Serialize;
@@ -53,10 +53,13 @@ use snafu::location;
 #[from_request(via(axum::Json), rejection(WebError))]
 pub struct Json<T>(T);
 
+#[derive(FromRequestParts)]
+#[from_request(via(axum::extract::Path), rejection(WebError))]
+pub struct Path<T>(T);
+
 impl<T: Serialize> IntoResponse for Json<T> {
     fn into_response(self) -> axum::response::Response {
-        let Self(value) = self;
-        axum::Json(value).into_response()
+        axum::Json(self.0).into_response()
     }
 }
 
@@ -73,5 +76,21 @@ impl HttpError for JsonRejection {
 impl From<JsonRejection> for WebError {
     fn from(rejection: JsonRejection) -> Self {
         Self::http_error(rejection, location!())
+    }
+}
+
+impl HttpError for PathRejection {
+    fn to_http_code(&self) -> StatusCode {
+        StatusCode::BAD_REQUEST
+    }
+
+    fn to_error_code(&self) -> &'static str {
+        "invalid_path"
+    }
+}
+
+impl From<PathRejection> for WebError {
+    fn from(value: PathRejection) -> Self {
+        Self::http_error(value, location!())
     }
 }

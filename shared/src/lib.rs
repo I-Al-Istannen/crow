@@ -165,7 +165,6 @@ pub struct RunnerWorkResponse {
     pub reset: bool,
 }
 
-
 #[derive(Debug, Clone, Hash, From, PartialEq, Eq, Display, Serialize, Deserialize)]
 pub struct TestTasteId(String);
 
@@ -227,4 +226,19 @@ where
 {
     let millis = u64::deserialize(deserializer)?;
     Ok(Duration::from_millis(millis))
+}
+
+pub fn validate_test_id(input: &str) -> Result<(), &'static str> {
+    let is_allowed_chars = input
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == ' ');
+
+    if !is_allowed_chars {
+        return Err("Test id must only contain alphanumerics, dashes, underscores or spaces");
+    }
+    if input.len() > 300 {
+        return Err("Input is longer than 300 chars");
+    }
+
+    Ok(())
 }

@@ -165,7 +165,8 @@ impl Executor {
     }
 
     pub fn get_runners(&self, tasting_runners: HashSet<RunnerId>) -> Vec<RunnerForFrontend> {
-        let mut result: Vec<RunnerForFrontend> = self.runners.values().map(|it| it.into()).collect();
+        let mut result: Vec<RunnerForFrontend> =
+            self.runners.values().map(|it| it.into()).collect();
 
         for runner in &mut result {
             if tasting_runners.contains(&runner.id) {

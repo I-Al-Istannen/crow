@@ -1,8 +1,8 @@
+use super::{Json, Path};
 use crate::auth::Claims;
-use crate::endpoints::Json;
 use crate::error::{Result, WebError};
 use crate::types::{AppState, FinishedCompilerTaskSummary, Repo, TeamId, TeamInfo};
-use axum::extract::{Path, State};
+use axum::extract::State;
 use serde::Deserialize;
 use snafu::location;
 use tracing::instrument;

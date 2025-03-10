@@ -1,8 +1,8 @@
+use super::{Json, Path};
 use crate::auth::Claims;
-use crate::endpoints::Json;
 use crate::error::{Result, WebError};
 use crate::types::{AppState, Test, TestId, TestSummary, TestWithTasteTesting};
-use axum::extract::{Path, State};
+use axum::extract::State;
 use serde::{Deserialize, Serialize};
 use shared::{ExecutionOutput, FinishedTest};
 use snafu::location;
@@ -26,7 +26,6 @@ pub async fn set_test(
     Path(test_id): Path<TestId>,
     Json(payload): Json<AddTestPayload>,
 ) -> Result<Json<SetTestResponse>> {
-    // TODO: Validate test id format
     let db = &state.db;
 
     if !claims.is_admin() {

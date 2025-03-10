@@ -5,7 +5,7 @@ use clap::Args;
 use console::style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, FuzzySelect, Input, Select};
-use shared::{ExecutionOutput, FinishedTest};
+use shared::{validate_test_id, ExecutionOutput, FinishedTest};
 use snafu::{IntoError, Location, NoneError, ResultExt, Snafu};
 use std::path::PathBuf;
 use tracing::{error, info};
@@ -100,14 +100,14 @@ pub fn command_upload_test(
         None => prompt_test_name(&category, &remote_tests, &my_team).context(UploadTestSnafu)?,
     };
 
-    if let Err(e) = validate_test_name(&name) {
+    if let Err(e) = validate_test_id(&name) {
         return Err(TestNameSnafu { error: e, name }.into_error(NoneError))
             .context(UploadTestSnafu);
     }
 
     let should_taste_test = match args.taste_test {
         None => prompt_should_taste_test().context(UploadTestSnafu)?,
-        Some(val) => val
+        Some(val) => val,
     };
 
     let res = ctx
@@ -178,7 +178,7 @@ fn prompt_test_name(
     } else {
         Input::with_theme(&ColorfulTheme::default())
             .with_prompt("Enter the name of the new test")
-            .validate_with(|input: &String| validate_test_name(input))
+            .validate_with(|input: &String| validate_test_id(input))
             .interact()
             .map(Some)
     };
@@ -191,17 +191,6 @@ fn prompt_test_name(
     };
 
     Ok(name)
-}
-
-fn validate_test_name(input: &str) -> Result<(), &'static str> {
-    if input
-        .chars()
-        .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == ' ')
-    {
-        Ok(())
-    } else {
-        Err("Test id must only contain alphanumerics, dashes, underscores or spaces")
-    }
 }
 
 fn prompt_should_taste_test() -> Result<bool, UploadTestError> {
