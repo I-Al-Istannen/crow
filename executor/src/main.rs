@@ -5,8 +5,8 @@
 
 use crate::containers::{ContainerCreateError, TestRunError, WaitForContainerError};
 use crate::mode_executor::{run_executor, CliExecutorArgs};
-use clap::builder::Styles;
 use clap::builder::styling::AnsiColor;
+use clap::builder::Styles;
 use clap::{Parser, Subcommand};
 use snafu::{Location, Report, Snafu};
 use std::time::Duration;
@@ -94,7 +94,7 @@ struct Endpoints {
     tar: String,
     update: String,
     work: String,
-    work_taste_test: String
+    work_taste_test: String,
 }
 
 impl Endpoints {

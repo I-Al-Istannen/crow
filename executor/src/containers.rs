@@ -1,14 +1,14 @@
-use crate::docker::{DockerError, ImageId, export_image_unpacked};
+use crate::docker::{export_image_unpacked, DockerError, ImageId};
 use derive_more::{Display, From};
 use serde::Deserialize;
-use snafu::{IntoError, Location, NoneError, Report, ResultExt, Snafu, ensure};
+use snafu::{ensure, IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::fs::create_dir;
 use std::io::Read;
 use std::os::fd::AsRawFd;
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStderr, ChildStdout, Command, ExitStatus, Stdio};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::{fs, io, thread};
 use tempfile::{TempDir, TempPath};
