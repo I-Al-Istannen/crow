@@ -6,8 +6,8 @@ use console::style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, FuzzySelect, Input, Select};
 use shared::{validate_test_id, ExecutionOutput, FinishedTest};
-use snafu::{IntoError, Location, NoneError, ResultExt, Snafu};
-use std::path::PathBuf;
+use snafu::{IntoError, Location, NoneError, OptionExt, ResultExt, Snafu};
+use std::path::{Path, PathBuf};
 use tracing::{error, info};
 
 #[derive(Debug, Snafu)]
@@ -44,6 +44,13 @@ pub enum UploadTestError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display("Could not infer metadata from `{}` at {location}: {msg}", path.display()))]
+    MetadataInfer {
+        path: PathBuf,
+        msg: &'static str,
+        #[snafu(implicit)]
+        location: Location,
+    },
     #[snafu(display("Error uploading test at {location}"))]
     Uploading {
         source: CliContextError,
@@ -67,10 +74,14 @@ pub struct CliUploadTestArgs {
     /// Should the test be only submitted if it works with the reference compiler?
     #[clap(long)]
     taste_test: Option<bool>,
+    /// Whether to silently infer the name and category from the input file name:
+    ///   `<category>/<nam>.crow-test`
+    #[clap(long)]
+    infer_metadata_from_input: Option<bool>,
 }
 
 pub fn command_upload_test(
-    args: CliUploadTestArgs,
+    mut args: CliUploadTestArgs,
     ctx: CliContext,
 ) -> Result<bool, CrowClientError> {
     let remote_tests = ctx.get_remote_tests().context(ContextSnafu)?;
@@ -89,6 +100,19 @@ pub fn command_upload_test(
             path: args.output_file.to_path_buf(),
         })
         .context(UploadTestSnafu)?;
+
+    if let Some(true) = args.infer_metadata_from_input {
+        info!(
+            "Inferring metadata from input file `{}`",
+            args.input_file.display()
+        );
+        let (category, name) =
+            infer_metadata_from_path(&args.input_file).context(UploadTestSnafu)?;
+        info!("  Inferred category=`{category}` and name=`{name}`");
+
+        args.category = Some(category);
+        args.name = Some(name);
+    }
 
     let category = match args.category {
         Some(category) => category,
@@ -126,6 +150,46 @@ pub fn command_upload_test(
             false
         }
     })
+}
+
+fn infer_metadata_from_path(path: &Path) -> Result<(String, String), UploadTestError> {
+    let name = path
+        .file_name()
+        .context(MetadataInferSnafu {
+            path: path.to_path_buf(),
+            msg: "",
+        })?
+        .to_str()
+        .context(MetadataInferSnafu {
+            path: path.to_path_buf(),
+            msg: "",
+        })?;
+    let name = name
+        .strip_suffix(".crow-test")
+        .context(MetadataInferSnafu {
+            path: path.to_path_buf(),
+            msg: "",
+        })?
+        .to_string();
+
+    let category = path.parent().context(MetadataInferSnafu {
+        path: path.to_path_buf(),
+        msg: "File has no parent directory",
+    })?;
+    let category = category
+        .file_name()
+        .context(MetadataInferSnafu {
+            path: path.to_path_buf(),
+            msg: "Parent folder has no file name",
+        })?
+        .to_str()
+        .context(MetadataInferSnafu {
+            path: path.to_path_buf(),
+            msg: "Parent folder's name is not valid unicode",
+        })?
+        .to_string();
+
+    Ok((category, name))
 }
 
 fn prompt_test_category(categories: &[String]) -> Result<String, UploadTestError> {
