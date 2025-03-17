@@ -25,7 +25,44 @@ app_name = "crow-test"
 app_id = 1104229
 workflow_path = ".github/workflows/crow.yml"
 workflow_template = """
-Hello world!
+name: Crow workflow integration
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  trigger-crow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set start / end commit for pushes
+        if: github.event_name == 'push'
+        run: |
+          echo "BEFORE=${{ github.event.before }}" >> $GITHUB_ENV
+          echo "AFTER=${{ github.event.after }}" >> $GITHUB_ENV
+      - name: Set start / end commit for pull requests
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "BEFORE=origin/$GITHUB_BASE_REF" >> $GITHUB_ENV
+          echo "AFTER=HEAD" >> $GITHUB_ENV
+      - name: Triggering crow
+        run: |
+          set -euxo pipefail
+          # This does not work for force-pushes (as before is no longer part of the branch!)
+          for sha in $(git rev-list "$BEFORE".."$AFTER"); do
+            echo "Would push sha $sha with auth ${{ secrets.CROW_INTEGRATION_TOKEN }}"
+            #curl --header 'Authorization: Bearer ${{ secrets.CROW_INTEGRATION_TOKEN }}' http://localhost:3000/integration/token/task/"$sha"
+          done
+      - name: Explaining a bit
+        run: |
+          echo "The commits were pushed in the crow queue."
+          echo "Crow periodically syncs the status from its queue to your repository, so a check should appear here soon :)"
 """
 app_private_key = """
 -----BEGIN RSA PRIVATE KEY-----
