@@ -436,11 +436,14 @@ impl ClientCrab {
             );
             let existing = &existing[0];
 
-            let existing_content = existing
+            let existing_content: String = existing
                 .content
                 .as_ref()
                 .map(|it| it.to_string())
-                .unwrap_or_default();
+                .unwrap_or_default()
+                .chars()
+                .filter(|&it| it != '\n')
+                .collect();
             let existing_content = B64.decode(existing_content.trim()).unwrap();
             let existing_content = String::from_utf8_lossy(&existing_content);
 
