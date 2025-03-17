@@ -707,7 +707,9 @@ async fn finish_check(
                 QueuedTaskStatus::Timeout => CheckRunConclusion::TimedOut,
                 QueuedTaskStatus::Aborted => CheckRunConclusion::Cancelled,
                 QueuedTaskStatus::Success => CheckRunConclusion::Success,
-                _ => CheckRunConclusion::Neutral,
+                QueuedTaskStatus::Failure => CheckRunConclusion::Failure,
+                QueuedTaskStatus::Queued => CheckRunConclusion::Neutral,
+                QueuedTaskStatus::Running => CheckRunConclusion::Neutral,
             }
         }
     };

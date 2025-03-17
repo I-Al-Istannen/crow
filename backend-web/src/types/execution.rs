@@ -336,12 +336,13 @@ impl From<&ExecutionOutput> for ExecutionExitStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum QueuedTaskStatus {
+    Aborted,
+    Error,
+    Failure,
     Queued,
     Running,
-    Error,
-    Timeout,
-    Aborted,
     Success,
+    Timeout,
 }
 
 impl From<FinishedCompilerTask> for QueuedTaskStatus {
@@ -364,6 +365,9 @@ impl From<FinishedCompilerTask> for QueuedTaskStatus {
         }
         if status.iter().any(|it| *it == ExecutionExitStatus::Timeout) {
             return Self::Error;
+        }
+        if status.iter().any(|it| *it == ExecutionExitStatus::Failure) {
+            return Self::Failure;
         }
         Self::Success
     }
