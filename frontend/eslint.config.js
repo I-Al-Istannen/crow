@@ -19,14 +19,15 @@ export default [
   oxlint.configs['flat/recommended'],
   skipFormatting,
   {
-    rules: {    '@typescript-eslint/no-unused-vars': [
-      'warn',
-      {
-        argsIgnorePattern: '^_',
-        destructuredArrayIgnorePattern: '^_',
-        varsIgnorePattern: '^_'
-      }
-    ],
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          argsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+        },
+      ],
       'sort-imports': ['error'],
       'vue/multi-word-component-names': [
         'error',
@@ -49,10 +50,10 @@ export default [
             'Table',
             'Tabs',
             'Textarea',
-            'Tooltip'
-          ]
-        }
-      ]
-    }
-  }
+            'Tooltip',
+          ],
+        },
+      ],
+    },
+  },
 ]
