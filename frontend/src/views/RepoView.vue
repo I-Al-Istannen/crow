@@ -11,7 +11,7 @@
           :failure-count="repoFailureCount"
           :failure-reason="repoFailureReason"
         />
-        <SetupRepo v-show="repo" :repo="repo" />
+        <SetupRepo :repo="repo" />
       </CardContent>
     </Card>
     <Card v-if="repo">
