@@ -29,12 +29,16 @@
       <LucidePlus />
       Add modifier
     </Button>
+    <div v-if="showMultipleWarning" class="pl-2 text-xs text-orange-500 flex items-center">
+      <LucideTriangleAlert class="size-4 mr-2" />
+      Multiple inputs/outputs will be concatenated in order
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { LucidePlus, LucideTrash2 } from 'lucide-vue-next'
-import { ref, toRefs, watch } from 'vue'
+import { LucidePlus, LucideTrash2, LucideTriangleAlert } from 'lucide-vue-next'
+import { computed, ref, toRefs, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import type { SortEventData } from '@formkit/drag-and-drop'
 import type { TestModifier } from '@/types.ts'
@@ -63,6 +67,12 @@ const [parentRef, draggingModifiers] = useDragAndDrop<KeyedTestModifier>([], {
     emit('update:value', data.values)
   },
 })
+
+const showMultipleWarning = computed(
+  () =>
+    passedInModifiers.value.filter((it) => it.type === 'ProgramInput').length > 1 ||
+    passedInModifiers.value.filter((it) => it.type === 'ExpectedOutput').length > 1,
+)
 
 watch(
   passedInModifiers,
