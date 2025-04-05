@@ -1,6 +1,6 @@
 use crate::types::Test;
 use serde::{Deserialize, Serialize};
-use shared::{ExecutionOutput, RunnerId, TestTasteId};
+use shared::{RunnerId, TestExecutionOutput, TestTasteId};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -60,7 +60,7 @@ impl TestTasting {
             .collect()
     }
 
-    pub fn add_tasting(&mut self, test: Test) -> oneshot::Receiver<ExecutionOutput> {
+    pub fn add_tasting(&mut self, test: Test) -> oneshot::Receiver<TestExecutionOutput> {
         let (tx, rx) = oneshot::channel();
         self.open_tastings.push(OpenTestTaste {
             result_channel: tx,
@@ -83,7 +83,7 @@ impl TestTasting {
         Some(TestTastingTask { test, taste_id: id })
     }
 
-    pub fn finish_tasting(&mut self, id: TestTasteId, output: ExecutionOutput) {
+    pub fn finish_tasting(&mut self, id: TestTasteId, output: TestExecutionOutput) {
         if let Some((taste, _)) = self.in_progress_tastings.remove(&id) {
             let _ = taste.result_channel.send(output);
         } else {
@@ -96,7 +96,7 @@ impl TestTasting {
 }
 
 struct OpenTestTaste {
-    pub result_channel: oneshot::Sender<ExecutionOutput>,
+    pub result_channel: oneshot::Sender<TestExecutionOutput>,
     pub test: Test,
     pub start_time: Instant,
     pub id: TestTasteId,

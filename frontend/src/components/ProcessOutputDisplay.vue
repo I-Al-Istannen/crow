@@ -1,6 +1,6 @@
 <template>
   <div v-if="buildOutput">
-    {{ subject }} finished after
+    <span class="font-semibold">{{ subject }}</span> finished after
     <span class="font-mono font-bold"> {{ formatDuration(buildOutput.runtime) }} </span>.
     <span v-if="buildOutput.exitStatus != null">
       {{ subject }} exited with status
@@ -10,7 +10,7 @@
     <span v-if="buildOutput.error !== undefined">
       Unfortunately, crow encountered an internal error.
     </span>
-    <Accordion type="multiple">
+    <Accordion type="multiple" class="ml-2">
       <AccordionItem value="error" v-if="buildOutput.error !== undefined">
         <AccordionTrigger>Internal error</AccordionTrigger>
         <AccordionContent>

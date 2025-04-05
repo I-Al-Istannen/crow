@@ -32,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ExecutingTest, FinishedTest } from '@/types.ts'
+import { type ExecutingTest, type FinishedTest, toExecutionStatus } from '@/types.ts'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import {
   LucideCheck,
@@ -57,7 +57,7 @@ const emit = defineEmits<{
 }>()
 
 function testType(test: FinishedTest | ExecutingTest) {
-  return 'output' in test ? test.output.type : test.status
+  return 'output' in test ? toExecutionStatus(test.output) : test.status
 }
 
 const handleTestClick = (test: FinishedTest) => {

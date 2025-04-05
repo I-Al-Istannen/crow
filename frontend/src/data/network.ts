@@ -23,6 +23,7 @@ import {
   type TeamInfo,
   TeamInfoSchema,
   type TestId,
+  type TestModifier,
   type TestWithTestTasting,
   TestWithTestTastingSchema,
   type WorkItem,
@@ -41,9 +42,9 @@ type RepoPatch = {
 }
 
 type TestPatch = {
-  input: string
   id: TestId
-  expectedOutput: string
+  compilerModifiers: TestModifier[]
+  binaryModifiers: TestModifier[]
   category: string
   ignoreTestTasting: boolean
 }
@@ -229,8 +230,8 @@ export async function fetchSetTest(test: TestPatch): Promise<SetTestResponse> {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      input: test.input,
-      expectedOutput: test.expectedOutput,
+      compilerModifiers: test.compilerModifiers,
+      binaryModifiers: test.binaryModifiers,
       category: test.category,
       ignoreTestTasting: test.ignoreTestTasting,
     }),

@@ -58,10 +58,25 @@ export const FinishedTaskInfoSchema = z.object({
   commitMessage: z.string(),
 })
 
+export const TestExecutionOutputSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('BinaryFailed'),
+    compilerOutput: ExecutionOutputSchema,
+    binaryOutput: ExecutionOutputSchema,
+  }),
+  z.object({ type: z.literal('CompilerFailed'), compilerOutput: ExecutionOutputSchema }),
+  z.object({ type: z.literal('Error'), outputSoFar: ExecutionOutputSchema }),
+  z.object({
+    type: z.literal('Success'),
+    compilerOutput: ExecutionOutputSchema,
+    binaryOutput: ExecutionOutputSchema,
+  }),
+])
+
 // Out of order due to dependencies
 export const FinishedTestSchema = z.object({
   testId: z.string(),
-  output: ExecutionOutputSchema,
+  output: TestExecutionOutputSchema,
 })
 
 export const FinishedCompilerTaskSchema = z.discriminatedUnion('type', [
@@ -176,15 +191,6 @@ export const ShowMyselfResponseSchema = z.object({
   team: TeamSchema.nullable(),
 })
 
-export const TestSchema = z.object({
-  id: TestIdSchema,
-  expectedOutput: z.string(),
-  input: z.string(),
-  owner: TeamIdSchema,
-  adminAuthored: z.boolean(),
-  category: z.string(),
-})
-
 export const TestModifierSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ExitCode'), code: z.number() }),
   z.object({ type: z.literal('ExpectedOutput'), output: z.string() }),
@@ -194,9 +200,18 @@ export const TestModifierSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ShouldSucceed') }),
 ])
 
+export const TestSchema = z.object({
+  id: TestIdSchema,
+  owner: TeamIdSchema,
+  category: z.string(),
+  compilerModifiers: z.array(TestModifierSchema),
+  binaryModifiers: z.array(TestModifierSchema),
+  adminAuthored: z.boolean(),
+})
+
 export const TestTastingResultSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('Success') }),
-  z.object({ type: z.literal('Failure'), output: ExecutionOutputSchema }),
+  z.object({ type: z.literal('Failure'), output: TestExecutionOutputSchema }),
 ])
 
 export const TestWithTestTastingSchema = TestSchema.merge(
@@ -206,7 +221,7 @@ export const TestWithTestTastingSchema = TestSchema.merge(
 )
 
 export const SetTestResponseSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('TastingFailed') }).merge(FinishedTestSchema),
+  z.object({ type: z.literal('TastingFailed'), output: TestExecutionOutputSchema }),
   z.object({ type: z.literal('TestAdded') }).merge(TestSchema),
 ])
 
@@ -257,6 +272,7 @@ export type TeamId = z.infer<typeof TeamIdSchema>
 export type TeamInfo = z.infer<typeof TeamInfoSchema>
 export type TeamIntegrationToken = z.infer<typeof TeamIntegrationTokenSchema>
 export type Test = z.infer<typeof TestSchema>
+export type TestExecutionOutput = z.infer<typeof TestExecutionOutputSchema>
 export type TestModifier = z.infer<typeof TestModifierSchema>
 export type TestWithTestTasting = z.infer<typeof TestWithTestTastingSchema>
 export type TestId = z.infer<typeof TestIdSchema>
@@ -265,3 +281,42 @@ export type User = z.infer<typeof UserSchema>
 export type UserId = z.infer<typeof UserIdSchema>
 export type RunnerWorkingOn = z.infer<typeof RunnerWorkingOnSchema>
 export type WorkItem = z.infer<typeof WorkItemSchema>
+
+export function toExecutionStatus(output: TestExecutionOutput): ExecutionExitStatus {
+  switch (output.type) {
+    case 'CompilerFailed':
+      return output.compilerOutput.type
+    case 'BinaryFailed':
+      return output.binaryOutput.type
+    case 'Error':
+      return output.outputSoFar.type
+    case 'Success':
+      return 'Success'
+  }
+}
+
+export function toCompilerOutput(output: TestExecutionOutput): ExecutionOutput | undefined {
+  switch (output.type) {
+    case 'CompilerFailed':
+      return output.compilerOutput
+    case 'BinaryFailed':
+      return output.compilerOutput
+    case 'Error':
+      return undefined
+    case 'Success':
+      return output.compilerOutput
+  }
+}
+
+export function toBinaryOutput(output: TestExecutionOutput): ExecutionOutput | undefined {
+  switch (output.type) {
+    case 'CompilerFailed':
+      return undefined
+    case 'BinaryFailed':
+      return output.binaryOutput
+    case 'Error':
+      return output.outputSoFar
+    case 'Success':
+      return output.binaryOutput
+  }
+}

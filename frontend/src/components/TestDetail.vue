@@ -16,17 +16,21 @@
           @test-clicked="failedTastingDialogOpen = true"
         />
       </div>
-      <div>
-        <div class="font-medium mb-2">Input</div>
-        <pre class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto ml-2">{{
-          test.input
-        }}</pre>
-      </div>
-      <div>
-        <div class="font-medium mb-2">Expected output</div>
-        <pre class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto ml-2">{{
-          test.expectedOutput
-        }}</pre>
+      <div v-if="test" class="grid grid-cols-1 lg:grid-cols-2 gap-4 p-1">
+        <div>
+          <span class="text-sm font-medium">Executing your compiler</span>
+          <TestModifierList
+            :value="test.compilerModifiers.map((val, key) => ({ ...val, key }))"
+            readonly
+          />
+        </div>
+        <div>
+          <span class="text-sm font-medium">Executing the compiled binary</span>
+          <TestModifierList
+            :value="test.binaryModifiers.map((val, key) => ({ ...val, key }))"
+            readonly
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -37,6 +41,7 @@ import type { FinishedTest, TestId } from '@/types.ts'
 import { computed, ref, toRefs } from 'vue'
 import FinishedTestDetailDialog from '@/components/FinishedTestDetailDialog.vue'
 import FinishedTestcaseSummaryIcon from '@/components/FinishedTestcaseSummaryIcon.vue'
+import TestModifierList from '@/components/ui/TestModifierList.vue'
 import { queryTest } from '@/data/network.ts'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
 

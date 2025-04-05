@@ -1,7 +1,11 @@
 <template>
   <div class="flex items-center gap-1 p-1 rounded-md justify-start">
     <LucideGripVertical class="h-5 flex-shrink-0 drag-handle cursor-grab" />
-    <Select v-model="modifierType">
+    <Select
+      :model-value="modifierType"
+      @update:model-value="update($event as string, stringArg, intArg)"
+      required
+    >
       <SelectTrigger class="max-w-[20ch] py-0 h-7 flex-shrink-1 md:flex-shrink-0 min-w-1">
         <SelectValue placeholder="Select a modifier" />
       </SelectTrigger>
@@ -19,14 +23,16 @@
     <Input
       type="text"
       :placeholder="argPlaceholderText"
-      v-model="stringArg"
+      :model-value="stringArg"
+      @update:model-value="update(modifierType, $event as string, intArg)"
       v-if="hasShortStringArg"
       class="py-0 h-7 min-w-1 text-ellipsis"
     />
     <Input
       type="number"
       :placeholder="argPlaceholderText"
-      v-model="intArg"
+      :model-value="intArg"
+      @update:model-value="update(modifierType, stringArg, $event as number)"
       v-if="hasIntArg"
       class="py-0 h-7 min-w-1"
     />
@@ -41,7 +47,8 @@
       </PopoverTrigger>
       <PopoverContent class="w-[70dvw] max-w-[120ch]">
         <Textarea
-          v-model="stringArg"
+          :model-value="stringArg"
+          @update:model-value="update(modifierType, $event as string, intArg)"
           class="font-mono whitespace-pre overflow-scroll max-h-[100dvh]"
           rows="10"
           :placeholder="argPlaceholderText"
@@ -62,7 +69,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { computed, ref, watch } from 'vue'
+import { computed, toRefs } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LucideGripVertical } from 'lucide-vue-next'
@@ -70,49 +77,52 @@ import { PopoverArrow } from 'reka-ui'
 import type { TestModifier } from '@/types.ts'
 import { Textarea } from '@/components/ui/textarea'
 
-const modifierType = ref<string>('ExpectedOutput')
-const stringArg = ref<string>('')
-const intArg = ref<number>(0)
+const props = defineProps<{
+  readonly?: boolean
+}>()
+const { readonly } = toRefs(props)
+const modifier = defineModel<TestModifier>('modifier', { required: true })
 
-const modifier = defineModel<TestModifier>('modifier')
-
-watch(
-  modifier,
-  (newMod) => {
-    if (newMod) {
-      modifierType.value = newMod.type
-      switch (newMod.type) {
-        case 'ProgramArgument':
-          stringArg.value = newMod.arg
-          break
-        case 'ExpectedOutput':
-          stringArg.value = newMod.output
-          break
-        case 'ProgramInput':
-          stringArg.value = newMod.input
-          break
-        case 'ExitCode':
-          intArg.value = newMod.code
-          break
-      }
-    }
-  },
-  { immediate: true },
+const modifierType = computed(() => modifier.value?.type ?? 'ShouldSucceed')
+const stringArg = computed(() => {
+  switch (modifier.value.type) {
+    case 'ProgramArgument':
+      return modifier.value.arg
+    case 'ExpectedOutput':
+      return modifier.value.output
+    case 'ProgramInput':
+      return modifier.value.input
+    default:
+      return ''
+  }
+})
+const intArg = computed(() => {
+  switch (modifier.value.type) {
+    case 'ExitCode':
+      return modifier.value.code
+    default:
+      return 0
+  }
+})
+const hasShortStringArg = computed(() => modifier.value.type === 'ProgramArgument')
+const hasLongStringArg = computed(
+  () => modifier.value.type === 'ExpectedOutput' || modifier.value.type === 'ProgramInput',
 )
+const hasIntArg = computed(() => modifier.value.type === 'ExitCode')
 
-watch([modifierType, stringArg, intArg], ([type, string, int]) => {
+function update(type: string, stringVal: string, intVal: number) {
   switch (type) {
     case 'ProgramArgument':
-      modifier.value = { type, arg: string }
+      modifier.value = { type, arg: stringVal }
       break
     case 'ExpectedOutput':
-      modifier.value = { type, output: string }
+      modifier.value = { type, output: stringVal }
       break
     case 'ProgramInput':
-      modifier.value = { type, input: string }
+      modifier.value = { type, input: stringVal }
       break
     case 'ExitCode':
-      modifier.value = { type, code: int }
+      modifier.value = { type, code: intVal }
       break
     case 'ShouldCrash':
       modifier.value = { type }
@@ -121,13 +131,7 @@ watch([modifierType, stringArg, intArg], ([type, string, int]) => {
       modifier.value = { type }
       break
   }
-})
-
-const hasShortStringArg = computed(() => modifierType.value === 'ProgramArgument')
-const hasLongStringArg = computed(
-  () => modifierType.value === 'ExpectedOutput' || modifierType.value === 'ProgramInput',
-)
-const hasIntArg = computed(() => modifierType.value === 'ExitCode')
+}
 
 const argPlaceholderText = computed(() => {
   switch (modifierType.value) {

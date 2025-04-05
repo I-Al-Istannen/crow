@@ -3,15 +3,14 @@ use crate::containers::{
     WaitForContainerError,
 };
 use crate::docker::ImageId;
-use crate::test_validation;
 use rayon::ThreadPool;
 use shared::{
     AbortedExecution, CompilerTask, CompilerTest, ExecutionOutput, FinishedCompilerTask,
     FinishedExecution, FinishedTaskInfo, FinishedTest, InternalError, RunnerUpdate,
+    TestExecutionOutput,
 };
 use snafu::{Location, Report, ResultExt, Snafu};
 use std::cell::RefCell;
-use std::path::Path;
 use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
 use std::sync::{mpsc, Arc};
@@ -139,13 +138,7 @@ fn execute_task_impl(
                 let _ = message_channel.send(RunnerUpdate::StartedTest {
                     test_id: test.test_id.clone(),
                 });
-                let res = container.run_test(
-                    &test.run_command,
-                    &test.input,
-                    Path::new("input.🦆"),
-                    test.timeout,
-                    aborted,
-                );
+                let res = container.run_test(&test, test.timeout, aborted);
                 let res = tx.send((test.clone(), res));
                 if let Err(e) = res {
                     error!(
@@ -162,31 +155,23 @@ fn execute_task_impl(
 
         let mut results = Vec::new();
         while let Ok((test, res)) = rx.recv() {
-            let output = match res {
-                Ok(res) => {
-                    let execution = FinishedExecution {
-                        stdout: res.stdout,
-                        stderr: res.stderr,
-                        runtime: res.runtime,
-                        exit_status: res.exit_status.code(),
-                    };
-                    test_validation::judge_output(&test, res.exit_status, execution)
-                }
-                Err(e) => test_run_error_to_output(
-                    start_monotonic,
-                    task.task_id.clone(),
-                    test.test_id.clone(),
-                    e,
-                ),
+            let result = match res {
+                Ok(res) => res,
+                Err(e) => TestExecutionOutput::Error {
+                    output_so_far: test_run_error_to_output(
+                        start_monotonic,
+                        task.task_id.clone(),
+                        test.test_id.clone(),
+                        e,
+                    ),
+                },
             };
-            let finished_test = FinishedTest {
+            let result = FinishedTest {
                 test_id: test.test_id,
-                output,
+                execution_output: result,
             };
-            results.push(finished_test.clone());
-            let _ = message_channel.send(RunnerUpdate::FinishedTest {
-                result: finished_test,
-            });
+            results.push(result.clone());
+            let _ = message_channel.send(RunnerUpdate::FinishedTest { result });
         }
         results
     });
@@ -311,7 +296,7 @@ pub fn run_test(
     test: CompilerTest,
     shutdown_requested: Arc<AtomicBool>,
     base_container: Rc<RefCell<Option<TaskContainer<Built>>>>,
-) -> ExecutionOutput {
+) -> TestExecutionOutput {
     let test_id = test.test_id.clone();
     let start = Instant::now();
     let res = run_test_impl(
@@ -333,10 +318,12 @@ pub fn run_test(
                 "Internal error while setting up test"
             );
 
-            ExecutionOutput::Error(InternalError {
-                runtime: start.elapsed(),
-                message: format!("Internal error while setting up test:\n{}", report),
-            })
+            TestExecutionOutput::Error {
+                output_so_far: ExecutionOutput::Error(InternalError {
+                    runtime: start.elapsed(),
+                    message: format!("Internal error while setting up test:\n{}", report),
+                }),
+            }
         }
     }
 }
@@ -347,7 +334,7 @@ fn run_test_impl(
     test: CompilerTest,
     shutdown_requested: Arc<AtomicBool>,
     base_container: Rc<RefCell<Option<TaskContainer<Built>>>>,
-) -> Result<ExecutionOutput, TaskRunError> {
+) -> Result<TestExecutionOutput, TaskRunError> {
     if base_container.borrow().is_none() {
         info!("Creating reference compiler container");
         // We have nothing really to do here, so we just use `true` as the builder.
@@ -365,36 +352,21 @@ fn run_test_impl(
     let base_container = base_container.as_ref().unwrap();
 
     let start = Instant::now();
-    let res = base_container.run_test(
-        &test.run_command,
-        &test.input,
-        Path::new("input.🦆"),
-        test.timeout,
-        shutdown_requested.clone(),
-    );
+    let res = base_container.run_test(&test, test.timeout, shutdown_requested.clone());
 
     let res = match res {
         Ok(res) => res,
         Err(e) => {
-            return Ok(test_run_error_to_output(
-                start,
-                task_id.to_string(),
-                test.test_id,
-                e,
-            ))
+            return Ok(TestExecutionOutput::Error {
+                output_so_far: test_run_error_to_output(
+                    start,
+                    task_id.to_string(),
+                    test.test_id,
+                    e,
+                ),
+            })
         }
     };
 
-    let execution = FinishedExecution {
-        stdout: res.stdout,
-        stderr: res.stderr,
-        runtime: res.runtime,
-        exit_status: res.exit_status.code(),
-    };
-
-    Ok(test_validation::judge_output(
-        &test,
-        res.exit_status,
-        execution,
-    ))
+    Ok(res)
 }

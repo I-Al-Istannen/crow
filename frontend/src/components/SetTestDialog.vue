@@ -13,7 +13,7 @@
         <DialogDescription>Share a test with the world and break some compilers</DialogDescription>
       </DialogHeader>
       <div class="overflow-hidden">
-        <form novalidate @submit="onSubmit" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <form novalidate @submit="onSubmit" class="grid grid-cols-1 lg:grid-cols-2 gap-4 p-1">
           <FormField v-slot="{ componentField }" name="id">
             <FormItem v-auto-animate class="flex-grow">
               <FormLabel class="text-sm font-medium">Name</FormLabel>
@@ -58,7 +58,7 @@
           </div>
           <div>
             <span class="text-sm font-medium">Executing the compiled binary</span>
-            <TestModifierList v-model:value="executionModifiers" class="ml-2" />
+            <TestModifierList v-model:value="binaryModifiers" class="ml-2" />
           </div>
           <FormField v-slot="{ value, handleChange }" type="checkbox" name="testTasting">
             <FormItem
@@ -165,7 +165,7 @@ const failedTestTasting = ref<FinishedTest | null>(null)
 const clickedTest = ref<FinishedTest | null>(null)
 const failedTastingDialogOpen = ref<boolean>(false)
 const compilerModifiers = ref<(TestModifier & { key: number })[]>([])
-const executionModifiers = ref<(TestModifier & { key: number })[]>([])
+const binaryModifiers = ref<(TestModifier & { key: number })[]>([])
 
 const dialogOpen = defineModel<boolean>('open')
 const props = defineProps<{
@@ -209,14 +209,6 @@ const form = useForm({
           (category) => categories.value?.includes(category),
           'Select a valid category: ' + categories.value?.join(', '),
         ),
-      input: z
-        .string()
-        .min(1, 'The input file to compile')
-        .max(150_000, 'Are you sure you need this much?'),
-      expectedOutput: z
-        .string()
-        .min(1, 'Some output would be nice')
-        .max(15_000, 'Are you sure you need this?'),
       testTasting: z.boolean(),
     }),
   ),
@@ -230,27 +222,29 @@ watch([dialogOpen, testToEdit], ([open, test]) => {
     editingExisting.value = true
     form.resetForm({
       values: {
-        input: test.input,
         id: test.id,
-        expectedOutput: test.expectedOutput,
         category: test.category,
         testTasting: true,
       },
     })
-    compilerModifiers.value = []
-    executionModifiers.value = []
+    compilerModifiers.value = test.compilerModifiers.map((value, key) => ({
+      ...value,
+      key,
+    }))
+    binaryModifiers.value = test.binaryModifiers.map((value, key) => ({
+      ...value,
+      key,
+    }))
   } else if (open) {
     form.resetForm({
       values: {
-        input: undefined,
         id: undefined,
-        expectedOutput: undefined,
         category: undefined,
         testTasting: true,
       },
     })
     compilerModifiers.value = []
-    executionModifiers.value = []
+    binaryModifiers.value = []
   }
   inDeletionProcess.value = false
 })
@@ -267,11 +261,11 @@ const idTaken = (id: TestId) => {
 
 const onSubmit = form.handleSubmit(async (values) => {
   const res = await mutateEditTest({
-    input: values.input,
     id: values.id,
-    expectedOutput: values.expectedOutput,
     category: values.category,
     ignoreTestTasting: !values.testTasting,
+    compilerModifiers: compilerModifiers.value,
+    binaryModifiers: binaryModifiers.value,
   })
 
   if (res.type == 'TestAdded') {
@@ -279,7 +273,7 @@ const onSubmit = form.handleSubmit(async (values) => {
     dialogOpen.value = false
   } else {
     toast.error('The test failed on the reference compiler')
-    failedTestTasting.value = res
+    failedTestTasting.value = { testId: values.id, output: res.output }
     form.setFieldError('testTasting', 'Failed on reference compiler. Details are on the right.')
   }
 })

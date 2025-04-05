@@ -3,7 +3,7 @@ use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
 use shared::{
     deserialize_system_time, serialize_system_time, ExecutionOutput, FinishedCompilerTask,
-    FinishedExecution, FinishedTest, RunnerId, RunnerInfo,
+    FinishedExecution, FinishedTest, RunnerId, RunnerInfo, TestExecutionOutput,
 };
 use snafu::{ensure, Location, Snafu};
 use std::collections::{HashMap, HashSet};
@@ -334,6 +334,15 @@ impl From<&ExecutionOutput> for ExecutionExitStatus {
     }
 }
 
+impl From<&TestExecutionOutput> for ExecutionExitStatus {
+    fn from(value: &TestExecutionOutput) -> Self {
+        value
+            .binary_output()
+            .unwrap_or(value.compiler_output())
+            .into()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum QueuedTaskStatus {
     Aborted,
@@ -347,16 +356,16 @@ pub enum QueuedTaskStatus {
 
 impl From<FinishedCompilerTask> for QueuedTaskStatus {
     fn from(value: FinishedCompilerTask) -> Self {
-        let outputs = match value {
+        let status: Vec<ExecutionExitStatus> = match value {
             FinishedCompilerTask::BuildFailed { build_output, .. } => {
-                vec![build_output]
+                vec![(&build_output).into()]
             }
-            FinishedCompilerTask::RanTests { tests, .. } => {
-                tests.into_iter().map(|it| it.output).collect()
-            }
+            FinishedCompilerTask::RanTests { tests, .. } => tests
+                .into_iter()
+                .map(|it| (&it.execution_output).into())
+                .collect(),
         };
 
-        let status: Vec<ExecutionExitStatus> = outputs.into_iter().map(|it| (&it).into()).collect();
         if status.iter().any(|it| *it == ExecutionExitStatus::Aborted) {
             return Self::Aborted;
         }

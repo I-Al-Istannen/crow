@@ -2,7 +2,7 @@ use crate::error::{Result, SqlxSnafu, WebError};
 use crate::types::{ExecutionExitStatus, FinishedCompilerTaskSummary, TaskId, TeamId};
 use shared::{
     AbortedExecution, ExecutionOutput, FinishedCompilerTask, FinishedExecution, FinishedTaskInfo,
-    FinishedTest, InternalError,
+    FinishedTest, InternalError, TestExecutionOutput, TestExecutionOutputType,
 };
 use snafu::{location, ResultExt};
 use sqlx::{query, Acquire, Sqlite, SqliteConnection};
@@ -52,13 +52,22 @@ pub(super) async fn add_finished_task(
             record_task(&mut con, result, start_time, end_time, &build_id).await?;
 
             for test in tests {
-                let test_exec_id = record_execution_output(&mut con, &test.output).await?;
+                let (compiler_exec_id, binary_exec_id) =
+                    record_test_execution(&mut con, &test.execution_output).await?;
+                let status = TestExecutionOutputType::from(&test.execution_output).to_string();
 
                 query!(
-                    "INSERT INTO TestResults (task_id, test_id, execution_id) VALUES (?, ?, ?)",
+                    r#"
+                    INSERT INTO TestResults
+                        (task_id, test_id, compiler_exec_id, binary_exec_id, status)
+                    VALUES
+                        (?, ?, ?, ?, ?)
+                    "#,
                     result.info().task_id,
                     test.test_id,
-                    test_exec_id
+                    compiler_exec_id,
+                    binary_exec_id,
+                    status
                 )
                 .execute(&mut *con)
                 .instrument(info_span!("sqlx_add_finished_insert_test"))
@@ -124,15 +133,10 @@ pub(super) async fn get_task(
         r#"
         SELECT
             test_id,
-            ExecutionResults.execution_id as "execution_id!",
-            stdout,
-            stderr,
-            error,
-            result,
-            duration_ms,
-            exit_code
+            compiler_exec_id as "compiler_exec_id!",
+            binary_exec_id,
+            status
         FROM TestResults
-        JOIN ExecutionResults ON TestResults.execution_id = ExecutionResults.execution_id
         WHERE task_id = ?"#,
         task_id
     )
@@ -144,8 +148,17 @@ pub(super) async fn get_task(
     let mut finished_tests = Vec::new();
     for test in tests {
         let test_id = test.test_id;
-        let output = get_execution(&mut con, &test.execution_id).await?;
-        finished_tests.push(FinishedTest { test_id, output })
+        let execution_output = get_test_execution(
+            &mut con,
+            &test.compiler_exec_id,
+            test.binary_exec_id,
+            test.status.parse().unwrap(),
+        )
+        .await?;
+        finished_tests.push(FinishedTest {
+            test_id,
+            execution_output,
+        })
     }
 
     Ok(FinishedCompilerTask::RanTests {
@@ -203,6 +216,22 @@ pub(super) async fn get_task_ids(con: &mut SqliteConnection) -> Result<Vec<TaskI
 }
 
 #[instrument(skip_all)]
+pub(super) async fn get_test_execution(
+    con: &mut SqliteConnection,
+    compiler_exec_id: &str,
+    binary_exec_id: Option<String>,
+    test_type: TestExecutionOutputType,
+) -> Result<TestExecutionOutput> {
+    let compiler_exec = get_execution(con, compiler_exec_id).await?;
+    let binary_exec = match binary_exec_id {
+        Some(id) => Some(get_execution(con, &id).await?),
+        None => None,
+    };
+
+    Ok(test_type.to_test_execution(compiler_exec, binary_exec))
+}
+
+#[instrument(skip_all)]
 async fn get_execution(con: &mut SqliteConnection, execution_id: &str) -> Result<ExecutionOutput> {
     let Some(execution) = fetch_execution(con, execution_id).await? else {
         return Err(WebError::not_found(location!()));
@@ -212,7 +241,7 @@ async fn get_execution(con: &mut SqliteConnection, execution_id: &str) -> Result
 }
 
 #[instrument(skip_all)]
-pub(super) async fn fetch_execution(
+async fn fetch_execution(
     con: &mut SqliteConnection,
     execution_id: &str,
 ) -> Result<Option<ExecutionOutput>> {
@@ -268,6 +297,20 @@ pub(super) async fn fetch_execution(
             exit_status: execution.exit_code,
         }),
     }))
+}
+
+#[instrument(skip_all)]
+pub(super) async fn record_test_execution(
+    con: &mut SqliteConnection,
+    e: &TestExecutionOutput,
+) -> Result<(String, Option<String>)> {
+    let compiler_exec_id = record_execution_output(con, e.compiler_output()).await?;
+    let binary_exec_id = match &e.binary_output() {
+        Some(output) => Some(record_execution_output(con, output).await?),
+        None => None,
+    };
+
+    Ok((compiler_exec_id, binary_exec_id))
 }
 
 #[instrument(skip_all)]
@@ -426,7 +469,7 @@ pub(super) async fn get_top_task_per_team(
         FROM (
             SELECT TestResults.task_id, COUNT(1) as passed_count
             FROM TestResults
-            JOIN ExecutionResults ER ON ER.execution_id = TestResults.execution_id
+            JOIN ExecutionResults ER ON ER.execution_id = TestResults.binary_exec_id
             WHERE ER.result = ?
             GROUP BY TestResults.task_id
         ) PASS_BY_TASK

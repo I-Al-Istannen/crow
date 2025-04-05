@@ -12,11 +12,12 @@ categories = [
 [execution]
 runner_token = "correct horse battery staple"
 build_command = ["sh", "-c", "echo 'Hello world!' && sleep 10"]
-test_command = ["sh", "-c", "echo 'Hello test!' && sleep 10"]
+test_command = ["sh", "-c", "echo 'Hello test!' && sleep 5"]
+compile_command = ["sh", "-c", "echo 'Hello test!' && sleep 5"]
 build_timeout = "5m"
 test_timeout = "10m"
 local_repo_path = "target/repos"
-reference_compiler_image = "alpine:latest"
+reference_compiler_image = "ubuntu:latest"
 
 [github]
 status_check_interval = "10s"

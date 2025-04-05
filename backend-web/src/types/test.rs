@@ -2,7 +2,7 @@ use crate::types::TeamId;
 use derive_more::{Display, From};
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
-use shared::{validate_test_id, ExecutionOutput};
+use shared::{validate_test_id, TestExecutionOutput, TestModifier};
 
 #[derive(Debug, Clone, Hash, From, PartialEq, Eq, Display, Serialize, sqlx::Type)]
 #[sqlx(transparent)]
@@ -25,12 +25,12 @@ impl<'de> Deserialize<'de> for TestId {
 #[serde(tag = "type")]
 pub enum TestTastingResult {
     Success,
-    Failure { output: ExecutionOutput },
+    Failure { output: TestExecutionOutput },
 }
 
-impl From<ExecutionOutput> for TestTastingResult {
-    fn from(output: ExecutionOutput) -> Self {
-        if matches!(output, ExecutionOutput::Success(_)) {
+impl From<TestExecutionOutput> for TestTastingResult {
+    fn from(output: TestExecutionOutput) -> Self {
+        if matches!(output, TestExecutionOutput::Success { .. }) {
             return Self::Success;
         }
         Self::Failure { output }
@@ -41,8 +41,8 @@ impl From<ExecutionOutput> for TestTastingResult {
 #[serde(rename_all = "camelCase")]
 pub struct Test {
     pub id: TestId,
-    pub expected_output: String,
-    pub input: String,
+    pub compiler_modifiers: Vec<TestModifier>,
+    pub binary_modifiers: Vec<TestModifier>,
     pub owner: TeamId,
     pub admin_authored: bool,
     pub category: String,

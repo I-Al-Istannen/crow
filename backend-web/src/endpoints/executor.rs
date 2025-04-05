@@ -197,9 +197,10 @@ pub async fn get_work(
         .map(|test| CompilerTest {
             test_id: test.id.to_string(),
             timeout: state.execution_config.test_timeout,
+            compile_command: state.execution_config.compile_command.clone(),
             run_command: state.execution_config.test_command.clone(),
-            expected_output: test.expected_output,
-            input: test.input,
+            binary_modifiers: test.binary_modifiers,
+            compiler_modifiers: test.compiler_modifiers,
         })
         .collect();
 
@@ -321,9 +322,10 @@ pub async fn get_test_tasting_work(
         test: CompilerTest {
             test_id: task.test.id.to_string(),
             timeout: state.execution_config.test_timeout,
+            compile_command: state.execution_config.compile_command,
             run_command: state.execution_config.test_command,
-            expected_output: task.test.expected_output,
-            input: task.test.input,
+            compiler_modifiers: task.test.compiler_modifiers,
+            binary_modifiers: task.test.binary_modifiers,
         },
         image_id,
     });

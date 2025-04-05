@@ -1,7 +1,7 @@
 use crate::error::{Result, SqlxSnafu, WebError};
-use crate::types::{ExecutionExitStatus, TeamId, Test, TestId, TestSummary, TestWithTasteTesting};
+use crate::types::{TeamId, Test, TestId, TestSummary, TestWithTasteTesting};
 use sha2::{Digest, Sha256};
-use shared::ExecutionOutput;
+use shared::{TestExecutionOutput, TestExecutionOutputType};
 use snafu::{location, ResultExt};
 use sqlx::{query, query_as, Acquire, Sqlite, SqliteConnection};
 use tracing::{info_span, instrument, Instrument};
@@ -10,13 +10,18 @@ use tracing::{info_span, instrument, Instrument};
 pub(super) async fn add_test(
     con: impl Acquire<'_, Database = Sqlite>,
     test: Test,
-    test_tasting: Option<ExecutionOutput>,
+    test_tasting: Option<TestExecutionOutput>,
 ) -> Result<Test> {
     let mut con = con.begin().await.context(SqlxSnafu)?;
 
+    let compiler_modifiers =
+        serde_json::to_string(&test.compiler_modifiers).expect("Unexpected json serialize error");
+    let binary_modifiers =
+        serde_json::to_string(&test.binary_modifiers).expect("Unexpected json serialize error");
+
     let mut hash = Sha256::new();
-    hash.update(test.expected_output.as_bytes());
-    hash.update(test.input.as_bytes());
+    hash.update(compiler_modifiers.as_bytes());
+    hash.update(binary_modifiers.as_bytes());
     hash.update(test.owner.to_string().as_bytes());
     hash.update([test.admin_authored as u8]);
     hash.update(test.category.as_bytes());
@@ -24,23 +29,23 @@ pub(super) async fn add_test(
 
     query!(
         r#"
-        INSERT INTO Tests 
-            (id, expected_output, input, owner, admin_authored, category, hash)
+        INSERT INTO Tests
+            (id, owner, category, compiler_modifiers, binary_modifiers, admin_authored, hash)
         VALUES
             (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT DO UPDATE SET
-            expected_output = excluded.expected_output,
-            input = excluded.input,
+            compiler_modifiers = excluded.compiler_modifiers,
+            binary_modifiers = excluded.binary_modifiers,
             admin_authored = excluded.admin_authored,
             category = excluded.category,
             hash = excluded.hash
         "#,
         test.id,
-        test.expected_output,
-        test.input,
         test.owner,
-        test.admin_authored,
         test.category,
+        compiler_modifiers,
+        binary_modifiers,
+        test.admin_authored,
         hash
     )
     .execute(&mut *con)
@@ -49,15 +54,24 @@ pub(super) async fn add_test(
     .context(SqlxSnafu)?;
 
     if let Some(output) = test_tasting {
-        let execution_id = super::task::record_execution_output(&mut con, &output).await?;
+        let (compiler_exec, test_exec) =
+            super::task::record_test_execution(&mut con, &output).await?;
+        let status = TestExecutionOutputType::from(&output).to_string();
         query!(
             r#"
-            INSERT INTO TestTastingResults (test_id, execution_id) VALUES (?, ?)
+            INSERT INTO TestTastingResults
+                (test_id, compiler_exec_id, binary_exec_id, status)
+            VALUES
+                (?, ?, ?, ?)
             ON CONFLICT DO UPDATE SET
-                execution_id = excluded.execution_id
+                compiler_exec_id = excluded.compiler_exec_id,
+                binary_exec_id = excluded.binary_exec_id,
+                status = excluded.status
             "#,
             test.id,
-            execution_id
+            compiler_exec,
+            test_exec,
+            status
         )
         .execute(&mut *con)
         .instrument(info_span!("sqlx_add_test_tasting"))
@@ -66,19 +80,20 @@ pub(super) async fn add_test(
     }
 
     let test = query_as!(
-        Test,
+        DbTest,
         r#"
         SELECT
             id as "id!: TestId",
-            expected_output,
-            input,
             owner as "owner!: TeamId",
-            admin_authored,
-            category
+            category,
+            compiler_modifiers,
+            binary_modifiers,
+            admin_authored
         FROM Tests
         WHERE id = ?"#,
         test.id
     )
+    .map(Test::from)
     .fetch_one(&mut *con)
     .instrument(info_span!("sqlx_add_get_test"))
     .await
@@ -92,18 +107,19 @@ pub(super) async fn add_test(
 #[instrument(skip_all)]
 pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>> {
     query_as!(
-        Test,
+        DbTest,
         r#"
         SELECT
             id as "id!: TestId",
-            expected_output,
-            input,
             owner as "owner!: TeamId",
-            admin_authored,
-            category
+            category,
+            compiler_modifiers,
+            binary_modifiers,
+            admin_authored
         FROM Tests
         "#
     )
+    .map(Test::from)
     .fetch_all(con)
     .instrument(info_span!("sqlx_get_tests"))
     .await
@@ -112,6 +128,7 @@ pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>> {
 
 #[instrument(skip_all)]
 pub(super) async fn get_tests_summaries(con: &mut SqliteConnection) -> Result<Vec<TestSummary>> {
+    let success_status = TestExecutionOutputType::Success.to_string();
     query_as!(
         TestSummary,
         r#"
@@ -122,14 +139,12 @@ pub(super) async fn get_tests_summaries(con: &mut SqliteConnection) -> Result<Ve
             Tests.admin_authored,
             Tests.category,
             Tests.hash,
-            (SELECT ER.result == ? FROM TestTastingResults TTR
-                JOIN ExecutionResults ER ON ER.execution_id = TTR.execution_id 
-                WHERE test_id = Tests.id
-            ) as "test_taste_success?: bool"
+            (SELECT status == ? FROM TestTastingResults WHERE test_id = Tests.id)
+                as "test_taste_success?: bool"
         FROM Tests
         JOIN Teams ON Tests.owner = Teams.id
         "#,
-        ExecutionExitStatus::Success
+        success_status
     )
     .fetch_all(con)
     .instrument(info_span!("sqlx_get_test_summaries"))
@@ -143,20 +158,21 @@ pub(super) async fn fetch_test(
     test_id: &TestId,
 ) -> Result<Option<Test>> {
     let test = query_as!(
-        Test,
+        DbTest,
         r#"
-        SELECT 
+        SELECT
             id as "id!: TestId",
-            expected_output,
-            input,
             owner as "owner!: TeamId",
-            admin_authored,
-            category
+            category,
+            compiler_modifiers,
+            binary_modifiers,
+            admin_authored
         FROM Tests
         WHERE id = ?
         "#,
         test_id
     )
+    .map(Test::from)
     .fetch_optional(con)
     .instrument(info_span!("sqlx_fetch_test"))
     .await
@@ -176,19 +192,25 @@ pub(super) async fn fetch_test_with_tasting(
         return Ok(None);
     };
 
-    let execution_id = query!(
-        "SELECT execution_id FROM TestTastingResults WHERE test_id = ?",
+    let taste_test_execution = query!(
+        "SELECT compiler_exec_id, binary_exec_id, status FROM TestTastingResults WHERE test_id = ?",
         test_id
     )
-    .map(|it| it.execution_id)
     .fetch_optional(&mut *con)
     .await
     .context(SqlxSnafu)?;
 
-    let test_tasting_result = match execution_id {
-        Some(execution_id) => super::task::fetch_execution(&mut con, &execution_id)
+    let test_tasting_result = match taste_test_execution {
+        Some(exec) => Some(
+            super::task::get_test_execution(
+                &mut con,
+                &exec.compiler_exec_id,
+                exec.binary_exec_id,
+                exec.status.parse().unwrap(),
+            )
             .await?
-            .map(|it| it.into()),
+            .into(),
+        ),
         None => None,
     };
 
@@ -211,4 +233,28 @@ pub(super) async fn delete_test(con: &mut SqliteConnection, test_id: &TestId) ->
     }
 
     Ok(())
+}
+
+struct DbTest {
+    id: TestId,
+    owner: TeamId,
+    category: String,
+    compiler_modifiers: String,
+    binary_modifiers: String,
+    admin_authored: bool,
+}
+
+impl From<DbTest> for Test {
+    fn from(value: DbTest) -> Self {
+        Self {
+            id: value.id,
+            owner: value.owner,
+            category: value.category,
+            compiler_modifiers: serde_json::from_str(&value.compiler_modifiers)
+                .expect("Unexpected json serialize error"),
+            binary_modifiers: serde_json::from_str(&value.binary_modifiers)
+                .expect("Unexpected json serialize error"),
+            admin_authored: value.admin_authored,
+        }
+    }
 }

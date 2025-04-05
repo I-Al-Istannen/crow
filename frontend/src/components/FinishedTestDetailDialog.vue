@@ -6,11 +6,24 @@
           Test details for <span class="italic">{{ test.testId }}</span>
         </DialogTitle>
         <DialogDescription>
-          <span :class="[statusColor(test.output.type, 'text')]">{{ test.output.type }}</span>
+          <span :class="[statusColor(toExecutionStatus(test.output), 'text')]">
+            {{ test.output.type }}
+          </span>
         </DialogDescription>
       </DialogHeader>
-      <div>
-        <ProcessOutputDisplay :output="test.output" :of-whom="ofWhom" subject="The test" />
+      <div class="space-y-8">
+        <ProcessOutputDisplay
+          v-if="compilerOutput"
+          :output="compilerOutput"
+          :of-whom="ofWhom"
+          subject="Compilation"
+        />
+        <ProcessOutputDisplay
+          v-if="binaryOutput"
+          :output="binaryOutput"
+          :of-whom="ofWhom"
+          subject="Execution"
+        />
       </div>
     </DialogContent>
   </Dialog>
@@ -24,10 +37,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { FinishedTest } from '@/types.ts'
+import { type FinishedTest, toBinaryOutput, toCompilerOutput, toExecutionStatus } from '@/types.ts'
+import { computed, toRefs } from 'vue'
 import ProcessOutputDisplay from '@/components/ProcessOutputDisplay.vue'
 import { statusColor } from '@/lib/utils.ts'
-import { toRefs } from 'vue'
 
 const dialogOpen = defineModel<boolean>('dialogOpen')
 
@@ -37,4 +50,9 @@ const props = defineProps<{
 }>()
 
 const { test, ofWhom } = toRefs(props)
+
+const compilerOutput = computed(() =>
+  test.value ? toCompilerOutput(test.value.output) : undefined,
+)
+const binaryOutput = computed(() => (test.value ? toBinaryOutput(test.value.output) : undefined))
 </script>

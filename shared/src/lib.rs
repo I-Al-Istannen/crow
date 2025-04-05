@@ -1,6 +1,9 @@
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use std::time::{Duration, SystemTime};
+
+pub mod judge;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,9 +27,66 @@ pub struct CompilerTest {
     #[serde(serialize_with = "serialize_duration")]
     #[serde(deserialize_with = "deserialize_duration")]
     pub timeout: Duration,
+    pub compile_command: Vec<String>,
     pub run_command: Vec<String>,
-    pub expected_output: String,
-    pub input: String,
+    pub compiler_modifiers: Vec<TestModifier>,
+    pub binary_modifiers: Vec<TestModifier>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum TestModifier {
+    ExitCode { code: u32 },
+    ExpectedOutput { output: String },
+    ProgramArgument { arg: String },
+    ProgramInput { input: String },
+    ShouldCrash,
+    ShouldSucceed,
+}
+
+pub trait TestModifierExt {
+    fn full_input(&self) -> String;
+    fn full_output(&self) -> Option<String>;
+    fn all_arguments(&self) -> Vec<String>;
+}
+
+impl TestModifierExt for &[TestModifier] {
+    fn full_input(&self) -> String {
+        self.iter()
+            .filter_map(|it| match it {
+                TestModifier::ProgramInput { input } => Some(input),
+                _ => None,
+            })
+            .map(|it| it.to_string())
+            .collect()
+    }
+
+    fn full_output(&self) -> Option<String> {
+        let output = self
+            .iter()
+            .filter_map(|it| match it {
+                TestModifier::ExpectedOutput { output } => Some(output),
+                _ => None,
+            })
+            .map(|it| it.to_string())
+            .collect::<Vec<String>>();
+
+        if output.is_empty() {
+            None
+        } else {
+            Some(output.into_iter().collect())
+        }
+    }
+
+    fn all_arguments(&self) -> Vec<String> {
+        self.iter()
+            .filter_map(|it| match it {
+                TestModifier::ProgramArgument { arg } => Some(arg),
+                _ => None,
+            })
+            .map(|it| it.to_string())
+            .collect()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -81,10 +141,109 @@ impl ExecutionOutput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(tag = "type")]
+pub enum TestExecutionOutput {
+    #[serde(rename_all = "camelCase")]
+    BinaryFailed {
+        compiler_output: ExecutionOutput,
+        binary_output: ExecutionOutput,
+    },
+    #[serde(rename_all = "camelCase")]
+    CompilerFailed { compiler_output: ExecutionOutput },
+    #[serde(rename_all = "camelCase")]
+    Error { output_so_far: ExecutionOutput },
+    #[serde(rename_all = "camelCase")]
+    Success {
+        compiler_output: ExecutionOutput,
+        binary_output: ExecutionOutput,
+    },
+}
+
+impl TestExecutionOutput {
+    pub fn compiler_output(&self) -> &ExecutionOutput {
+        match self {
+            Self::BinaryFailed {
+                compiler_output, ..
+            } => compiler_output,
+            Self::CompilerFailed {
+                compiler_output, ..
+            } => compiler_output,
+            Self::Error { output_so_far, .. } => output_so_far,
+            Self::Success {
+                compiler_output, ..
+            } => compiler_output,
+        }
+    }
+
+    pub fn binary_output(&self) -> Option<&ExecutionOutput> {
+        match self {
+            Self::BinaryFailed { binary_output, .. } => Some(binary_output),
+            Self::Success { binary_output, .. } => Some(binary_output),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Display, Serialize, Deserialize)]
+pub enum TestExecutionOutputType {
+    CompilerFailed,
+    BinaryFailed,
+    Success,
+    Error,
+}
+
+impl TestExecutionOutputType {
+    pub fn to_test_execution(
+        &self,
+        compiler_output: ExecutionOutput,
+        binary_output: Option<ExecutionOutput>,
+    ) -> TestExecutionOutput {
+        match self {
+            Self::BinaryFailed => TestExecutionOutput::BinaryFailed {
+                compiler_output,
+                binary_output: binary_output.expect("Binary output is required for BinaryFailed"),
+            },
+            Self::CompilerFailed => TestExecutionOutput::CompilerFailed { compiler_output },
+            Self::Error => TestExecutionOutput::Error {
+                output_so_far: compiler_output,
+            },
+            Self::Success => TestExecutionOutput::Success {
+                compiler_output,
+                binary_output: binary_output.expect("Binary output is required for Success"),
+            },
+        }
+    }
+}
+
+impl From<&TestExecutionOutput> for TestExecutionOutputType {
+    fn from(value: &TestExecutionOutput) -> Self {
+        match value {
+            TestExecutionOutput::BinaryFailed { .. } => Self::BinaryFailed,
+            TestExecutionOutput::CompilerFailed { .. } => Self::CompilerFailed,
+            TestExecutionOutput::Error { .. } => Self::Error,
+            TestExecutionOutput::Success { .. } => Self::Success,
+        }
+    }
+}
+
+impl FromStr for TestExecutionOutputType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "CompilerFailed" => Ok(Self::CompilerFailed),
+            "BinaryFailed" => Ok(Self::BinaryFailed),
+            "Success" => Ok(Self::Success),
+            "Error" => Ok(Self::Error),
+            _ => Err(format!("Invalid TestExecutionOutputType: `{}`", s)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FinishedTest {
     pub test_id: String,
-    pub output: ExecutionOutput,
+    pub execution_output: TestExecutionOutput,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -185,7 +344,7 @@ pub struct RunnerWorkTasteTestResponse {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunnerWorkTasteTestDone {
-    pub output: ExecutionOutput,
+    pub output: TestExecutionOutput,
     pub id: TestTasteId,
 }
 

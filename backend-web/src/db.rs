@@ -15,7 +15,7 @@ use crate::types::{
     FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, TeamInfo, TeamIntegrationToken, Test,
     TestId, TestSummary, TestWithTasteTesting, UserId, WorkItem,
 };
-use shared::{ExecutionOutput, FinishedCompilerTask};
+use shared::{FinishedCompilerTask, TestExecutionOutput};
 use snafu::ResultExt;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
 use sqlx::{query, Pool, Sqlite, SqlitePool};
@@ -194,7 +194,7 @@ impl Database {
     pub async fn add_test(
         &self,
         test: Test,
-        test_tasting: Option<ExecutionOutput>,
+        test_tasting: Option<TestExecutionOutput>,
     ) -> Result<Test> {
         let pool = self.write_lock().await;
         test::add_test(

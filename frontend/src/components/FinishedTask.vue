@@ -29,6 +29,7 @@ import {
   type FinishedCompilerTaskSummary,
   type FinishedTestSummary,
   type TaskId,
+  toExecutionStatus,
 } from '@/types.ts'
 import BuildOutputOverview from '@/components/BuildOutputOverview.vue'
 import TaskQuickOverview from '@/components/TaskQuickOverview.vue'
@@ -60,7 +61,7 @@ function toSummary(task: FinishedCompilerTask): FinishedCompilerTaskSummary {
     }
   }
   const tests: FinishedTestSummary[] = task.tests.map((test) => ({
-    output: test.output.type,
+    output: toExecutionStatus(test.output),
     testId: test.testId,
   }))
 

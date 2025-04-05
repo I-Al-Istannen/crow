@@ -1,6 +1,7 @@
 use crate::docker::{export_image_unpacked, DockerError, ImageId};
 use derive_more::{Display, From};
 use serde::Deserialize;
+use shared::{CompilerTest, TestExecutionOutput};
 use snafu::{ensure, IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::fs::create_dir;
 use std::io::Read;
@@ -10,7 +11,8 @@ use std::process::{Child, ChildStderr, ChildStdout, Command, ExitStatus, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::{fs, io, thread};
+use std::{env, fs, io, thread};
+use std::thread::sleep;
 use tempfile::{TempDir, TempPath};
 use tracing::{debug, error, warn};
 use uuid::Uuid;
@@ -162,15 +164,17 @@ pub enum TestRunError {
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display(
-        "Could not write input file to `{}`({}) at {location}",
-        path_in_container.display(),
-        path.display()
-    ))]
-    WriteInput {
-        path_in_container: PathBuf,
-        path: PathBuf,
-        source: io::Error,
+    #[snafu(display("Could not pass test into container via stdin at {location}"))]
+    PassInputToContainerDriver {
+        source: serde_json::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Driver returned invalid json `{json}` with stderr\n`{stderr}` at {location}"))]
+    DriverInvalidJson {
+        json: String,
+        stderr: String,
+        source: serde_json::Error,
         #[snafu(implicit)]
         location: Location,
     },
@@ -283,14 +287,6 @@ impl ContainerConfig {
 
         Ok(root)
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct TestRunResult {
-    pub stdout: String,
-    pub stderr: String,
-    pub exit_status: ExitStatus,
-    pub runtime: Duration,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, From, Display)]
@@ -445,12 +441,10 @@ impl TaskContainer<Started> {
 impl TaskContainer<Built> {
     pub fn run_test(
         &self,
-        args: &[String],
-        input: &str,
-        input_path: &Path,
+        test: &CompilerTest,
         timeout: Duration,
         aborted: Arc<AtomicBool>,
-    ) -> Result<TestRunResult, TestRunError> {
+    ) -> Result<TestExecutionOutput, TestRunError> {
         if !self.data.exit_status.success() {
             return Err(BaseNotBuiltSnafu {
                 exit_status: self.data.exit_status,
@@ -464,16 +458,16 @@ impl TaskContainer<Built> {
         let rootfs = &self.rootfs;
 
         let container_root = ContainerConfig::OverlayRootfs
-            .apply_to_workdir(rootfs, workdir.path(), args)
+            .apply_to_workdir(
+                rootfs,
+                workdir.path(),
+               &["/executor".to_string(), "driver".to_string()],
+            )
             .context(ConfigApplySnafu)
             .context(CreationSnafu)?;
 
-        fs::write(container_root.join(input_path), input).context(WriteInputSnafu {
-            path_in_container: container_root.join(input_path),
-            path: input_path,
-        })?;
         fs::copy(
-            std::env::current_exe().context(FindOwnExecutableSnafu)?,
+            env::current_exe().context(FindOwnExecutableSnafu)?,
             container_root.join("executor"),
         )
         .context(CopyExecutorToContainerSnafu)?;
@@ -482,6 +476,9 @@ impl TaskContainer<Built> {
 
         let mut process =
             start_container(workdir.path(), &container_id).context(ExecutionStartSnafu)?;
+
+        serde_json::to_writer(process.stdin.take().unwrap(), test)
+            .context(PassInputToContainerDriverSnafu)?;
 
         let res = wait_for_container(
             aborted,
@@ -500,7 +497,7 @@ impl TaskContainer<Built> {
             );
         }
 
-        let (stdout, stderr, result, runtime) = res.context(ExecutionSnafu)?;
+        let (stdout, stderr, result, _) = res.context(ExecutionSnafu)?;
 
         if !result.success()
             && stderr.trim().lines().count() == 1
@@ -517,12 +514,7 @@ impl TaskContainer<Built> {
             .into_error(NoneError));
         }
 
-        Ok(TestRunResult {
-            stdout,
-            stderr,
-            exit_status: result,
-            runtime,
-        })
+        serde_json::from_str(&stdout).context(DriverInvalidJsonSnafu { json: stdout, stderr })
     }
 }
 
@@ -556,7 +548,7 @@ fn start_container(workdir: &Path, container_id: &ContainerId) -> io::Result<Chi
         .current_dir(workdir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .stdin(Stdio::null())
+        .stdin(Stdio::piped())
         .spawn()
 }
 

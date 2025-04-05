@@ -13,7 +13,7 @@ impl From<FinishedTest> for FinishedTestSummary {
     fn from(value: FinishedTest) -> Self {
         Self {
             test_id: value.test_id.into(),
-            output: (&value.output).into(),
+            output: (&value.execution_output).into(),
         }
     }
 }

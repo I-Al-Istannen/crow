@@ -4,7 +4,7 @@ use crate::error::{Result, WebError};
 use crate::types::{AppState, Test, TestId, TestSummary, TestWithTasteTesting};
 use axum::extract::State;
 use serde::{Deserialize, Serialize};
-use shared::{ExecutionOutput, FinishedTest};
+use shared::{TestExecutionOutput, TestModifier};
 use snafu::location;
 use tracing::{debug, instrument};
 
@@ -42,22 +42,21 @@ pub async fn set_test(
 
     let test = Test {
         id: test_id,
-        expected_output: payload.expected_output,
-        input: payload.input,
         owner: claims.team.clone(),
         admin_authored: claims.is_admin(),
         category: payload.category,
+        compiler_modifiers: payload.compiler_modifiers,
+        binary_modifiers: payload.binary_modifiers,
     };
 
     // Let the reference compiler taste it first
     let taste_testing_result = do_test_tasting(&state, &test).await?;
 
     if let Some(result) = &taste_testing_result {
-        if !matches!(result, ExecutionOutput::Success(_)) && !payload.ignore_test_tasting {
-            return Ok(Json(SetTestResponse::TastingFailed(FinishedTest {
-                test_id: test.id.to_string(),
+        if !matches!(result, TestExecutionOutput::Success { .. }) && !payload.ignore_test_tasting {
+            return Ok(Json(SetTestResponse::TastingFailed {
                 output: result.clone(),
-            })));
+            }));
         }
     }
 
@@ -66,7 +65,7 @@ pub async fn set_test(
     )))
 }
 
-async fn do_test_tasting(state: &AppState, test: &Test) -> Result<Option<ExecutionOutput>> {
+async fn do_test_tasting(state: &AppState, test: &Test) -> Result<Option<TestExecutionOutput>> {
     if !state.execution_config.tasting_disabled() {
         let taste_result = state.test_tasting.lock().unwrap().add_tasting(test.clone());
         let taste_result = match taste_result.await {
@@ -121,8 +120,8 @@ pub async fn delete_test(
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AddTestPayload {
-    pub expected_output: String,
-    pub input: String,
+    pub compiler_modifiers: Vec<TestModifier>,
+    pub binary_modifiers: Vec<TestModifier>,
     pub category: String,
     pub ignore_test_tasting: bool,
 }
@@ -138,5 +137,5 @@ pub struct ListTestsResponse {
 #[serde(tag = "type")]
 pub enum SetTestResponse {
     TestAdded(Test),
-    TastingFailed(FinishedTest),
+    TastingFailed { output: TestExecutionOutput },
 }

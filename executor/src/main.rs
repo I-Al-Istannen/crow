@@ -4,6 +4,7 @@
 #![allow(unsafe_code)]
 
 use crate::containers::{ContainerCreateError, TestRunError, WaitForContainerError};
+use crate::mode_driver::run_driver;
 use crate::mode_executor::{run_executor, CliExecutorArgs};
 use clap::builder::styling::AnsiColor;
 use clap::builder::Styles;
@@ -15,9 +16,9 @@ use tracing_subscriber::util::SubscriberInitExt;
 
 mod containers;
 mod docker;
+mod mode_driver;
 mod mode_executor;
 mod task_executor;
-mod test_validation;
 
 #[derive(Debug, Snafu)]
 pub enum AnyError {
@@ -59,6 +60,12 @@ pub enum AnyError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display("Could not finish driver execution at {location}"))]
+    Driver {
+        source: mode_driver::DriverError,
+        #[snafu(implicit)]
+        location: Location,
+    },
 }
 
 // noinspection DuplicatedCode
@@ -82,8 +89,10 @@ struct CliArgs {
 
 #[derive(Subcommand, Debug)]
 enum CliCommand {
-    /// Runs the executor fetching tasks from the server and executing them
+    /// Runs the executor fetching tasks from the server and executing them.
     Executor(CliExecutorArgs),
+    /// Runs the in-container driver, compiling your program, executing and judging it.
+    Driver,
 }
 
 struct Endpoints {
@@ -126,6 +135,7 @@ fn main() -> Report<AnyError> {
 
         match args.subcommand {
             CliCommand::Executor(args) => run_executor(args),
+            CliCommand::Driver => run_driver(),
         }
     })
 }

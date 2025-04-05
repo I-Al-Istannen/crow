@@ -3,13 +3,15 @@
     <div ref="parentRef" class="space-y-1">
       <div v-for="entry in draggingModifiers" :key="entry.key" class="flex items-center">
         <TestModifierSelect
+          :readonly="readonly"
           :modifier="entry"
-          @update:modifier="Object.assign(entry, $event)"
+          @update:modifier="!readonly && Object.assign(entry, $event)"
           class="flex-grow overflow-hidden min-w-1 hover:bg-gray-50"
         />
         <Button
-          variant="ghost"
+          v-if="!readonly"
           @click.prevent.stop="removeModifier(entry.key)"
+          variant="ghost"
           size="icon"
           class="flex-shrink-0"
         >
@@ -17,7 +19,13 @@
         </Button>
       </div>
     </div>
-    <Button @click.prevent.stop="addNewModifier" variant="ghost" size="sm" class="pl-2">
+    <Button
+      v-if="!readonly"
+      @click.prevent.stop="addNewModifier"
+      variant="ghost"
+      size="sm"
+      class="pl-2"
+    >
       <LucidePlus />
       Add modifier
     </Button>
@@ -39,15 +47,16 @@ const modifierKeyCounter = ref(0)
 
 const props = defineProps<{
   value: KeyedTestModifier[]
+  readonly?: boolean
 }>()
-const { value: passedInModifiers } = toRefs(props)
+const { value: passedInModifiers, readonly } = toRefs(props)
 const emit = defineEmits<{
   'update:value': [modifiers: KeyedTestModifier[]]
 }>()
 
 const [parentRef, draggingModifiers] = useDragAndDrop<KeyedTestModifier>([], {
-  sortable: true,
-  dragHandle: '.drag-handle',
+  sortable: !readonly.value,
+  dragHandle: readonly.value ? '.i-do-not-exist' : '.drag-handle',
   dropZoneClass: 'saturate-0 opacity-20',
   onSort: (event) => {
     const data = event as unknown as SortEventData<KeyedTestModifier>
@@ -55,9 +64,14 @@ const [parentRef, draggingModifiers] = useDragAndDrop<KeyedTestModifier>([], {
   },
 })
 
-watch(passedInModifiers, (newModifiers) => {
-  draggingModifiers.value = newModifiers
-})
+watch(
+  passedInModifiers,
+  (newModifiers) => {
+    modifierKeyCounter.value += newModifiers.length
+    draggingModifiers.value = newModifiers
+  },
+  { immediate: true },
+)
 
 function addNewModifier() {
   emit('update:value', [
