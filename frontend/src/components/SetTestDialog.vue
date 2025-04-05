@@ -4,86 +4,67 @@
     <DialogTrigger @click.stop>
       <slot />
     </DialogTrigger>
-    <DialogContent class="max-w-[60dvw] max-h-[80dvh] overflow-y-auto">
+    <DialogContent
+      class="max-w-[98dvw] md:max-w-[90dvw] lg:max-w-[80dvw] xl:max-w-[70dvw] max-h-[80dvh] overflow-y-auto"
+    >
       <DialogHeader>
         <DialogTitle v-if="editingExisting">Edit a test</DialogTitle>
         <DialogTitle v-else>Create a new test</DialogTitle>
         <DialogDescription>Share a test with the world and break some compilers</DialogDescription>
       </DialogHeader>
-      <div>
-        <form novalidate @submit="onSubmit" class="space-y-4">
-          <div class="flex gap-2 items-start flex-wrap">
-            <FormField v-slot="{ componentField }" name="id">
-              <FormItem v-auto-animate class="flex-grow">
-                <FormLabel class="text-sm font-medium">Name</FormLabel>
+      <div class="overflow-hidden">
+        <form novalidate @submit="onSubmit" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <FormField v-slot="{ componentField }" name="id">
+            <FormItem v-auto-animate class="flex-grow">
+              <FormLabel class="text-sm font-medium">Name</FormLabel>
+              <FormControl>
+                <Input
+                  :disabled="!!testToEdit"
+                  type="text"
+                  placeholder="Well hello compiler-friends"
+                  v-bind="componentField"
+                />
+              </FormControl>
+              <FormDescription>A unique identifier for your test</FormDescription>
+              <FormMessage />
+            </FormItem>
+          </FormField>
+          <FormField v-slot="{ componentField }" name="category">
+            <FormItem v-auto-animate class="flex-grow">
+              <FormLabel class="text-sm font-medium">Category</FormLabel>
+              <Select v-bind="componentField">
                 <FormControl>
-                  <Input
-                    :disabled="!!testToEdit"
-                    type="text"
-                    placeholder="Well hello compiler-friends"
-                    v-bind="componentField"
-                  />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
                 </FormControl>
-                <FormDescription>A unique identifier for your test</FormDescription>
-                <FormMessage />
-              </FormItem>
-            </FormField>
-            <FormField v-slot="{ componentField }" name="category">
-              <FormItem v-auto-animate class="flex-grow">
-                <FormLabel class="text-sm font-medium">Category</FormLabel>
-                <Select v-bind="componentField">
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a category" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectGroup v-if="categories">
-                      <SelectItem v-for="category in categories" :key="category" :value="category">
-                        {{ category }}
-                      </SelectItem>
-                    </SelectGroup>
-                    <SelectGroup v-else>
-                      <SelectItem value="loading" :disabled="true">Loading...</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                <FormDescription>The category your test belongs to</FormDescription>
-              </FormItem>
-            </FormField>
+                <SelectContent>
+                  <SelectGroup v-if="categories">
+                    <SelectItem v-for="category in categories" :key="category" :value="category">
+                      {{ category }}
+                    </SelectItem>
+                  </SelectGroup>
+                  <SelectGroup v-else>
+                    <SelectItem value="loading" :disabled="true">Loading...</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <FormDescription>The category your test belongs to</FormDescription>
+            </FormItem>
+          </FormField>
+          <div>
+            <span class="text-sm font-medium">Executing your compiler</span>
+            <TestModifierList v-model:value="compilerModifiers" class="ml-2" />
           </div>
-          <FormField v-slot="{ componentField }" name="input">
-            <FormItem v-auto-animate>
-              <FormLabel class="text-sm font-medium">Input</FormLabel>
-              <FormControl>
-                <Textarea
-                  v-bind="componentField"
-                  class="font-mono whitespace-pre"
-                  placeholder="Input..."
-                />
-              </FormControl>
-              <FormDescription>
-                The contents of the input file your compiler receives
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          </FormField>
-          <FormField v-slot="{ componentField }" name="expectedOutput">
-            <FormItem v-auto-animate>
-              <FormLabel class="text-sm font-medium">Expected output</FormLabel>
-              <FormControl>
-                <Textarea
-                  v-bind="componentField"
-                  class="font-mono whitespace-pre"
-                  placeholder="Output..."
-                />
-              </FormControl>
-              <FormDescription>The output your test should produce</FormDescription>
-              <FormMessage />
-            </FormItem>
-          </FormField>
+          <div>
+            <span class="text-sm font-medium">Executing the compiled binary</span>
+            <TestModifierList v-model:value="executionModifiers" class="ml-2" />
+          </div>
           <FormField v-slot="{ value, handleChange }" type="checkbox" name="testTasting">
-            <FormItem class="flex flex-row items-start gap-x-3 space-y-0" v-auto-animate>
+            <FormItem
+              class="flex flex-row items-start gap-x-3 space-y-0 lg:col-span-2"
+              v-auto-animate
+            >
               <FormControl>
                 <Checkbox :model-value="value" @update:model-value="handleChange" />
               </FormControl>
@@ -109,7 +90,7 @@
               </div>
             </FormItem>
           </FormField>
-          <div class="flex items-center">
+          <div class="flex items-center col-start-1">
             <Button type="submit" :disabled="mutationPending">
               <LoaderCircle class="animate-spin mr-2 -ml-2" v-show="editPending" />
               Submit
@@ -142,7 +123,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import type { FinishedTest, Test, TestId } from '@/types.ts'
+import { type FinishedTest, type Test, type TestId, type TestModifier } from '@/types.ts'
 import {
   FormControl,
   FormDescription,
@@ -167,7 +148,7 @@ import FinishedTestDetailDialog from '@/components/FinishedTestDetailDialog.vue'
 import FinishedTestcaseSummaryIcon from '@/components/FinishedTestcaseSummaryIcon.vue'
 import { Input } from '@/components/ui/input'
 import { LoaderCircle } from 'lucide-vue-next'
-import { Textarea } from '@/components/ui/textarea'
+import TestModifierList from '@/components/ui/TestModifierList.vue'
 import { storeToRefs } from 'pinia'
 import { toTypedSchema } from '@vee-validate/zod'
 import { toast } from 'vue-sonner'
@@ -183,6 +164,8 @@ const editingExisting = ref(false)
 const failedTestTasting = ref<FinishedTest | null>(null)
 const clickedTest = ref<FinishedTest | null>(null)
 const failedTastingDialogOpen = ref<boolean>(false)
+const compilerModifiers = ref<(TestModifier & { key: number })[]>([])
+const executionModifiers = ref<(TestModifier & { key: number })[]>([])
 
 const dialogOpen = defineModel<boolean>('open')
 const props = defineProps<{
@@ -254,6 +237,8 @@ watch([dialogOpen, testToEdit], ([open, test]) => {
         testTasting: true,
       },
     })
+    compilerModifiers.value = []
+    executionModifiers.value = []
   } else if (open) {
     form.resetForm({
       values: {
@@ -264,6 +249,8 @@ watch([dialogOpen, testToEdit], ([open, test]) => {
         testTasting: true,
       },
     })
+    compilerModifiers.value = []
+    executionModifiers.value = []
   }
   inDeletionProcess.value = false
 })

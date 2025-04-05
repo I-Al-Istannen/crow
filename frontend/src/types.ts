@@ -185,6 +185,15 @@ export const TestSchema = z.object({
   category: z.string(),
 })
 
+export const TestModifierSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('ExitCode'), code: z.number() }),
+  z.object({ type: z.literal('ExpectedOutput'), output: z.string() }),
+  z.object({ type: z.literal('ProgramArgument'), arg: z.string() }),
+  z.object({ type: z.literal('ProgramInput'), input: z.string() }),
+  z.object({ type: z.literal('ShouldCrash') }),
+  z.object({ type: z.literal('ShouldSucceed') }),
+])
+
 export const TestTastingResultSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('Success') }),
   z.object({ type: z.literal('Failure'), output: ExecutionOutputSchema }),
@@ -248,6 +257,7 @@ export type TeamId = z.infer<typeof TeamIdSchema>
 export type TeamInfo = z.infer<typeof TeamInfoSchema>
 export type TeamIntegrationToken = z.infer<typeof TeamIntegrationTokenSchema>
 export type Test = z.infer<typeof TestSchema>
+export type TestModifier = z.infer<typeof TestModifierSchema>
 export type TestWithTestTasting = z.infer<typeof TestWithTestTastingSchema>
 export type TestId = z.infer<typeof TestIdSchema>
 export type TestSummary = z.infer<typeof TestSummarySchema>
