@@ -25,7 +25,7 @@ pub fn judge_output(
 
     let mut problems = Vec::new();
 
-    let expected_output = modifiers.full_output();
+    let expected_output = (&modifiers).full_output();
     if let Some(expected_output) = expected_output {
         if let Some(problem) = judge_program_output(&execution, expected_output) {
             problems.push(problem);

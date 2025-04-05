@@ -1,6 +1,8 @@
 use crate::{AnyError, DriverSnafu};
 use shared::judge::judge_output;
-use shared::{CompilerTest, ExecutionOutput, FinishedExecution, TestExecutionOutput};
+use shared::{
+    CompilerTest, ExecutionOutput, FinishedExecution, TestExecutionOutput, TestModifierExt,
+};
 use snafu::{Location, ResultExt, Snafu};
 use std::io::stdin;
 use std::process::{Command, Output};
@@ -44,10 +46,14 @@ pub fn run_driver() -> Result<(), AnyError> {
 fn run() -> Result<TestExecutionOutput, DriverError> {
     let test: CompilerTest = serde_json::from_reader(stdin()).unwrap();
 
+    // TODO: Provide input somehow.
+
     // Run the compiler
+    let mut compiler_commands = test.compile_command[1..].to_vec();
+    compiler_commands.extend(test.compiler_modifiers.as_slice().all_arguments());
     let run_start = Instant::now();
     let compiler_output = Command::new(&test.compile_command[0])
-        .args(&test.compile_command[1..])
+        .args(&compiler_commands)
         .output()
         .context(CompilerInvocationSnafu)?;
 
@@ -62,9 +68,11 @@ fn run() -> Result<TestExecutionOutput, DriverError> {
     }
 
     // Run the test
+    let mut run_commands = test.run_command[1..].to_vec();
+    run_commands.extend(test.binary_modifiers.as_slice().all_arguments());
     let run_start = Instant::now();
     let test_output = Command::new(&test.run_command[0])
-        .args(&test.run_command[1..])
+        .args(&run_commands)
         .output()
         .context(BinaryInvocationSnafu)?;
 

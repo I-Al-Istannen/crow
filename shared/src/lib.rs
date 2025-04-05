@@ -1,5 +1,6 @@
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
+use std::borrow::Borrow;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 
@@ -50,9 +51,10 @@ pub trait TestModifierExt {
     fn all_arguments(&self) -> Vec<String>;
 }
 
-impl TestModifierExt for &[TestModifier] {
+impl<'a, T: Borrow<&'a [TestModifier]>> TestModifierExt for T {
     fn full_input(&self) -> String {
-        self.iter()
+        self.borrow()
+            .iter()
             .filter_map(|it| match it {
                 TestModifier::ProgramInput { input } => Some(input),
                 _ => None,
@@ -63,6 +65,7 @@ impl TestModifierExt for &[TestModifier] {
 
     fn full_output(&self) -> Option<String> {
         let output = self
+            .borrow()
             .iter()
             .filter_map(|it| match it {
                 TestModifier::ExpectedOutput { output } => Some(output),
@@ -79,7 +82,8 @@ impl TestModifierExt for &[TestModifier] {
     }
 
     fn all_arguments(&self) -> Vec<String> {
-        self.iter()
+        self.borrow()
+            .iter()
             .filter_map(|it| match it {
                 TestModifier::ProgramArgument { arg } => Some(arg),
                 _ => None,

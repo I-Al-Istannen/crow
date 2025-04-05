@@ -12,7 +12,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::{env, fs, io, thread};
-use std::thread::sleep;
 use tempfile::{TempDir, TempPath};
 use tracing::{debug, error, warn};
 use uuid::Uuid;
@@ -170,7 +169,9 @@ pub enum TestRunError {
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("Driver returned invalid json `{json}` with stderr\n`{stderr}` at {location}"))]
+    #[snafu(display(
+        "Driver returned invalid json `{json}` with stderr\n`{stderr}` at {location}"
+    ))]
     DriverInvalidJson {
         json: String,
         stderr: String,
@@ -461,7 +462,7 @@ impl TaskContainer<Built> {
             .apply_to_workdir(
                 rootfs,
                 workdir.path(),
-               &["/executor".to_string(), "driver".to_string()],
+                &["/executor".to_string(), "driver".to_string()],
             )
             .context(ConfigApplySnafu)
             .context(CreationSnafu)?;
@@ -514,7 +515,10 @@ impl TaskContainer<Built> {
             .into_error(NoneError));
         }
 
-        serde_json::from_str(&stdout).context(DriverInvalidJsonSnafu { json: stdout, stderr })
+        serde_json::from_str(&stdout).context(DriverInvalidJsonSnafu {
+            json: stdout,
+            stderr,
+        })
     }
 }
 
