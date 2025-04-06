@@ -4,7 +4,7 @@
 #![allow(unsafe_code)]
 
 use crate::containers::{ContainerCreateError, TestRunError, WaitForContainerError};
-use crate::mode_driver::run_driver;
+use crate::mode_driver::{run_driver, DriverError};
 use crate::mode_executor::{run_executor, CliExecutorArgs};
 use clap::builder::styling::AnsiColor;
 use clap::builder::Styles;
@@ -62,7 +62,7 @@ pub enum AnyError {
     },
     #[snafu(display("Could not finish driver execution at {location}"))]
     Driver {
-        source: mode_driver::DriverError,
+        source: DriverError,
         #[snafu(implicit)]
         location: Location,
     },

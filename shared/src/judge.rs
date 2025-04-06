@@ -141,10 +141,14 @@ fn judge_program_should_crash(exit_status: ExitStatus) -> Option<JudgeProblem> {
             })
         }
     } else {
+        let exit_code = exit_status
+            .code()
+            .map(|it| format!(" It exited with code `{it}`."))
+            .unwrap_or("".to_string());
         Some(JudgeProblem {
-            message:
-                "Program should have crashed with a signal, but wasn't killed by a signal at all :/"
-                    .to_string(),
+            message: format!(
+                "Program should have crashed with a signal, but wasn't killed by a signal at all.{exit_code}"
+            )
         })
     }
 }
