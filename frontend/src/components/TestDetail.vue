@@ -1,8 +1,8 @@
 <template>
   <div v-auto-animate>
-    <span v-if="isFetching">Loading test data...</span>
-    <span v-if="isFetched && test === null">Test not found</span>
-    <div v-if="test && !isFetching" class="border p-2 mx-2 rounded flex flex-col gap-2">
+    <span v-if="isLoading">Loading test data...</span>
+    <span v-if="isLoaded && test === null">Test not found</span>
+    <div v-if="test && !isLoading" class="border p-2 mx-2 rounded flex flex-col gap-2">
       <div v-if="testTastingError">
         <div class="font-medium mb-2">Test tasting</div>
         <FinishedTestDetailDialog
@@ -52,7 +52,7 @@ const props = defineProps<{
 }>()
 const { testId } = toRefs(props)
 
-const { data: test, isFetched, isFetching } = queryTest(testId.value)
+const { data: test, isLoaded, isLoading } = queryTest(testId.value)
 
 const testTastingError = computed<FinishedTest | null>(() => {
   if (test.value?.testTastingResult?.type !== 'Failure') {
