@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { AccordionContent, type AccordionContentProps } from 'reka-ui'
-import { type HTMLAttributes, computed, ref } from 'vue'
+import { computed, type HTMLAttributes, ref } from 'vue'
 import { useMutationObserver, useResizeObserver } from '@vueuse/core'
 import { cn } from '@/lib/utils'
 
@@ -30,10 +30,13 @@ useMutationObserver(
 )
 
 useResizeObserver(contentDiv, () => {
+  // restart animation
+  element.value!.classList.remove('data-[state=open]:animate-accordion-down')
   element.value!.style.setProperty(
     '--reka-collapsible-content-height',
     `${contentDiv.value!.clientHeight}px`,
   )
+  element.value!.classList.add('data-[state=open]:animate-accordion-down')
 })
 </script>
 
