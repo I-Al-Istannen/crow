@@ -2,7 +2,7 @@
   <div>
     <Toaster :rich-colors="true" position="top-center" class="pointer-events-auto" />
     <NavBar />
-    <div v-if="isFetching" class="h-1 w-full bg-gradient-primary" />
+    <div v-if="isFetching" class="h-1 w-full absolute bg-gradient-primary" />
     <RouterView v-if="route.name === 'oidc-callback' || accountReady" />
     <AccountNotReadyView v-else />
   </div>
