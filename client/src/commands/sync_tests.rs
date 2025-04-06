@@ -1,12 +1,13 @@
-use crate::context::{CliContext, CliContextError, Test};
+use crate::context::{CliContext, CliContextError, Test, TestDetail};
 use crate::error::{ContextSnafu, CrowClientError, SyncTestsSnafu};
-use crate::util::st;
+use crate::formats::{from_markdown, to_markdown, FormatError};
+use crate::util::{infer_test_metadata_from_path, st};
 use clap::Args;
 use console::style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
 use sha2::{Digest, Sha256};
-use snafu::{ensure, IntoError, Location, NoneError, Report, ResultExt, Snafu};
+use snafu::{ensure, location, IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -70,40 +71,19 @@ pub enum SyncTestsError {
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("Could not read test input file `{}` at {location}", input.display()))]
-    ReadInput {
-        input: PathBuf,
-        source: std::io::Error,
-        #[snafu(implicit)]
-        location: Location,
-    },
-    #[snafu(display("Could not read test expected file `{}` at {location}", expected.display()))]
-    ReadExpected {
-        expected: PathBuf,
-        source: std::io::Error,
-        #[snafu(implicit)]
-        location: Location,
-    },
-    #[snafu(display("Could not read meta file `{}` at {location}", meta_file.display()))]
-    ReadMeta {
-        meta_file: PathBuf,
-        source: std::io::Error,
-        #[snafu(implicit)]
-        location: Location,
-    },
-    #[snafu(display("The meta file `{}` is invalid at {location}", meta_file.display()))]
-    MetaMalformed {
-        meta_file: PathBuf,
-        source: serde_json::Error,
-        #[snafu(implicit)]
-        location: Location,
-    },
     #[snafu(display(
-        "Test id in meta file (`{test_id}`) does not match file name (`{file_name}`) at {location}"
-    ))]
-    TestMetaNameMismatch {
-        test_id: String,
-        file_name: String,
+        "Could not infer test metadata for `{}` with `{msg}` at {location}", path.display())
+    )]
+    InferTestMeta {
+        path: PathBuf,
+        msg: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not parse test file `{}` at {location}", input.display()))]
+    ParseTest {
+        input: PathBuf,
+        source: FormatError,
         #[snafu(implicit)]
         location: Location,
     },
@@ -154,6 +134,12 @@ pub struct CliSyncTestsArgs {
     commit_changes: bool,
 }
 
+#[derive(Debug)]
+pub struct FullTest {
+    pub test: Test,
+    pub detail: TestDetail,
+}
+
 pub fn command_sync_tests(
     args: CliSyncTestsArgs,
     ctx: CliContext,
@@ -197,12 +183,14 @@ pub fn command_sync_tests(
         }
     }
 
-    let inconsistent = get_locally_inconsistent_tests(&test_dir, &local)
+    let inconsistent = get_locally_inconsistent_tests(&local)
         .context(SyncTestsSnafu)?
         .into_iter()
-        .filter(|test| {
+        .filter(|local| {
             remote.tests.iter().any(|remote| {
-                remote.id == test.id && remote.category == test.category && remote.hash == test.hash
+                remote.id == local.test.id
+                    && remote.category == local.test.category
+                    && remote.hash == local.test.hash
             })
         })
         .collect::<Vec<_>>();
@@ -214,7 +202,16 @@ pub fn command_sync_tests(
             if inconsistent.len() == 1 { "" } else { "s" }
         );
         for test in &inconsistent {
-            download_remote_test(&test_dir, test, &ctx).context(SyncTestsSnafu)?;
+            let id = &test.test.id;
+            let category = &test.test.category;
+            let remote_test = remote
+                .tests
+                .iter()
+                .find(|remote| &remote.id == id && &remote.category == category);
+
+            if let Some(test) = remote_test {
+                download_remote_test(&test_dir, test, &ctx).context(SyncTestsSnafu)?;
+            }
         }
     }
 
@@ -293,7 +290,7 @@ fn run_git_command(test_dir: &Path, command: &[&str]) -> Result<(), SyncTestsErr
     Ok(())
 }
 
-pub fn get_local_tests(test_dir: &Path) -> Result<Vec<Test>, SyncTestsError> {
+pub fn get_local_tests(test_dir: &Path) -> Result<Vec<FullTest>, SyncTestsError> {
     if !test_dir.exists() {
         create_test_dir(test_dir)?;
         initialize_git_repo(test_dir)?;
@@ -375,31 +372,20 @@ fn initialize_git_repo(test_dir: &Path) -> Result<(), SyncTestsError> {
     Ok(())
 }
 
-fn parse_test(category: &str, test_file: &Path) -> Result<Test, SyncTestsError> {
-    let meta_file = test_file.with_extension("crow-test.meta");
-    let meta = std::fs::read_to_string(&meta_file).context(ReadMetaSnafu {
-        meta_file: meta_file.clone(),
-    })?;
+fn parse_test(category: &str, test_file: &Path) -> Result<FullTest, SyncTestsError> {
+    let (_, name) =
+        infer_test_metadata_from_path(test_file).map_err(|msg| SyncTestsError::InferTestMeta {
+            path: test_file.to_path_buf(),
+            msg,
+            location: location!(),
+        })?;
 
-    let mut test: Test = serde_json::from_str(&meta).context(MetaMalformedSnafu {
-        meta_file: meta_file.clone(),
-    })?;
-    test.category = category.to_string();
+    let (test, detail) =
+        from_markdown(test_file, category.to_string(), name).context(ParseTestSnafu {
+            input: test_file.to_path_buf(),
+        })?;
 
-    // Verify the file name
-    let file_name = test_file
-        .file_stem()
-        .and_then(|it| it.to_str())
-        .unwrap_or("n/a");
-    ensure!(
-        test.id == file_name,
-        TestMetaNameMismatchSnafu {
-            test_id: test.id.clone(),
-            file_name: file_name.to_string(),
-        }
-    );
-
-    Ok(test)
+    Ok(FullTest { test, detail })
 }
 
 fn create_category_dirs(test_dir: &Path, categories: &[String]) -> Result<(), SyncTestsError> {
@@ -437,79 +423,62 @@ fn download_remote_test(
         })?;
 
     let test_path = test_dir.join(format!("{}.crow-test", test.id));
-    let meta_path = test_dir.join(format!("{}.crow-test.meta", test.id));
-    let expected_path = test_dir.join(format!("{}.crow-test.expected", test.id));
 
-    std::fs::write(test_path, &detail.input).context(WriteTestSnafu {
-        test_id: test.id.clone(),
-    })?;
-    std::fs::write(expected_path, &detail.expected_output).context(WriteTestSnafu {
-        test_id: test.id.clone(),
-    })?;
-    std::fs::write(
-        meta_path,
-        serde_json::to_string_pretty(test).expect("test should serialize"),
-    )
-    .context(WriteTestSnafu {
+    std::fs::write(test_path, to_markdown(test, &detail)).context(WriteTestSnafu {
         test_id: test.id.clone(),
     })?;
 
     Ok(())
 }
 
-fn get_remote_only_tests<'a>(remote: &'a [Test], local: &[Test]) -> Vec<&'a Test> {
+fn get_remote_only_tests<'a>(remote: &'a [Test], local: &[FullTest]) -> Vec<&'a Test> {
     remote
         .iter()
         .filter(|remote| {
             !local
                 .iter()
-                .any(|local| remote.id == local.id && remote.category == local.category)
+                .any(|local| remote.id == local.test.id && remote.category == local.test.category)
         })
         .collect()
 }
 
-fn get_remote_changed_tests<'a>(remote: &'a [Test], local: &[Test]) -> Vec<&'a Test> {
+fn get_remote_changed_tests<'a>(remote: &'a [Test], local: &[FullTest]) -> Vec<&'a Test> {
     remote
         .iter()
         .filter(|remote| {
             local
                 .iter()
-                .find(|local| remote.id == local.id && remote.category == local.category)
-                .map(|local| local.hash != remote.hash)
+                .find(|local| remote.id == local.test.id && remote.category == local.test.category)
+                .map(|local| local.test.hash != remote.hash)
                 .unwrap_or(false)
         })
         .collect()
 }
 
-fn get_locally_inconsistent_tests<'a>(
-    test_dir: &'_ Path,
-    local: &'a [Test],
-) -> Result<Vec<&'a Test>, SyncTestsError> {
+fn get_locally_inconsistent_tests(
+    local_tests: &[FullTest],
+) -> Result<Vec<&FullTest>, SyncTestsError> {
     let mut inconsistent = Vec::new();
 
-    for test in local {
-        let expected_hash = &test.hash;
+    for local in local_tests {
+        let test = &local.test;
+        let detail = &local.detail;
 
-        let input = test.path_input(test_dir);
-        if !input.exists() {
-            continue;
-        }
-        let input = std::fs::read_to_string(&input).context(ReadInputSnafu { input })?;
+        let compiler_modifiers = serde_json::to_string(&detail.compiler_modifiers)
+            .expect("Unexpected json serialize error");
+        let binary_modifiers = serde_json::to_string(&detail.binary_modifiers)
+            .expect("Unexpected json serialize error");
 
-        let expected = test.path_expected(test_dir);
-        let expected =
-            std::fs::read_to_string(&expected).context(ReadExpectedSnafu { expected })?;
+        let mut hash = Sha256::new();
+        hash.update(compiler_modifiers.as_bytes());
+        hash.update(binary_modifiers.as_bytes());
+        hash.update(test.creator_id.to_string().as_bytes());
+        hash.update([test.admin_authored as u8]);
+        hash.update(test.category.as_bytes());
+        let actual_hash = format!("{:x}", hash.finalize());
 
-        let mut actual_hash = Sha256::new();
-        actual_hash.update(expected.as_bytes());
-        actual_hash.update(input.as_bytes());
-        actual_hash.update(test.creator_id.to_string().as_bytes());
-        actual_hash.update([test.admin_authored as u8]);
-        actual_hash.update(test.category.as_bytes());
-        let actual_hash = format!("{:x}", actual_hash.finalize());
-
-        if expected_hash != &actual_hash {
-            inconsistent.push(test);
+        if local.test.hash != actual_hash {
+            inconsistent.push(local);
         }
     }
 

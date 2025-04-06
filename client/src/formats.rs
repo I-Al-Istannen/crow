@@ -1,0 +1,370 @@
+use crate::context::{Test, TestDetail};
+use indexmap::IndexMap;
+use markdown::mdast::{Code, Text};
+use markdown::{mdast, ParseOptions};
+use mdast::{Heading, Node, Root};
+use shared::TestModifier;
+use snafu::{ensure, location, IntoError, Location, NoneError, ResultExt, Snafu};
+use std::fmt::{Display, Formatter};
+use std::path::{Path, PathBuf};
+
+#[derive(Debug, Snafu)]
+pub enum FormatError {
+    #[snafu(display("Could not read file `{}` at {location}", path.display()))]
+    FileRead {
+        path: PathBuf,
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Found duplicate heading `{heading}` at {location}"))]
+    DuplicateHeading {
+        heading: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not parse test modifier `{message}` at {location}"))]
+    MalformedModifier {
+        message: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Missing section `{section}` at {location}"))]
+    MissingSection {
+        section: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Missing value for key `{key}` at {location}"))]
+    MissingValue {
+        key: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum Keys {
+    CompilerModifiers,
+    BinaryModifiers,
+    Meta,
+    Hash,
+    Creator,
+    AdminAuthored,
+}
+
+impl Display for Keys {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::CompilerModifiers => write!(f, "Executing your compiler"),
+            Self::BinaryModifiers => write!(f, "Executing the compiled binary"),
+            Self::Meta => write!(f, "Meta"),
+            Self::Hash => write!(f, "Hash"),
+            Self::Creator => write!(f, "Creator"),
+            Self::AdminAuthored => write!(f, "Admin Authored"),
+        }
+    }
+}
+
+pub fn from_markdown(
+    path: &Path,
+    category: String,
+    id: String,
+) -> Result<(Test, TestDetail), FormatError> {
+    let file = std::fs::read_to_string(path).context(FileReadSnafu {
+        path: path.to_path_buf(),
+    })?;
+    let file = markdown::to_mdast(&file, &ParseOptions::default()).unwrap();
+    let nodes_to_process = file.children().unwrap_or(&Vec::new()).clone();
+
+    let mut nodes = associate_to_headings(nodes_to_process)?;
+
+    let compiler_modifiers =
+        extract_modifiers(extract_heading(Keys::CompilerModifiers, &mut nodes)?)?;
+    let binary_modifiers = extract_modifiers(extract_heading(Keys::BinaryModifiers, &mut nodes)?)?;
+
+    let mut meta = extract_key_values(extract_heading(Keys::Meta, &mut nodes)?, |_| true)?;
+    let hash = extract_value(Keys::Hash, &mut meta)?;
+    let creator_id = extract_value(Keys::Creator, &mut meta)?;
+    let admin_authored = extract_value(Keys::AdminAuthored, &mut meta)?
+        .parse::<bool>()
+        .map_err(|e| {
+            MalformedModifierSnafu {
+                message: format!("Could not parse admin authored: {e}"),
+            }
+            .into_error(NoneError)
+        })?;
+
+    let test = Test {
+        id,
+        creator_id,
+        hash,
+        category,
+        admin_authored,
+    };
+    let test_detail = TestDetail {
+        compiler_modifiers,
+        binary_modifiers,
+    };
+    Ok((test, test_detail))
+}
+
+fn associate_to_headings(nodes: Vec<Node>) -> Result<IndexMap<String, Vec<Node>>, FormatError> {
+    let mut result = IndexMap::new();
+    let mut current_batch = Vec::new();
+    let mut current_heading = None;
+
+    for node in nodes {
+        if let Node::Heading(Heading {
+            depth: 1, children, ..
+        }) = &node
+        {
+            if let Some(current_heading) = current_heading {
+                result.insert(current_heading, current_batch);
+            }
+
+            let header = children.iter().map(|it| it.to_string()).collect::<String>();
+            let header = header.trim();
+
+            ensure!(
+                !result.contains_key(header),
+                DuplicateHeadingSnafu {
+                    heading: header.to_string()
+                }
+            );
+            current_batch = vec![];
+            current_heading = Some(header.to_string());
+        }
+
+        if let Node::Code(Code { .. }) = &node {
+            current_batch.push(node);
+        } else if let Node::Heading(Heading { depth: 2, .. }) = &node {
+            current_batch.push(node);
+        }
+    }
+
+    if let Some(current_heading) = current_heading {
+        result.insert(current_heading, current_batch);
+    }
+
+    Ok(result)
+}
+
+fn extract_heading(
+    name: Keys,
+    nodes: &mut IndexMap<String, Vec<Node>>,
+) -> Result<Vec<Node>, FormatError> {
+    match nodes.shift_remove(&name.to_string()) {
+        Some(nodes) => Ok(nodes),
+        None => Err(FormatError::MissingSection {
+            section: name.to_string(),
+            location: location!(),
+        }),
+    }
+}
+
+fn extract_modifiers(nodes: Vec<Node>) -> Result<Vec<TestModifier>, FormatError> {
+    let mut result = vec![];
+
+    for (name, val) in extract_key_values(nodes, modifier_requires_argument)? {
+        result.push(modifier_from_string(&name, val)?);
+    }
+
+    Ok(result)
+}
+
+fn extract_key_values(
+    mut nodes: Vec<Node>,
+    needs_value: impl Fn(&str) -> bool,
+) -> Result<IndexMap<String, Option<String>>, FormatError> {
+    let mut result: IndexMap<String, Option<String>> = IndexMap::new();
+
+    while !nodes.is_empty() {
+        let node = nodes.remove(0);
+        if let Node::Heading(Heading {
+            depth: 2, children, ..
+        }) = node
+        {
+            let header = children.iter().map(|it| it.to_string()).collect::<String>();
+            let header = header.trim().to_string();
+
+            if !needs_value(&header) {
+                result.insert(header, None);
+                continue;
+            }
+
+            while !nodes.is_empty() {
+                let node = nodes.remove(0);
+                if let Node::Code(Code { value, .. }) = node {
+                    result.insert(header, Some(value));
+                    break;
+                }
+            }
+        }
+    }
+
+    Ok(result)
+}
+
+fn extract_value(
+    name: Keys,
+    values: &mut IndexMap<String, Option<String>>,
+) -> Result<String, FormatError> {
+    match values.shift_remove(&name.to_string()).flatten() {
+        Some(value) => Ok(value),
+        None => Err(FormatError::MissingValue {
+            key: name.to_string(),
+            location: location!(),
+        }),
+    }
+}
+
+pub fn to_markdown(test: &Test, detail: &TestDetail) -> String {
+    let mut root = Root {
+        children: vec![],
+        position: None,
+    };
+
+    root.children.extend(modifiers_to_markdown(
+        Keys::CompilerModifiers.to_string(),
+        &detail.compiler_modifiers,
+    ));
+    root.children.extend(modifiers_to_markdown(
+        Keys::BinaryModifiers.to_string(),
+        &detail.binary_modifiers,
+    ));
+
+    root.children
+        .extend(write_heading_value(&Keys::Meta.to_string(), 1, None));
+
+    root.children.extend(write_heading_value(
+        &Keys::Creator.to_string(),
+        2,
+        Some(test.creator_id.clone()),
+    ));
+
+    root.children.extend(write_heading_value(
+        &Keys::AdminAuthored.to_string(),
+        2,
+        Some(test.admin_authored.to_string()),
+    ));
+
+    root.children.extend(write_heading_value(
+        &Keys::Hash.to_string(),
+        2,
+        Some(test.hash.clone()),
+    ));
+
+    mdast_util_to_markdown::to_markdown(&Node::Root(root)).expect("Could convert to markdown")
+}
+
+fn modifiers_to_markdown(heading: String, modifiers: &[TestModifier]) -> Vec<Node> {
+    let mut result = write_heading_value(&heading, 1, None);
+
+    result.extend(modifiers.iter().flat_map(modifier_to_markdown));
+
+    result
+}
+
+fn modifier_to_markdown(modifier: &TestModifier) -> Vec<Node> {
+    let modifier_type = modifier_type_to_string(modifier).to_string();
+
+    write_heading_value(&modifier_type, 2, modifier_arg_to_string(modifier))
+}
+
+fn modifier_type_to_string(modifier: &TestModifier) -> &str {
+    match modifier {
+        TestModifier::ExitCode { .. } => "ExitCode",
+        TestModifier::ExpectedOutput { .. } => "ExpectedOutput",
+        TestModifier::ProgramArgument { .. } => "ProgramArgument",
+        TestModifier::ProgramInput { .. } => "ProgramInput",
+        TestModifier::ShouldCrash => "ShouldCrash",
+        TestModifier::ShouldSucceed => "ShouldSucceed",
+    }
+}
+
+fn modifier_arg_to_string(modifier: &TestModifier) -> Option<String> {
+    match modifier {
+        TestModifier::ExitCode { code } => Some(code.to_string()),
+        TestModifier::ExpectedOutput { output } => Some(output.to_string()),
+        TestModifier::ProgramArgument { arg } => Some(arg.to_string()),
+        TestModifier::ProgramInput { input } => Some(input.to_string()),
+        TestModifier::ShouldCrash => None,
+        TestModifier::ShouldSucceed => None,
+    }
+}
+
+fn write_heading_value(heading: &str, depth: u8, value: Option<String>) -> Vec<Node> {
+    let mut res = vec![Node::Heading(Heading {
+        depth,
+        children: vec![Node::Text(Text {
+            value: heading.to_string(),
+            position: None,
+        })],
+        position: None,
+    })];
+
+    if let Some(value) = value {
+        res.push(Node::Code(Code {
+            value,
+            lang: None,
+            meta: None,
+            position: None,
+        }));
+    }
+
+    res
+}
+
+fn modifier_from_string(type_: &str, value: Option<String>) -> Result<TestModifier, FormatError> {
+    let res = match type_ {
+        "ExitCode" => {
+            let value = require_value("ExitCode", value)?;
+            TestModifier::ExitCode {
+                code: value.parse::<u32>().map_err(|e| {
+                    MalformedModifierSnafu {
+                        message: format!("Could not parse exit code: {e}"),
+                    }
+                    .into_error(NoneError)
+                })?,
+            }
+        }
+        "ExpectedOutput" => TestModifier::ExpectedOutput {
+            output: require_value("ExpectedOutput", value)?,
+        },
+        "ProgramArgument" => TestModifier::ProgramArgument {
+            arg: require_value("ProgramArgument", value)?,
+        },
+        "ProgramInput" => TestModifier::ProgramInput {
+            input: require_value("ProgramInput", value)?,
+        },
+        "ShouldCrash" => TestModifier::ShouldCrash,
+        "ShouldSucceed" => TestModifier::ShouldSucceed,
+        _ => {
+            return Err(FormatError::MalformedModifier {
+                message: format!("Unknown modifier type `{type_}`"),
+                location: location!(),
+            })
+        }
+    };
+
+    Ok(res)
+}
+
+fn require_value(name: &str, maybe_value: Option<String>) -> Result<String, FormatError> {
+    maybe_value
+        .ok_or_else(|| {
+            MalformedModifierSnafu {
+                message: format!("Modifier `{name}` requires a value"),
+            }
+            .into_error(NoneError)
+        })
+        .map(|v| v.to_string())
+}
+
+fn modifier_requires_argument(modifier: &str) -> bool {
+    matches!(
+        modifier,
+        "ExitCode" | "ExpectedOutput" | "ProgramArgument" | "ProgramInput"
+    )
+}

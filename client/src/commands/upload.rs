@@ -1,13 +1,13 @@
 use crate::context::{CliContext, CliContextError, RemoteTests, SetTestResponse};
 use crate::error::{ContextSnafu, CrowClientError, UploadTestSnafu};
-use crate::util::color_diff;
+use crate::util::{infer_test_metadata_from_path, print_test_output};
 use clap::Args;
 use console::style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, FuzzySelect, Input, Select};
-use shared::{validate_test_id, ExecutionOutput, FinishedTest};
-use snafu::{IntoError, Location, NoneError, OptionExt, ResultExt, Snafu};
-use std::path::{Path, PathBuf};
+use shared::validate_test_id;
+use snafu::{location, IntoError, Location, NoneError, ResultExt, Snafu};
+use std::path::PathBuf;
 use tracing::{error, info};
 
 #[derive(Debug, Snafu)]
@@ -47,7 +47,7 @@ pub enum UploadTestError {
     #[snafu(display("Could not infer metadata from `{}` at {location}: {msg}", path.display()))]
     MetadataInfer {
         path: PathBuf,
-        msg: &'static str,
+        msg: String,
         #[snafu(implicit)]
         location: Location,
     },
@@ -106,8 +106,13 @@ pub fn command_upload_test(
             "Inferring metadata from input file `{}`",
             args.input_file.display()
         );
-        let (category, name) =
-            infer_metadata_from_path(&args.input_file).context(UploadTestSnafu)?;
+        let (category, name) = infer_test_metadata_from_path(&args.input_file)
+            .map_err(|msg| UploadTestError::MetadataInfer {
+                path: args.input_file.to_path_buf(),
+                msg,
+                location: location!(),
+            })
+            .context(UploadTestSnafu)?;
         info!("  Inferred category=`{category}` and name=`{name}`");
 
         args.category = Some(category);
@@ -146,50 +151,10 @@ pub fn command_upload_test(
         }
         SetTestResponse::TastingFailed(test) => {
             error!("Test failed test tasting");
-            print_finished_test(test);
+            print_test_output(test.execution_output);
             false
         }
     })
-}
-
-fn infer_metadata_from_path(path: &Path) -> Result<(String, String), UploadTestError> {
-    let name = path
-        .file_name()
-        .context(MetadataInferSnafu {
-            path: path.to_path_buf(),
-            msg: "",
-        })?
-        .to_str()
-        .context(MetadataInferSnafu {
-            path: path.to_path_buf(),
-            msg: "",
-        })?;
-    let name = name
-        .strip_suffix(".crow-test")
-        .context(MetadataInferSnafu {
-            path: path.to_path_buf(),
-            msg: "",
-        })?
-        .to_string();
-
-    let category = path.parent().context(MetadataInferSnafu {
-        path: path.to_path_buf(),
-        msg: "File has no parent directory",
-    })?;
-    let category = category
-        .file_name()
-        .context(MetadataInferSnafu {
-            path: path.to_path_buf(),
-            msg: "Parent folder has no file name",
-        })?
-        .to_str()
-        .context(MetadataInferSnafu {
-            path: path.to_path_buf(),
-            msg: "Parent folder's name is not valid unicode",
-        })?
-        .to_string();
-
-    Ok((category, name))
 }
 
 fn prompt_test_category(categories: &[String]) -> Result<String, UploadTestError> {
@@ -270,32 +235,4 @@ fn prompt_should_taste_test() -> Result<bool, UploadTestError> {
     };
 
     Ok(should_taste_test)
-}
-
-fn print_finished_test(test: FinishedTest) {
-    match test.output {
-        ExecutionOutput::Aborted(e) => {
-            error!("The test execution was {}", style("aborted").dim());
-            error!("Stdout:\n{}", style(e.stdout));
-            error!("Stderr:\n{}", style(e.stderr).red());
-        }
-        ExecutionOutput::Error(e) => {
-            error!("Crow encountered an {}", style("internal error").red());
-            error!("\n{}", style(e.message).red());
-        }
-        ExecutionOutput::Success(_) => {}
-        ExecutionOutput::Failure(f) => {
-            error!(
-                "Your test {} on the reference compiler",
-                style("failed").yellow()
-            );
-            error!("Stdout:\n{}", style(f.stdout));
-            error!("Stderr:\n{}", style(color_diff(f.stderr)).red());
-        }
-        ExecutionOutput::Timeout(t) => {
-            error!("Your test {}", style("timed out").red());
-            error!("Stdout:\n{}", style(t.stdout));
-            error!("Stderr:\n{}", style(t.stderr).red());
-        }
-    }
 }

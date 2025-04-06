@@ -5,6 +5,7 @@ mod auth;
 mod commands;
 mod context;
 mod error;
+mod formats;
 mod util;
 
 use self::error::Result;
@@ -74,14 +75,11 @@ enum CliCommand {
 //   - [x] Download new tests
 //     - [x] List all local files:
 //         <foo.crow-test>
-//         <foo.crow-test.expected>
-//         <foo.crow-test.meta>     // contains author
 //     - [x] Fetch remote test list:
 //       - test id
 //       - hash of input/output
 //     - [x] Download remote-only files:
 //       - create <foo.crow-test>
-//       - create <foo.crow-test.expected>
 //     - [x] Keep track in git to allow user to decide what to do
 //     - [-] Prompt whether to update local test
 //       - show unified diff (?)

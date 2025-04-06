@@ -1,13 +1,14 @@
-use crate::commands::sync_tests::get_local_tests;
-use crate::error::{CrowClientError, RunTestSnafu, SyncTestsSnafu};
-use crate::util::color_diff;
+use crate::commands::sync_tests::{get_local_tests, FullTest};
+use crate::error::{CrowClientError, RunTestSnafu, SyncTestsSnafu, TempdirSnafu};
+use crate::formats::{from_markdown, FormatError};
+use crate::util::{infer_test_metadata_from_path, print_test_output};
 use clap::Args;
 use console::style;
-use similar::{DiffableStr, TextDiff};
-use snafu::{ensure, IntoError, Location, NoneError, Report, ResultExt, Snafu};
+use shared::execute::execute_test;
+use shared::{CompilerTest, TestExecutionOutput};
+use snafu::{ensure, location, IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::path::{Path, PathBuf};
-use std::process::Command;
-use tempfile::NamedTempFile;
+use std::time::Duration;
 use tracing::{error, info};
 use walkdir::WalkDir;
 
@@ -37,39 +38,19 @@ pub enum RunTestError {
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("Test expectation for `{test_id}` is missing at {location}"))]
-    TestExpectationMissing {
-        test_id: String,
+    #[snafu(display(
+        "Failed to infer name and category from `{}` due to `{msg}` at {location}", path.display())
+    )]
+    InferMetadata {
+        msg: String,
+        path: PathBuf,
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("Compiler invocation failed at {location}"))]
-    CompilerInvoke {
-        source: std::io::Error,
-        #[snafu(implicit)]
-        location: Location,
-    },
-    #[snafu(display("Compiler failed with status {status} at {location}"))]
-    CompilerFailed {
-        status: i32,
-        #[snafu(implicit)]
-        location: Location,
-    },
-    #[snafu(display("Failed to read expectation file at {location}"))]
-    ReadExpectationFile {
-        source: std::io::Error,
-        #[snafu(implicit)]
-        location: Location,
-    },
-    #[snafu(display("Failed to create input file for external diff command at {location}"))]
-    ExternalDiffFileCreate {
-        source: std::io::Error,
-        #[snafu(implicit)]
-        location: Location,
-    },
-    #[snafu(display("Failed to invoke external diff command at {location}"))]
-    ExternalDiffInvoke {
-        source: std::io::Error,
+    #[snafu(display("Failed to parse test file `{}` at {location}", path.display()))]
+    ParseTest {
+        path: PathBuf,
+        source: FormatError,
         #[snafu(implicit)]
         location: Location,
     },
@@ -86,10 +67,6 @@ pub struct CliRunTestArgs {
     /// The run binary for your compiler
     #[clap(long = "compiler-run", short = 'c')]
     compiler_run: PathBuf,
-    /// The diff program to use for comparing output. If omitted, the internal diff will be used.
-    /// The diff program must exit with 1 if the files differ and print to stdout.
-    #[clap(long = "diff-tool")]
-    diff_tool: Option<PathBuf>,
 }
 
 #[derive(Args, Debug)]
@@ -100,10 +77,6 @@ pub struct CliRunTestsArgs {
     /// The run binary for your compiler
     #[clap(long = "compiler-run", short = 'c')]
     compiler_run: PathBuf,
-    /// The diff program to use for comparing output. If omitted, the internal diff will be used.
-    /// The diff program must exit with 1 if the files differ and print to stdout.
-    #[clap(long = "diff-tool")]
-    diff_tool: Option<PathBuf>,
 }
 
 pub fn command_run_tests(args: CliRunTestsArgs) -> Result<bool, CrowClientError> {
@@ -114,7 +87,8 @@ pub fn command_run_tests(args: CliRunTestsArgs) -> Result<bool, CrowClientError>
     let mut successes = 0;
     let separator_width = 80;
 
-    for test in tests {
+    for local_test in tests {
+        let test = &local_test.test;
         let remaining_padding = separator_width - test.id.len() - 2;
         println!(
             "{} {} {}",
@@ -124,9 +98,8 @@ pub fn command_run_tests(args: CliRunTestsArgs) -> Result<bool, CrowClientError>
         );
         let res = command_run_test(CliRunTestArgs {
             test_dir: args.test_dir.clone(),
-            test_id: test.id,
+            test_id: test.id.clone(),
             compiler_run: args.compiler_run.clone(),
-            diff_tool: args.diff_tool.clone(),
         });
 
         match res {
@@ -162,27 +135,37 @@ pub fn command_run_tests(args: CliRunTestsArgs) -> Result<bool, CrowClientError>
 pub fn command_run_test(args: CliRunTestArgs) -> Result<bool, CrowClientError> {
     verify_test_dir(&args).context(RunTestSnafu)?;
 
-    let (test, expected) = find_test(&args.test_dir, &args.test_id).context(RunTestSnafu)?;
-    let actual = run_compiler(&args.compiler_run, &test).context(RunTestSnafu)?;
+    let test = find_test(&args.test_dir, &args.test_id).context(RunTestSnafu)?;
 
-    let success = match compute_diff(expected, actual, args.diff_tool).context(RunTestSnafu)? {
-        None => {
-            info!("{}", style("Test passed!").bright().bold().green());
-            true
-        }
-        Some(diff) => {
+    let tempdir = tempfile::tempdir().context(TempdirSnafu)?;
+
+    let res = execute_test(
+        CompilerTest {
+            test_id: test.test.id,
+            timeout: Duration::from_secs(60 * 10), // 10 minutes
+            compiler_modifiers: test.detail.compiler_modifiers,
+            binary_modifiers: test.detail.binary_modifiers,
+            compile_command: vec![args.compiler_run.display().to_string()],
+            run_command: vec![],
+        },
+        &tempdir.path().join("out.🦆"),
+    );
+
+    Ok(match res {
+        Err(e) => {
             error!(
-                "{}`{}`{}\n{}",
-                style("Test ").bright().red(),
-                style(args.test_id).bold().red(),
-                style(" failed!").bright().red(),
-                diff
+                "{}{}",
+                style("Error running test\n").bright().red(),
+                Report::from_error(e)
             );
             false
         }
-    };
-
-    Ok(success)
+        Ok(res) => {
+            let success = matches!(res, TestExecutionOutput::Success { .. });
+            print_test_output(res);
+            success
+        }
+    })
 }
 
 fn verify_test_dir(args: &CliRunTestArgs) -> Result<(), RunTestError> {
@@ -202,7 +185,7 @@ fn verify_test_dir(args: &CliRunTestArgs) -> Result<(), RunTestError> {
     Ok(())
 }
 
-fn find_test(test_dir: &Path, test_id: &str) -> Result<(PathBuf, String), RunTestError> {
+fn find_test(test_dir: &Path, test_id: &str) -> Result<FullTest, RunTestError> {
     let target_file_name = format!("{}.crow-test", test_id);
     let mut test_file = None;
 
@@ -227,109 +210,15 @@ fn find_test(test_dir: &Path, test_id: &str) -> Result<(PathBuf, String), RunTes
         .into_error(NoneError));
     };
 
-    let expectation_file = test_file.with_extension("crow-test.expected");
+    let (category, test_id) =
+        infer_test_metadata_from_path(&test_file).map_err(|msg| RunTestError::InferMetadata {
+            path: test_file.to_path_buf(),
+            msg,
+            location: location!(),
+        })?;
+    let (test, detail) = from_markdown(&test_file, category, test_id).context(ParseTestSnafu {
+        path: test_file.to_path_buf(),
+    })?;
 
-    ensure!(
-        expectation_file.exists(),
-        TestExpectationMissingSnafu {
-            test_id: test_id.to_string(),
-        }
-    );
-
-    let expected_output =
-        std::fs::read_to_string(&expectation_file).context(ReadExpectationFileSnafu)?;
-
-    Ok((test_file, expected_output))
-}
-
-fn run_compiler(compiler_run: &Path, test: &Path) -> Result<String, RunTestError> {
-    info!(
-        "Running {}",
-        style(format!("'{}' '{}'", compiler_run.display(), test.display())).cyan()
-    );
-
-    let output = Command::new(compiler_run)
-        .arg(test)
-        .output()
-        .context(CompilerInvokeSnafu)?;
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let stderr = String::from_utf8_lossy(&output.stderr);
-
-    if !output.status.success() {
-        error!(
-            "{}{}",
-            style("Compiler failed with status ").red(),
-            style(format!("{}", output.status)).bright().red()
-        );
-        error!("{}", style("Stdout follows:").red());
-        error!("{}", stdout);
-        error!("{}", style("Stderr follows:").red());
-        error!("{}", stderr);
-    }
-
-    ensure!(
-        output.status.success(),
-        CompilerFailedSnafu {
-            status: output.status.code().unwrap_or(-1),
-        }
-    );
-
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
-}
-
-fn compute_diff(
-    mut expected: String,
-    mut actual: String,
-    diff_tool: Option<PathBuf>,
-) -> Result<Option<String>, RunTestError> {
-    if !expected.ends_with_newline() {
-        expected.push('\n');
-    }
-    if !actual.ends_with_newline() {
-        actual.push('\n');
-    }
-
-    Ok(match diff_tool {
-        Some(diff_program) => judge_output_diff_driver(expected, actual, diff_program)?,
-        None => judge_output_internal(&expected, &actual),
-    })
-}
-
-fn judge_output_internal(expected: &str, actual: &str) -> Option<String> {
-    if expected == actual {
-        return None;
-    }
-
-    let diff = TextDiff::from_lines(expected, actual);
-    let mut diff = diff.unified_diff();
-    let diff = diff
-        .context_radius(5)
-        .header("missing from yours", "extraneous in yours");
-
-    Some(color_diff(diff))
-}
-
-fn judge_output_diff_driver(
-    expected: String,
-    actual: String,
-    diff_tool: PathBuf,
-) -> Result<Option<String>, RunTestError> {
-    let expected_file = NamedTempFile::new().context(ExternalDiffFileCreateSnafu)?;
-    let actual_file = NamedTempFile::new().context(ExternalDiffFileCreateSnafu)?;
-
-    std::fs::write(expected_file.path(), expected).context(ExternalDiffFileCreateSnafu)?;
-    std::fs::write(actual_file.path(), actual).context(ExternalDiffFileCreateSnafu)?;
-
-    let result = Command::new(diff_tool)
-        .arg(expected_file.path())
-        .arg(actual_file.path())
-        .output()
-        .context(ExternalDiffInvokeSnafu)?;
-
-    if result.status.success() {
-        return Ok(None);
-    }
-
-    Ok(Some(String::from_utf8_lossy(&result.stdout).to_string()))
+    Ok(FullTest { test, detail })
 }

@@ -32,6 +32,12 @@ pub enum CrowClientError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display("Error creating a temporary directory at {location}"))]
+    Tempdir {
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
     #[snafu(display("Error uploading a test at {location}"))]
     UploadTest {
         source: UploadTestError,

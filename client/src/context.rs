@@ -5,7 +5,7 @@ use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{StatusCode, Url};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use shared::FinishedTest;
+use shared::{FinishedTest, TestModifier};
 use snafu::{IntoError, Location, NoneError, ResultExt, Snafu};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -197,35 +197,21 @@ pub struct Test {
 }
 
 impl Test {
-    pub fn path_input(&self, root: &Path) -> PathBuf {
+    pub fn path(&self, root: &Path) -> PathBuf {
         root.join(&self.category)
             .join(format!("{}.crow-test", self.id))
     }
 
-    pub fn path_meta(&self, root: &Path) -> PathBuf {
-        root.join(&self.category)
-            .join(format!("{}.crow-test.meta", self.id))
-    }
-
-    pub fn path_expected(&self, root: &Path) -> PathBuf {
-        root.join(&self.category)
-            .join(format!("{}.crow-test.expected", self.id))
-    }
-
     pub fn local_file_paths(&self, root: &Path) -> Vec<PathBuf> {
-        vec![
-            self.path_input(root),
-            self.path_meta(root),
-            self.path_expected(root),
-        ]
+        vec![self.path(root)]
     }
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TestDetail {
-    pub expected_output: String,
-    pub input: String,
+    pub compiler_modifiers: Vec<TestModifier>,
+    pub binary_modifiers: Vec<TestModifier>,
 }
 
 #[derive(Debug, Deserialize)]
