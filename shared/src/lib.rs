@@ -30,7 +30,7 @@ pub struct CompilerTest {
     #[serde(deserialize_with = "deserialize_duration")]
     pub timeout: Duration,
     pub compile_command: Vec<String>,
-    pub run_command: Vec<String>,
+    pub binary_arguments: Vec<String>,
     pub compiler_modifiers: Vec<TestModifier>,
     pub binary_modifiers: Vec<TestModifier>,
 }
@@ -135,6 +135,10 @@ pub enum ExecutionOutput {
 }
 
 impl ExecutionOutput {
+    pub fn is_successful(&self) -> bool {
+        matches!(self, Self::Success(_))
+    }
+
     pub fn into_finished_execution(self) -> Option<FinishedExecution> {
         match self {
             Self::Failure(finished) => Some(finished),

@@ -1,7 +1,11 @@
 use crate::docker::{export_image_unpacked, DockerError, ImageId};
 use derive_more::{Display, From};
 use serde::Deserialize;
-use shared::{CompilerTest, TestExecutionOutput};
+use shared::execute::CommandResult;
+use shared::{
+    AbortedExecution, CompilerTest, ExecutionOutput, FinishedExecution, InternalError,
+    TestExecutionOutput,
+};
 use snafu::{ensure, IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::fs::create_dir;
 use std::io::Read;
@@ -11,7 +15,7 @@ use std::process::{Child, ChildStderr, ChildStdout, Command, ExitStatus, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::{env, fs, io, thread};
+use std::{fs, io, thread};
 use tempfile::{TempDir, TempPath};
 use tracing::{debug, error, warn};
 use uuid::Uuid;
@@ -239,6 +243,7 @@ impl ContainerConfig {
         rootfs: &Path,
         workdir: &Path,
         args: &[String],
+        exists_okay: bool,
     ) -> Result<PathBuf, RunConfigError> {
         let path_config = workdir.join("config.json");
 
@@ -261,12 +266,16 @@ impl ContainerConfig {
                 let path_upper = workdir.join("overlay-upper");
                 let path_work = workdir.join("overlay-work");
 
-                create_dir(&path_upper).context(FileWriteSnafu {
-                    path: path_upper.to_path_buf(),
-                })?;
-                create_dir(&path_work).context(FileWriteSnafu {
-                    path: path_work.to_path_buf(),
-                })?;
+                if !exists_okay || !path_upper.exists() {
+                    create_dir(&path_upper).context(FileWriteSnafu {
+                        path: path_upper.to_path_buf(),
+                    })?;
+                }
+                if !exists_okay || !path_work.exists() {
+                    create_dir(&path_work).context(FileWriteSnafu {
+                        path: path_work.to_path_buf(),
+                    })?;
+                }
 
                 let config = include_str!("../resources/runc-overlay.json")
                     .replace("{rootfs}", &rootfs.display().to_string())
@@ -334,7 +343,7 @@ impl TaskContainer<()> {
         export_image_unpacked(image, &path_rootfs).context(ImageCopySnafu)?;
 
         ContainerConfig::WritableRootfs
-            .apply_to_workdir(&path_rootfs, workdir.path(), args)
+            .apply_to_workdir(&path_rootfs, workdir.path(), args, false)
             .context(ConfigApplySnafu)?;
 
         Ok(TaskContainer {
@@ -411,15 +420,34 @@ impl TaskContainer<Started> {
         mut self,
         timeout: Duration,
         aborted: Arc<AtomicBool>,
-    ) -> Result<TaskContainer<Built>, WaitForContainerError> {
-        let (stdout, stderr, result, runtime) = wait_for_container(
+    ) -> Result<TaskContainer<Built>, ExecutionOutput> {
+        let start = Instant::now();
+        let wait_result = wait_for_container(
             aborted,
             &self.container_id,
             &mut self.data.stdout,
             &mut self.data.stderr,
             &mut self.data.process,
             timeout,
-        )?;
+        );
+        let (exit_status, wait_result) =
+            match wait_result_to_command_result(&self.container_id, wait_result) {
+                Ok(res) => match res {
+                    CommandResult::ProcessedFailed(output) => return Err(output),
+                    CommandResult::Unprocessed((status, exec)) => {
+                        if !status.success() {
+                            return Err(ExecutionOutput::Failure(exec));
+                        }
+                        (status, exec)
+                    }
+                },
+                Err(e) => {
+                    return Err(ExecutionOutput::Error(InternalError {
+                        message: Report::from_error(e).to_string(),
+                        runtime: start.elapsed(),
+                    }))
+                }
+            };
 
         // Do not delete us on drop, we still live on in the new task container
         self.do_cleanup = false;
@@ -430,10 +458,10 @@ impl TaskContainer<Started> {
             container_id: self.container_id.clone(),
             do_cleanup: true,
             data: Built {
-                stdout,
-                stderr,
-                exit_status: result,
-                runtime,
+                stdout: wait_result.stdout,
+                stderr: wait_result.stderr,
+                exit_status,
+                runtime: wait_result.runtime,
             },
         })
     }
@@ -456,69 +484,44 @@ impl TaskContainer<Built> {
         let workdir = TempDir::new()
             .context(TempDirCreationSnafu)
             .context(CreationSnafu)?;
-        let rootfs = &self.rootfs;
-
-        let container_root = ContainerConfig::OverlayRootfs
-            .apply_to_workdir(
-                rootfs,
-                workdir.path(),
-                &["/executor".to_string(), "driver".to_string()],
-            )
-            .context(ConfigApplySnafu)
-            .context(CreationSnafu)?;
-
-        fs::copy(
-            env::current_exe().context(FindOwnExecutableSnafu)?,
-            container_root.join("executor"),
-        )
-        .context(CopyExecutorToContainerSnafu)?;
-
         let container_id = ContainerId(Uuid::new_v4().to_string());
 
-        let mut process =
-            start_container(workdir.path(), &container_id).context(ExecutionStartSnafu)?;
+        let cleanup_guard = ScopeGuard(|| {
+            if let Err(e) = delete_container_dir(&container_id, workdir.path()) {
+                error!(
+                    error = ?e,
+                    container = ?container_id,
+                    "Failed to delete test container workdir"
+                );
+            }
+        });
+        // TODO: This is hackish
+        let output_binary_path = workdir.path().join("overlay-upper").join("out.🦆");
 
-        serde_json::to_writer(process.stdin.take().unwrap(), test)
-            .context(PassInputToContainerDriverSnafu)?;
-
-        let res = wait_for_container(
-            aborted,
-            &container_id,
-            &mut process.stdout.take().unwrap(),
-            &mut process.stderr.take().unwrap(),
-            &mut process,
-            timeout,
+        let res = shared::execute::execute_test(
+            test,
+            &output_binary_path,
+            "/out.🦆".to_string(),
+            |path, cmd| {
+                let res = run_test_command(
+                    path,
+                    cmd,
+                    workdir.path(),
+                    &self.rootfs,
+                    &container_id,
+                    aborted.clone(),
+                    timeout,
+                );
+                match res {
+                    Ok(res) => Ok(res),
+                    Err(e) => Err(Box::new(e)),
+                }
+            },
         );
 
-        if let Err(e) = delete_container_dir(&container_id, workdir.path()) {
-            error!(
-                error = ?e,
-                container = ?container_id,
-                "Failed to delete test container workdir"
-            );
-        }
+        drop(cleanup_guard);
 
-        let (stdout, stderr, result, _) = res.context(ExecutionSnafu)?;
-
-        if !result.success()
-            && stderr.trim().lines().count() == 1
-            && stderr.contains("runc run failed:")
-        {
-            warn!(
-                container_id = %container_id,
-                message = %stderr,
-                "Running a test failed with a runc error"
-            );
-            return Err(RuncStartSnafu {
-                message: stderr.trim(),
-            }
-            .into_error(NoneError));
-        }
-
-        serde_json::from_str(&stdout).context(DriverInvalidJsonSnafu {
-            json: stdout,
-            stderr,
-        })
+        Ok(res)
     }
 }
 
@@ -742,4 +745,115 @@ fn delete_container_dir(
     }
 
     Ok(())
+}
+
+fn run_test_command(
+    path: &Path,
+    cmd: &[String],
+    workdir: &Path,
+    rootfs: &Path,
+    container_id: &ContainerId,
+    aborted: Arc<AtomicBool>,
+    timeout: Duration,
+) -> Result<CommandResult, TestRunError> {
+    let mut full_command = vec![path.to_str().expect("path was Unicode").to_string()];
+    full_command.extend_from_slice(cmd);
+
+    ContainerConfig::OverlayRootfs
+        .apply_to_workdir(rootfs, workdir, &full_command, true)
+        .context(ConfigApplySnafu)
+        .context(CreationSnafu)?;
+
+    let mut process = start_container(workdir, container_id).context(ExecutionStartSnafu)?;
+
+    let res = wait_for_container(
+        aborted,
+        container_id,
+        &mut process.stdout.take().unwrap(),
+        &mut process.stderr.take().unwrap(),
+        &mut process,
+        timeout,
+    );
+
+    wait_result_to_command_result(container_id, res)
+}
+
+fn wait_result_to_command_result(
+    container_id: &ContainerId,
+    res: Result<(String, String, ExitStatus, Duration), WaitForContainerError>,
+) -> Result<CommandResult, TestRunError> {
+    let (stdout, stderr, exit_status, runtime) = match res {
+        Err(e) => {
+            if let Some(output) = execution_output_from_wait_error(&e) {
+                return Ok(CommandResult::ProcessedFailed(output));
+            }
+            return Err(e).context(ExecutionSnafu);
+        }
+        Ok(res) => res,
+    };
+
+    if !exit_status.success()
+        && stderr.trim().lines().count() == 1
+        && stderr.contains("runc run failed:")
+    {
+        warn!(
+            container_id = %container_id,
+            message = %stderr,
+            "Running a test failed with a runc error"
+        );
+        return Err(RuncStartSnafu {
+            message: stderr.trim(),
+        }
+        .into_error(NoneError));
+    }
+
+    Ok(CommandResult::Unprocessed((
+        exit_status,
+        FinishedExecution {
+            exit_status: exit_status.code(),
+            stdout,
+            stderr,
+            runtime,
+        },
+    )))
+}
+
+pub fn execution_output_from_wait_error(error: &WaitForContainerError) -> Option<ExecutionOutput> {
+    if let WaitForContainerError::Timeout {
+        runtime,
+        stdout,
+        stderr,
+        ..
+    } = error
+    {
+        return Some(ExecutionOutput::Timeout(FinishedExecution {
+            stdout: stdout.clone(),
+            stderr: stderr.clone(),
+            runtime: *runtime,
+            exit_status: None,
+        }));
+    }
+    if let WaitForContainerError::Aborted {
+        runtime,
+        stdout,
+        stderr,
+        ..
+    } = error
+    {
+        return Some(ExecutionOutput::Aborted(AbortedExecution {
+            stdout: stdout.clone(),
+            stderr: stderr.clone(),
+            runtime: *runtime,
+        }));
+    }
+
+    None
+}
+
+struct ScopeGuard<F: FnMut()>(F);
+
+impl<F: FnMut()> Drop for ScopeGuard<F> {
+    fn drop(&mut self) {
+        self.0();
+    }
 }

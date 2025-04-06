@@ -25,7 +25,7 @@ pub struct TeamEntry {
 pub struct ExecutionConfig {
     pub runner_token: String,
     pub build_command: Vec<String>,
-    pub test_command: Vec<String>,
+    pub binary_arguments: Vec<String>,
     pub compile_command: Vec<String>,
     #[serde(deserialize_with = "parse_duration")]
     pub build_timeout: Duration,

@@ -1,15 +1,14 @@
 use crate::containers::{
-    Built, ContainerCreateError, IntegrateSourceError, TaskContainer, TestRunError,
-    WaitForContainerError,
+    execution_output_from_wait_error, Built, ContainerCreateError, IntegrateSourceError,
+    TaskContainer, TestRunError,
 };
 use crate::docker::ImageId;
 use rayon::ThreadPool;
 use shared::{
-    AbortedExecution, CompilerTask, CompilerTest, ExecutionOutput, FinishedCompilerTask,
-    FinishedExecution, FinishedTaskInfo, FinishedTest, InternalError, RunnerUpdate,
-    TestExecutionOutput,
+    CompilerTask, CompilerTest, ExecutionOutput, FinishedCompilerTask, FinishedExecution,
+    FinishedTaskInfo, FinishedTest, InternalError, RunnerUpdate, TestExecutionOutput,
 };
-use snafu::{Location, Report, ResultExt, Snafu};
+use snafu::{location, Location, Report, ResultExt, Snafu};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
@@ -40,7 +39,7 @@ pub enum TaskRunError {
     },
     #[snafu(display("Could not wait for build at {location}"))]
     WaitForBuild {
-        source: WaitForContainerError,
+        output: ExecutionOutput,
         #[snafu(implicit)]
         location: Location,
     },
@@ -101,7 +100,10 @@ fn execute_task_impl(
     let _ = message_channel.send(RunnerUpdate::StartedBuild);
     let container = container
         .wait_for_build(task.build_timeout, aborted.clone())
-        .context(WaitForBuildSnafu)?;
+        .map_err(|output| TaskRunError::WaitForBuild {
+            output,
+            location: location!(),
+        })?;
     let build_output = FinishedExecution {
         stdout: container.data.stdout.clone(),
         stderr: container.data.stderr.clone(),
@@ -208,10 +210,11 @@ fn task_run_error_to_task(
         commit_message,
     };
 
-    if let TaskRunError::WaitForBuild { source, .. } = &e {
-        if let Some(build_output) = execution_output_from_wait_error(source) {
-            return FinishedCompilerTask::BuildFailed { info, build_output };
-        }
+    if let TaskRunError::WaitForBuild { output, .. } = e {
+        return FinishedCompilerTask::BuildFailed {
+            info,
+            build_output: output,
+        };
     }
 
     // We have *some* internal error
@@ -256,38 +259,6 @@ fn test_run_error_to_output(
         runtime: start_monotonic.elapsed(),
         message: format!("Internal error while running test:\n{}", report),
     })
-}
-
-fn execution_output_from_wait_error(error: &WaitForContainerError) -> Option<ExecutionOutput> {
-    if let WaitForContainerError::Timeout {
-        runtime,
-        stdout,
-        stderr,
-        ..
-    } = error
-    {
-        return Some(ExecutionOutput::Timeout(FinishedExecution {
-            stdout: stdout.clone(),
-            stderr: stderr.clone(),
-            runtime: *runtime,
-            exit_status: None,
-        }));
-    }
-    if let WaitForContainerError::Aborted {
-        runtime,
-        stdout,
-        stderr,
-        ..
-    } = error
-    {
-        return Some(ExecutionOutput::Aborted(AbortedExecution {
-            stdout: stdout.clone(),
-            stderr: stderr.clone(),
-            runtime: *runtime,
-        }));
-    }
-
-    None
 }
 
 pub fn run_test(
@@ -344,7 +315,10 @@ fn run_test_impl(
             .context(ContainerRunSnafu)?;
         let container = container
             .wait_for_build(Duration::from_secs(10), shutdown_requested.clone())
-            .context(WaitForBuildSnafu)?;
+            .map_err(|output| TaskRunError::WaitForBuild {
+                output,
+                location: location!(),
+            })?;
 
         *base_container.borrow_mut() = Some(container);
     }

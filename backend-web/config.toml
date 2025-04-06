@@ -12,8 +12,8 @@ categories = [
 [execution]
 runner_token = "correct horse battery staple"
 build_command = ["sh", "-c", "echo 'Hello world!' && sleep 10"]
-test_command = ["sh", "-c", "echo 'Hello test!' && sleep 5"]
-compile_command = ["sh", "-c", "echo 'Hello test!' && sleep 5"]
+compile_command = ["bash", "-c", "echo '#!/usr/bin/env bash' > \"${@: -1}\" && echo 'echo \"Hello test!\"' >> \"${@: -1}\" && chmod +x \"${@: -1}\" && echo \"${@: -1}\" && cat \"${@: -1}\" && sleep 5"]
+binary_arguments = ["--hello"]
 build_timeout = "5m"
 test_timeout = "10m"
 local_repo_path = "target/repos"
@@ -98,7 +98,7 @@ bukK+MRHv3pM81N/3Ju+Ds43WsLGoNwsl66IFN8doGxA7LGVPLEIwQ==
 [[teams]]
 id = "admin_team"
 display_name = "The admin team"
-members = ["admin"]
+members = ["admin", "2e7d40f3e82822848fef2285aa511fd6d4ae169d8b5feab646e3aed403f3bad2"]
 
 [oidc]
 client_id = "MZQOu3xu9lDvQLnyUbx9UaE48mQt23Mp56A6IBxW"

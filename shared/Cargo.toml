@@ -5,6 +5,7 @@ edition = { workspace = true }
 
 [dependencies]
 derive_more = { version = "1.0.0", features = ["full"] }
+is_executable = "1.0.4"
 serde = { version = "1.0.216", features = ["derive"] }
 similar = "2.7.0"
 snafu = { version = "0.8.5", features = ["std", "futures"] }

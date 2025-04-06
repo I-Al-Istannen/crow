@@ -68,7 +68,7 @@ pub fn infer_test_metadata_from_path(path: &Path) -> Result<(String, String), St
     Ok((category, name))
 }
 
-pub fn print_test_output(output: TestExecutionOutput) {
+pub fn print_test_output(output: &TestExecutionOutput) {
     match output {
         TestExecutionOutput::BinaryFailed {
             compiler_output,
@@ -80,9 +80,9 @@ pub fn print_test_output(output: TestExecutionOutput) {
                     .bright()
                     .red())
                 .append(style("Compiler output:\n").bold())
-                .append(indent(&execution_output_to_string(&compiler_output), 2))
+                .append(indent(&execution_output_to_string(compiler_output), 2))
                 .append(style("Binary output:\n").bold())
-                .append(indent(&execution_output_to_string(&binary_output), 2))
+                .append(indent(&execution_output_to_string(binary_output), 2))
             );
         }
         TestExecutionOutput::CompilerFailed { compiler_output } => {
@@ -90,7 +90,7 @@ pub fn print_test_output(output: TestExecutionOutput) {
                 "{}",
                 st(style("Your compiler failed\n").bright().red())
                     .append(style("Compiler output:\n").bold())
-                    .append(indent(&execution_output_to_string(&compiler_output), 2))
+                    .append(indent(&execution_output_to_string(compiler_output), 2))
             );
         }
         TestExecutionOutput::Error { output_so_far } => {
@@ -98,7 +98,7 @@ pub fn print_test_output(output: TestExecutionOutput) {
                 "{}",
                 st(style("An unspecified error occurred\n").bright().red())
                     .append(style("Full output:\n").bold())
-                    .append(indent(&execution_output_to_string(&output_so_far), 2))
+                    .append(indent(&execution_output_to_string(output_so_far), 2))
             );
         }
         TestExecutionOutput::Success { .. } => {

@@ -5,7 +5,7 @@ use crate::util::{infer_test_metadata_from_path, print_test_output};
 use clap::Args;
 use console::style;
 use shared::execute::execute_test;
-use shared::{CompilerTest, TestExecutionOutput};
+use shared::{execute, CompilerTest, TestExecutionOutput};
 use snafu::{ensure, location, IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -140,32 +140,22 @@ pub fn command_run_test(args: CliRunTestArgs) -> Result<bool, CrowClientError> {
     let tempdir = tempfile::tempdir().context(TempdirSnafu)?;
 
     let res = execute_test(
-        CompilerTest {
+        &CompilerTest {
             test_id: test.test.id,
             timeout: Duration::from_secs(60 * 10), // 10 minutes
             compiler_modifiers: test.detail.compiler_modifiers,
             binary_modifiers: test.detail.binary_modifiers,
             compile_command: vec![args.compiler_run.display().to_string()],
-            run_command: vec![],
+            binary_arguments: vec![],
         },
         &tempdir.path().join("out.🦆"),
+        tempdir.path().join("out.🦆").to_str().unwrap().to_string(),
+        execute::execute_locally,
     );
 
-    Ok(match res {
-        Err(e) => {
-            error!(
-                "{}{}",
-                style("Error running test\n").bright().red(),
-                Report::from_error(e)
-            );
-            false
-        }
-        Ok(res) => {
-            let success = matches!(res, TestExecutionOutput::Success { .. });
-            print_test_output(res);
-            success
-        }
-    })
+    print_test_output(&res);
+
+    Ok(matches!(res, TestExecutionOutput::Success { .. }))
 }
 
 fn verify_test_dir(args: &CliRunTestArgs) -> Result<(), RunTestError> {
