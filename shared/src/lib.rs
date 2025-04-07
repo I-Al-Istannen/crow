@@ -165,7 +165,7 @@ pub enum TestExecutionOutput {
     #[serde(rename_all = "camelCase")]
     Success {
         compiler_output: ExecutionOutput,
-        binary_output: ExecutionOutput,
+        binary_output: Option<ExecutionOutput>,
     },
 }
 
@@ -188,7 +188,7 @@ impl TestExecutionOutput {
     pub fn binary_output(&self) -> Option<&ExecutionOutput> {
         match self {
             Self::BinaryFailed { binary_output, .. } => Some(binary_output),
-            Self::Success { binary_output, .. } => Some(binary_output),
+            Self::Success { binary_output, .. } => binary_output.as_ref(),
             _ => None,
         }
     }
@@ -219,7 +219,7 @@ impl TestExecutionOutputType {
             },
             Self::Success => TestExecutionOutput::Success {
                 compiler_output,
-                binary_output: binary_output.expect("Binary output is required for Success"),
+                binary_output,
             },
         }
     }
@@ -251,9 +251,10 @@ impl FromStr for TestExecutionOutputType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FinishedTest {
     pub test_id: String,
-    pub execution_output: TestExecutionOutput,
+    pub output: TestExecutionOutput,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

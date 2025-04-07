@@ -360,10 +360,9 @@ impl From<FinishedCompilerTask> for QueuedTaskStatus {
             FinishedCompilerTask::BuildFailed { build_output, .. } => {
                 vec![(&build_output).into()]
             }
-            FinishedCompilerTask::RanTests { tests, .. } => tests
-                .into_iter()
-                .map(|it| (&it.execution_output).into())
-                .collect(),
+            FinishedCompilerTask::RanTests { tests, .. } => {
+                tests.into_iter().map(|it| (&it.output).into()).collect()
+            }
         };
 
         if status.iter().any(|it| *it == ExecutionExitStatus::Aborted) {

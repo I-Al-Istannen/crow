@@ -170,7 +170,7 @@ fn execute_task_impl(
             };
             let result = FinishedTest {
                 test_id: test.test_id,
-                execution_output: result,
+                output: result,
             };
             results.push(result.clone());
             let _ = message_channel.send(RunnerUpdate::FinishedTest { result });

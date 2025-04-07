@@ -88,6 +88,8 @@ fn impl_execute_test(
     output_binary_run_path: String,
     mut run_cmd: impl FnMut(&Path, &[String]) -> Result<CommandResult, Box<dyn Error + Sync + Send>>,
 ) -> Result<TestExecutionOutput, ExecuteInternalError> {
+    let should_run_binary = !test.binary_modifiers.is_empty();
+
     // Run the compiler
     let mut compiler_commands = test.compile_command[1..].to_vec();
     compiler_commands.extend(
@@ -95,7 +97,9 @@ fn impl_execute_test(
             runtime: Duration::ZERO,
         })?,
     );
-    compiler_commands.push(output_binary_run_path.clone());
+    if should_run_binary {
+        compiler_commands.push(output_binary_run_path.clone());
+    }
 
     let start = Instant::now();
     let compiler_result = run_cmd(Path::new(&test.compile_command[0]), &compiler_commands)
@@ -109,6 +113,17 @@ fn impl_execute_test(
             judge_output(&test.compiler_modifiers, exit_status, execution)
         }
     };
+
+    if !matches!(compiler_output, ExecutionOutput::Success(_)) {
+        return Ok(TestExecutionOutput::CompilerFailed { compiler_output });
+    }
+
+    if !should_run_binary {
+        return Ok(TestExecutionOutput::Success {
+            compiler_output,
+            binary_output: None,
+        });
+    }
 
     // Verify we actually got out an executable so our later tests do not fail
     let compiler_output =
@@ -145,7 +160,7 @@ fn impl_execute_test(
 
     Ok(TestExecutionOutput::Success {
         compiler_output,
-        binary_output,
+        binary_output: Some(binary_output),
     })
 }
 

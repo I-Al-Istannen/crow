@@ -69,7 +69,7 @@ export const TestExecutionOutputSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('Success'),
     compilerOutput: ExecutionOutputSchema,
-    binaryOutput: ExecutionOutputSchema,
+    binaryOutput: ExecutionOutputSchema.nullable(),
   }),
 ])
 
@@ -318,6 +318,6 @@ export function toBinaryOutput(output: TestExecutionOutput): ExecutionOutput | u
     case 'Error':
       return output.outputSoFar
     case 'Success':
-      return output.binaryOutput
+      return output.binaryOutput || undefined
   }
 }

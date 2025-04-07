@@ -151,7 +151,7 @@ pub fn command_upload_test(
         }
         SetTestResponse::TastingFailed(test) => {
             error!("Test failed test tasting");
-            print_test_output(&test.execution_output);
+            print_test_output(&test.output);
             false
         }
     })

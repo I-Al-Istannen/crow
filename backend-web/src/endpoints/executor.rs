@@ -242,7 +242,7 @@ pub async fn get_work(
         team_id: task.team.to_string(),
         revision_id: task.revision.to_string(),
         commit_message: task.commit_message.clone(),
-        image: "alpine:latest".to_string(),
+        image: "ubuntu:latest".to_string(),
         build_command: state.execution_config.build_command.clone(),
         build_timeout: state.execution_config.build_timeout,
         tests,

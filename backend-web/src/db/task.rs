@@ -53,8 +53,8 @@ pub(super) async fn add_finished_task(
 
             for test in tests {
                 let (compiler_exec_id, binary_exec_id) =
-                    record_test_execution(&mut con, &test.execution_output).await?;
-                let status = TestExecutionOutputType::from(&test.execution_output).to_string();
+                    record_test_execution(&mut con, &test.output).await?;
+                let status = TestExecutionOutputType::from(&test.output).to_string();
 
                 query!(
                     r#"
@@ -157,7 +157,7 @@ pub(super) async fn get_task(
         .await?;
         finished_tests.push(FinishedTest {
             test_id,
-            execution_output,
+            output: execution_output,
         })
     }
 
