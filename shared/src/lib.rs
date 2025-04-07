@@ -41,6 +41,7 @@ pub enum TestModifier {
     ExitCode { code: u32 },
     ExpectedOutput { output: String },
     ProgramArgument { arg: String },
+    ProgramArgumentFile { contents: String },
     ProgramInput { input: String },
     ShouldCrash,
     ShouldSucceed,

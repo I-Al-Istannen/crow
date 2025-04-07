@@ -1,23 +1,57 @@
 use crate::judge::judge_output;
 use crate::{
     CompilerTest, ExecutionOutput, FinishedExecution, InternalError, TestExecutionOutput,
-    TestModifierExt,
+    TestModifier,
 };
 use is_executable::IsExecutable;
-use snafu::{IntoError, Report, Snafu};
+use snafu::{Report, ResultExt, Snafu};
 use std::error::Error;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 #[derive(Debug, Snafu)]
 enum ExecuteInternalError {
-    #[snafu(display("Executing the command failed at {location}"))]
-    RunCommand {
+    #[snafu(display("Encountered error executing the compiler at {location}"))]
+    Compiler {
         source: Box<dyn Error + Sync + Send>,
+        runtime: Duration,
         #[snafu(implicit)]
         location: snafu::Location,
     },
+    #[snafu(display("Compiler did not produce a valid executable at"))]
+    CompilerFailed { compiler_output: ExecutionOutput },
+    #[snafu(display("Encountered error executing the binary at {location}"))]
+    Binary {
+        source: Box<dyn Error + Sync + Send>,
+        compiler_output: ExecutionOutput,
+        runtime: Duration,
+        #[snafu(implicit)]
+        location: snafu::Location,
+    },
+}
+
+impl From<ExecuteInternalError> for TestExecutionOutput {
+    fn from(value: ExecuteInternalError) -> Self {
+        let message = Report::from_error(&value).to_string();
+
+        match value {
+            ExecuteInternalError::Compiler { runtime, .. } => Self::CompilerFailed {
+                compiler_output: ExecutionOutput::Error(InternalError { message, runtime }),
+            },
+            ExecuteInternalError::CompilerFailed {
+                compiler_output, ..
+            } => Self::CompilerFailed { compiler_output },
+            ExecuteInternalError::Binary {
+                compiler_output,
+                runtime,
+                ..
+            } => Self::BinaryFailed {
+                compiler_output,
+                binary_output: ExecutionOutput::Error(InternalError { message, runtime }),
+            },
+        }
+    }
 }
 
 /// The result of executing a command for judging
@@ -31,29 +65,43 @@ pub enum CommandResult {
 
 pub fn execute_test(
     test: &CompilerTest,
-    output_binary_path: &Path,
-    output_binary_cmd_arg: String,
-    mut run_cmd: impl FnMut(&Path, &[String]) -> Result<CommandResult, Box<dyn Error + Sync + Send>>,
+    working_dir: &Path,
+    output_binary_host_path: &Path,
+    output_binary_run_path: String,
+    run_cmd: impl FnMut(&Path, &[String]) -> Result<CommandResult, Box<dyn Error + Sync + Send>>,
 ) -> TestExecutionOutput {
-    // TODO: Provide input somehow.
+    impl_execute_test(
+        test,
+        working_dir,
+        output_binary_host_path,
+        output_binary_run_path,
+        run_cmd,
+    )
+    .unwrap_or_else(From::from)
+}
 
+#[allow(clippy::result_large_err)] // we accept it here, it will hopefully be inlined anyway
+fn impl_execute_test(
+    test: &CompilerTest,
+    working_dir: &Path,
+    output_binary_host_path: &Path,
+    output_binary_run_path: String,
+    mut run_cmd: impl FnMut(&Path, &[String]) -> Result<CommandResult, Box<dyn Error + Sync + Send>>,
+) -> Result<TestExecutionOutput, ExecuteInternalError> {
     // Run the compiler
     let mut compiler_commands = test.compile_command[1..].to_vec();
-    compiler_commands.extend(test.compiler_modifiers.as_slice().all_arguments());
-    compiler_commands.push(output_binary_cmd_arg.clone());
+    compiler_commands.extend(
+        gather_arguments(&test.compiler_modifiers, working_dir).context(CompilerSnafu {
+            runtime: Duration::ZERO,
+        })?,
+    );
+    compiler_commands.push(output_binary_run_path.clone());
+
     let start = Instant::now();
-    let compiler_result = run_cmd(Path::new(&test.compile_command[0]), &compiler_commands);
-    let compiler_result = match compiler_result {
-        Ok(val) => val,
-        Err(e) => {
-            return TestExecutionOutput::CompilerFailed {
-                compiler_output: ExecutionOutput::Error(InternalError {
-                    message: Report::from_error(RunCommandSnafu.into_error(e)).to_string(),
-                    runtime: start.elapsed(),
-                }),
-            };
-        }
-    };
+    let compiler_result = run_cmd(Path::new(&test.compile_command[0]), &compiler_commands)
+        .context(CompilerSnafu {
+            runtime: start.elapsed(),
+        })?;
 
     let compiler_output = match compiler_result {
         CommandResult::ProcessedFailed(output) => output,
@@ -64,30 +112,22 @@ pub fn execute_test(
 
     // Verify we actually got out an executable so our later tests do not fail
     let compiler_output =
-        *verify_compiler_built_executable(output_binary_path, compiler_output.clone());
-    let compiler_output = match compiler_output {
-        Ok(output) => output,
-        Err(e) => {
-            return e;
-        }
-    };
+        *verify_compiler_built_executable(output_binary_host_path, compiler_output.clone());
+    let compiler_output = compiler_output?;
 
     // Run the test
     let mut run_commands = test.binary_arguments.to_vec();
-    run_commands.extend(test.binary_modifiers.as_slice().all_arguments());
-    let binary_result = run_cmd(Path::new(&output_binary_cmd_arg), &run_commands);
-    let binary_result = match binary_result {
-        Ok(val) => val,
-        Err(e) => {
-            return TestExecutionOutput::BinaryFailed {
-                compiler_output,
-                binary_output: ExecutionOutput::Error(InternalError {
-                    message: Report::from_error(RunCommandSnafu.into_error(e)).to_string(),
-                    runtime: start.elapsed(),
-                }),
-            };
-        }
-    };
+    run_commands.extend(
+        gather_arguments(&test.binary_modifiers, working_dir).context(BinarySnafu {
+            runtime: Duration::ZERO,
+            compiler_output: compiler_output.clone(),
+        })?,
+    );
+    let binary_result =
+        run_cmd(Path::new(&output_binary_run_path), &run_commands).context(BinarySnafu {
+            runtime: start.elapsed(),
+            compiler_output: compiler_output.clone(),
+        })?;
 
     let binary_output = match binary_result {
         CommandResult::ProcessedFailed(output) => output,
@@ -97,22 +137,22 @@ pub fn execute_test(
     };
 
     if !matches!(binary_output, ExecutionOutput::Success(_)) {
-        return TestExecutionOutput::BinaryFailed {
+        return Ok(TestExecutionOutput::BinaryFailed {
             compiler_output,
             binary_output,
-        };
+        });
     }
 
-    TestExecutionOutput::Success {
+    Ok(TestExecutionOutput::Success {
         compiler_output,
         binary_output,
-    }
+    })
 }
 
 fn verify_compiler_built_executable(
     output_binary_path: &Path,
     compiler_output: ExecutionOutput,
-) -> Box<Result<ExecutionOutput, TestExecutionOutput>> {
+) -> Box<Result<ExecutionOutput, ExecuteInternalError>> {
     match compiler_output {
         ExecutionOutput::Success(ref finished_exec) => {
             if !output_binary_path.exists() {
@@ -121,7 +161,7 @@ fn verify_compiler_built_executable(
                     .stderr
                     .insert_str(0, "== ERROR ==\nNo output binary was created.\n\n");
 
-                return Box::new(Err(TestExecutionOutput::CompilerFailed {
+                return Box::new(Err(ExecuteInternalError::CompilerFailed {
                     compiler_output: ExecutionOutput::Failure(finished_exec),
                 }));
             }
@@ -131,31 +171,62 @@ fn verify_compiler_built_executable(
                     .stderr
                     .insert_str(0, "== ERROR ==\nOutput binary is not executable.\n\n");
 
-                return Box::new(Err(TestExecutionOutput::CompilerFailed {
+                return Box::new(Err(ExecuteInternalError::CompilerFailed {
                     compiler_output: ExecutionOutput::Failure(finished_exec),
                 }));
             }
 
             Box::new(Ok(compiler_output))
         }
-        _ => Box::new(Err(TestExecutionOutput::CompilerFailed { compiler_output })),
+        _ => Box::new(Err(ExecuteInternalError::CompilerFailed {
+            compiler_output,
+        })),
     }
 }
 
-pub fn execute_locally(
-    path: &Path,
-    cmd: &[String],
-) -> Result<CommandResult, Box<dyn Error + Sync + Send>> {
-    let start = Instant::now();
-    let output = Command::new(path).args(cmd).output().map_err(Box::new)?;
+fn gather_arguments(
+    modifiers: &[TestModifier],
+    work_dir: &Path,
+) -> Result<Vec<String>, Box<dyn Error + Sync + Send>> {
+    let mut args = Vec::new();
 
-    Ok(CommandResult::Unprocessed((
-        output.status,
-        FinishedExecution {
-            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
-            runtime: start.elapsed(),
-            exit_status: output.status.code(),
-        },
-    )))
+    let mut file_counter = 0;
+    for modifier in modifiers {
+        match modifier {
+            TestModifier::ProgramArgument { arg } => args.push(arg.clone()),
+            TestModifier::ProgramArgumentFile { contents } => {
+                let file_name = format!("file_{file_counter}");
+                std::fs::write(work_dir.join(&file_name), contents)?;
+                args.push(file_name);
+
+                file_counter += 1;
+            }
+            _ => {}
+        }
+    }
+
+    Ok(args)
+}
+
+pub fn execute_locally(
+    workdir: PathBuf,
+) -> impl Fn(&Path, &[String]) -> Result<CommandResult, Box<dyn Error + Sync + Send>> {
+    move |path, cmd| {
+        let start = Instant::now();
+        let output = Command::new(workdir.join(path))
+            .args(cmd)
+            .current_dir(&workdir)
+            .output()
+            .map_err(Box::new)?;
+
+        Ok(CommandResult::Unprocessed((
+            output.status,
+            FinishedExecution {
+                stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+                stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+                runtime: start.elapsed(),
+                exit_status: output.status.code(),
+            },
+        )))
+    }
 }

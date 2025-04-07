@@ -39,6 +39,7 @@ pub fn judge_output(
             TestModifier::ShouldSucceed => judge_program_should_succeed(exit_status),
             TestModifier::ExpectedOutput { .. } => None,
             TestModifier::ProgramArgument { .. } => None,
+            TestModifier::ProgramArgumentFile { .. } => None,
             TestModifier::ProgramInput { .. } => None,
         };
         if let Some(problem) = problem {

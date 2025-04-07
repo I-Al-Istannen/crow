@@ -11,9 +11,10 @@
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
+          <SelectItem value="ProgramArgumentFile">Argument File</SelectItem>
+          <SelectItem value="ProgramArgument">Argument String</SelectItem>
           <SelectItem value="ExitCode">Exit code</SelectItem>
           <SelectItem value="ExpectedOutput">Expected output</SelectItem>
-          <SelectItem value="ProgramArgument">Program argument</SelectItem>
           <SelectItem value="ProgramInput">Program input</SelectItem>
           <SelectItem value="ShouldCrash">Should crash</SelectItem>
           <SelectItem value="ShouldSucceed">Should succeed</SelectItem>
@@ -69,18 +70,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { computed, toRefs } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LucideGripVertical } from 'lucide-vue-next'
 import { PopoverArrow } from 'reka-ui'
 import type { TestModifier } from '@/types.ts'
 import { Textarea } from '@/components/ui/textarea'
+import { computed } from 'vue'
 
-const props = defineProps<{
-  readonly?: boolean
-}>()
-const { readonly } = toRefs(props)
 const modifier = defineModel<TestModifier>('modifier', { required: true })
 
 const modifierType = computed(() => modifier.value?.type ?? 'ShouldSucceed')
@@ -88,6 +85,8 @@ const stringArg = computed(() => {
   switch (modifier.value.type) {
     case 'ProgramArgument':
       return modifier.value.arg
+    case 'ProgramArgumentFile':
+      return modifier.value.contents
     case 'ExpectedOutput':
       return modifier.value.output
     case 'ProgramInput':
@@ -106,7 +105,10 @@ const intArg = computed(() => {
 })
 const hasShortStringArg = computed(() => modifier.value.type === 'ProgramArgument')
 const hasLongStringArg = computed(
-  () => modifier.value.type === 'ExpectedOutput' || modifier.value.type === 'ProgramInput',
+  () =>
+    modifier.value.type === 'ExpectedOutput' ||
+    modifier.value.type === 'ProgramInput' ||
+    modifier.value.type === 'ProgramArgumentFile',
 )
 const hasIntArg = computed(() => modifier.value.type === 'ExitCode')
 
@@ -114,6 +116,9 @@ function update(type: string, stringVal: string, intVal: number) {
   switch (type) {
     case 'ProgramArgument':
       modifier.value = { type, arg: stringVal }
+      break
+    case 'ProgramArgumentFile':
+      modifier.value = { type, contents: stringVal }
       break
     case 'ExpectedOutput':
       modifier.value = { type, output: stringVal }

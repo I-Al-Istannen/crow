@@ -148,9 +148,10 @@ pub fn command_run_test(args: CliRunTestArgs) -> Result<bool, CrowClientError> {
             compile_command: vec![args.compiler_run.display().to_string()],
             binary_arguments: vec![],
         },
+        tempdir.path(),
         &tempdir.path().join("out.🦆"),
-        tempdir.path().join("out.🦆").to_str().unwrap().to_string(),
-        execute::execute_locally,
+        "./out.🦆".to_string(), // execute_locally will make this absolute when needed
+        execute::execute_locally(tempdir.path().to_path_buf()),
     );
 
     print_test_output(&res);

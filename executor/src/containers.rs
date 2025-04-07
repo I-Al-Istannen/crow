@@ -7,7 +7,6 @@ use shared::{
     TestExecutionOutput,
 };
 use snafu::{ensure, IntoError, Location, NoneError, Report, ResultExt, Snafu};
-use std::fs::create_dir;
 use std::io::Read;
 use std::os::fd::AsRawFd;
 use std::path::{Path, PathBuf};
@@ -267,12 +266,12 @@ impl ContainerConfig {
                 let path_work = workdir.join("overlay-work");
 
                 if !exists_okay || !path_upper.exists() {
-                    create_dir(&path_upper).context(FileWriteSnafu {
+                    fs::create_dir(&path_upper).context(FileWriteSnafu {
                         path: path_upper.to_path_buf(),
                     })?;
                 }
                 if !exists_okay || !path_work.exists() {
-                    create_dir(&path_work).context(FileWriteSnafu {
+                    fs::create_dir(&path_work).context(FileWriteSnafu {
                         path: path_work.to_path_buf(),
                     })?;
                 }
@@ -361,7 +360,7 @@ impl TaskContainer<Created> {
         let work_path = self.rootfs.join("work");
         let tar_path = source_tar.to_path_buf();
 
-        create_dir(&work_path).context(SourceUntarStartSnafu {
+        fs::create_dir(&work_path).context(SourceUntarStartSnafu {
             tar_path: tar_path.clone(),
             work_path: work_path.clone(),
         })?;
@@ -495,11 +494,19 @@ impl TaskContainer<Built> {
                 );
             }
         });
-        // TODO: This is hackish
-        let output_binary_path = workdir.path().join("overlay-upper").join("out.🦆");
+        // TODO: This is hackish. We need the container rootfs to place the compiler arguments in
+        //       and check for the results.
+        let container_root = workdir.path().join("overlay-upper");
+        if !container_root.exists() {
+            fs::create_dir(&container_root)
+                .context(TempDirCreationSnafu)
+                .context(CreationSnafu)?;
+        }
+        let output_binary_path = container_root.join("out.🦆");
 
         let res = shared::execute::execute_test(
             test,
+            &container_root,
             &output_binary_path,
             "/out.🦆".to_string(),
             |path, cmd| {

@@ -277,6 +277,7 @@ fn modifier_type_to_string(modifier: &TestModifier) -> &str {
         TestModifier::ExitCode { .. } => "ExitCode",
         TestModifier::ExpectedOutput { .. } => "ExpectedOutput",
         TestModifier::ProgramArgument { .. } => "ProgramArgument",
+        TestModifier::ProgramArgumentFile { .. } => "ProgramArgumentFile",
         TestModifier::ProgramInput { .. } => "ProgramInput",
         TestModifier::ShouldCrash => "ShouldCrash",
         TestModifier::ShouldSucceed => "ShouldSucceed",
@@ -288,6 +289,7 @@ fn modifier_arg_to_string(modifier: &TestModifier) -> Option<String> {
         TestModifier::ExitCode { code } => Some(code.to_string()),
         TestModifier::ExpectedOutput { output } => Some(output.to_string()),
         TestModifier::ProgramArgument { arg } => Some(arg.to_string()),
+        TestModifier::ProgramArgumentFile { contents } => Some(contents.to_string()),
         TestModifier::ProgramInput { input } => Some(input.to_string()),
         TestModifier::ShouldCrash => None,
         TestModifier::ShouldSucceed => None,
@@ -335,6 +337,9 @@ fn modifier_from_string(type_: &str, value: Option<String>) -> Result<TestModifi
         "ProgramArgument" => TestModifier::ProgramArgument {
             arg: require_value("ProgramArgument", value)?,
         },
+        "ProgramArgumentFile" => TestModifier::ProgramArgumentFile {
+            contents: require_value("ProgramArgumentFile", value)?,
+        },
         "ProgramInput" => TestModifier::ProgramInput {
             input: require_value("ProgramInput", value)?,
         },
@@ -365,6 +370,6 @@ fn require_value(name: &str, maybe_value: Option<String>) -> Result<String, Form
 fn modifier_requires_argument(modifier: &str) -> bool {
     matches!(
         modifier,
-        "ExitCode" | "ExpectedOutput" | "ProgramArgument" | "ProgramInput"
+        "ExitCode" | "ExpectedOutput" | "ProgramArgument" | "ProgramArgumentFile" | "ProgramInput"
     )
 }
