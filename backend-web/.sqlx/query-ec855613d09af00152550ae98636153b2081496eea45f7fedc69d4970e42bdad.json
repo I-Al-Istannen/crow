@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            test_id,\n            compiler_exec_id as \"compiler_exec_id!\",\n            binary_exec_id,\n            status\n        FROM TestResults\n        WHERE task_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "test_id",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "compiler_exec_id!",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "binary_exec_id",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "status",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "ec855613d09af00152550ae98636153b2081496eea45f7fedc69d4970e42bdad"
+}

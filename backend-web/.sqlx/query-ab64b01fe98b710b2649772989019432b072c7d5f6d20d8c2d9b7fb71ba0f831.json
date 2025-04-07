@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO Tests\n            (id, owner, category, compiler_modifiers, binary_modifiers, admin_authored, hash)\n        VALUES\n            (?, ?, ?, ?, ?, ?, ?)\n        ON CONFLICT DO UPDATE SET\n            compiler_modifiers = excluded.compiler_modifiers,\n            binary_modifiers = excluded.binary_modifiers,\n            admin_authored = excluded.admin_authored,\n            category = excluded.category,\n            hash = excluded.hash\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 7
+    },
+    "nullable": []
+  },
+  "hash": "ab64b01fe98b710b2649772989019432b072c7d5f6d20d8c2d9b7fb71ba0f831"
+}

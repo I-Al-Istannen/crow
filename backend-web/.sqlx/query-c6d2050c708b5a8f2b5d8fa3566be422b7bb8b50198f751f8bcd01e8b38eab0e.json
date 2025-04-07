@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO TestTastingResults\n                (test_id, compiler_exec_id, binary_exec_id, status)\n            VALUES\n                (?, ?, ?, ?)\n            ON CONFLICT DO UPDATE SET\n                compiler_exec_id = excluded.compiler_exec_id,\n                binary_exec_id = excluded.binary_exec_id,\n                status = excluded.status\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "c6d2050c708b5a8f2b5d8fa3566be422b7bb8b50198f751f8bcd01e8b38eab0e"
+}

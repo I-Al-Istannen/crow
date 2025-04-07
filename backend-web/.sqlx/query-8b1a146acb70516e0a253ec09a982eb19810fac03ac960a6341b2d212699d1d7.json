@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            Tasks.team_id as \"team_id!: TeamId\",\n            PASS_BY_TASK.task_id as \"task_id!: TaskId\",\n            MAX(PASS_BY_TASK.passed_count) as passes\n        FROM (\n            SELECT TestResults.task_id, COUNT(1) as passed_count\n            FROM TestResults\n            JOIN ExecutionResults ER ON ER.execution_id = TestResults.binary_exec_id\n            WHERE ER.result = ?\n            GROUP BY TestResults.task_id\n        ) PASS_BY_TASK\n        JOIN Tasks ON Tasks.task_id = PASS_BY_TASK.task_id\n        GROUP BY Tasks.team_id;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "team_id!: TeamId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "task_id!: TaskId",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "passes",
+        "ordinal": 2,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "8b1a146acb70516e0a253ec09a982eb19810fac03ac960a6341b2d212699d1d7"
+}
