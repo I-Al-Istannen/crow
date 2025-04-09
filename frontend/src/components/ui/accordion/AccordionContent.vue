@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { AccordionContent, type AccordionContentProps } from 'reka-ui'
-import { computed, type HTMLAttributes, ref } from 'vue'
+import { type HTMLAttributes, computed, ref } from 'vue'
 import { useMutationObserver, useResizeObserver } from '@vueuse/core'
 import { cn } from '@/lib/utils'
 

@@ -191,13 +191,18 @@ export const ShowMyselfResponseSchema = z.object({
   team: TeamSchema.nullable(),
 })
 
+export const CrashSignalSchema = z.union([
+  z.literal('SegmentationFault'),
+  z.literal('FloatingPointException'),
+])
+
 export const TestModifierSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ExitCode'), code: z.number() }),
   z.object({ type: z.literal('ExpectedOutput'), output: z.string() }),
   z.object({ type: z.literal('ProgramArgument'), arg: z.string() }),
   z.object({ type: z.literal('ProgramArgumentFile'), contents: z.string() }),
   z.object({ type: z.literal('ProgramInput'), input: z.string() }),
-  z.object({ type: z.literal('ShouldCrash') }),
+  z.object({ type: z.literal('ShouldCrash'), signal: CrashSignalSchema }),
   z.object({ type: z.literal('ShouldSucceed') }),
 ])
 
@@ -274,6 +279,7 @@ export type TeamInfo = z.infer<typeof TeamInfoSchema>
 export type TeamIntegrationToken = z.infer<typeof TeamIntegrationTokenSchema>
 export type Test = z.infer<typeof TestSchema>
 export type TestExecutionOutput = z.infer<typeof TestExecutionOutputSchema>
+export type CrashSignal = z.infer<typeof CrashSignalSchema>
 export type TestModifier = z.infer<typeof TestModifierSchema>
 export type TestWithTestTasting = z.infer<typeof TestWithTestTastingSchema>
 export type TestId = z.infer<typeof TestIdSchema>

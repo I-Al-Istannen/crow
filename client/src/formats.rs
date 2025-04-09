@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use markdown::mdast::{Code, Text};
 use markdown::{mdast, ParseOptions};
 use mdast::{Heading, Node, Root};
-use shared::TestModifier;
+use shared::{CrashSignal, TestModifier};
 use snafu::{ensure, location, IntoError, Location, NoneError, ResultExt, Snafu};
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
@@ -267,21 +267,7 @@ fn modifiers_to_markdown(heading: String, modifiers: &[TestModifier]) -> Vec<Nod
 }
 
 fn modifier_to_markdown(modifier: &TestModifier) -> Vec<Node> {
-    let modifier_type = modifier_type_to_string(modifier).to_string();
-
-    write_heading_value(&modifier_type, 2, modifier_arg_to_string(modifier))
-}
-
-fn modifier_type_to_string(modifier: &TestModifier) -> &str {
-    match modifier {
-        TestModifier::ExitCode { .. } => "ExitCode",
-        TestModifier::ExpectedOutput { .. } => "ExpectedOutput",
-        TestModifier::ProgramArgument { .. } => "ProgramArgument",
-        TestModifier::ProgramArgumentFile { .. } => "ProgramArgumentFile",
-        TestModifier::ProgramInput { .. } => "ProgramInput",
-        TestModifier::ShouldCrash => "ShouldCrash",
-        TestModifier::ShouldSucceed => "ShouldSucceed",
-    }
+    write_heading_value(modifier.name(), 2, modifier_arg_to_string(modifier))
 }
 
 fn modifier_arg_to_string(modifier: &TestModifier) -> Option<String> {
@@ -291,7 +277,7 @@ fn modifier_arg_to_string(modifier: &TestModifier) -> Option<String> {
         TestModifier::ProgramArgument { arg } => Some(arg.to_string()),
         TestModifier::ProgramArgumentFile { contents } => Some(contents.to_string()),
         TestModifier::ProgramInput { input } => Some(input.to_string()),
-        TestModifier::ShouldCrash => None,
+        TestModifier::ShouldCrash { signal } => Some(signal.to_string()),
         TestModifier::ShouldSucceed => None,
     }
 }
@@ -343,7 +329,9 @@ fn modifier_from_string(type_: &str, value: Option<String>) -> Result<TestModifi
         "ProgramInput" => TestModifier::ProgramInput {
             input: require_value("ProgramInput", value)?,
         },
-        "ShouldCrash" => TestModifier::ShouldCrash,
+        "ShouldCrash" => TestModifier::ShouldCrash {
+            signal: parse_crash_signal(&require_value("ShouldCrash", value)?)?,
+        },
         "ShouldSucceed" => TestModifier::ShouldSucceed,
         _ => {
             return Err(FormatError::MalformedModifier {
@@ -365,6 +353,17 @@ fn require_value(name: &str, maybe_value: Option<String>) -> Result<String, Form
             .into_error(NoneError)
         })
         .map(|v| v.to_string())
+}
+
+fn parse_crash_signal(val: &str) -> Result<CrashSignal, FormatError> {
+    match val {
+        "SegmentationFault" => Ok(CrashSignal::SegmentationFault),
+        "FloatingPointException" => Ok(CrashSignal::FloatingPointException),
+        other => Err(FormatError::MalformedModifier {
+            message: format!("Unknown crash signal `{other}`"),
+            location: location!(),
+        }),
+    }
 }
 
 fn modifier_requires_argument(modifier: &str) -> bool {

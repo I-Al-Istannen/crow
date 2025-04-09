@@ -1,6 +1,7 @@
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
+use std::fmt::Formatter;
 use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 
@@ -35,6 +36,37 @@ pub struct CompilerTest {
     pub binary_modifiers: Vec<TestModifier>,
 }
 
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+pub enum CrashSignal {
+    SegmentationFault,
+    FloatingPointException,
+}
+
+impl Display for CrashSignal {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::SegmentationFault => write!(f, "SegmentationFault"),
+            Self::FloatingPointException => write!(f, "FloatingPointException"),
+        }
+    }
+}
+
+impl CrashSignal {
+    pub fn linux_signal_name(&self) -> &'static str {
+        match self {
+            Self::SegmentationFault => "SIGSEGV",
+            Self::FloatingPointException => "SIGFPE",
+        }
+    }
+
+    pub fn signal_number(&self) -> i32 {
+        match self {
+            Self::SegmentationFault => 11,
+            Self::FloatingPointException => 8,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum TestModifier {
@@ -43,8 +75,22 @@ pub enum TestModifier {
     ProgramArgument { arg: String },
     ProgramArgumentFile { contents: String },
     ProgramInput { input: String },
-    ShouldCrash,
+    ShouldCrash { signal: CrashSignal },
     ShouldSucceed,
+}
+
+impl TestModifier {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::ExitCode { .. } => "ExitCode",
+            Self::ExpectedOutput { .. } => "ExpectedOutput",
+            Self::ProgramArgument { .. } => "ProgramArgument",
+            Self::ProgramArgumentFile { .. } => "ProgramArgumentFile",
+            Self::ProgramInput { .. } => "ProgramInput",
+            Self::ShouldCrash { .. } => "ShouldCrash",
+            Self::ShouldSucceed => "ShouldSucceed",
+        }
+    }
 }
 
 pub trait TestModifierExt {

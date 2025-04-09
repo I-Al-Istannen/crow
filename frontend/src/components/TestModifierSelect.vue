@@ -3,7 +3,7 @@
     <LucideGripVertical class="h-5 flex-shrink-0 drag-handle cursor-grab" />
     <Select
       :model-value="modifierType"
-      @update:model-value="update($event as string, stringArg, intArg)"
+      @update:model-value="update($event as string, stringArg, intArg, crashArg)"
       required
     >
       <SelectTrigger class="max-w-[20ch] py-0 h-7 flex-shrink-1 md:flex-shrink-0 min-w-1">
@@ -25,7 +25,7 @@
       type="text"
       :placeholder="argPlaceholderText"
       :model-value="stringArg"
-      @update:model-value="update(modifierType, $event as string, intArg)"
+      @update:model-value="update(modifierType, $event as string, intArg, crashArg)"
       v-if="hasShortStringArg"
       class="py-0 h-7 min-w-1 text-ellipsis"
     />
@@ -33,7 +33,7 @@
       type="number"
       :placeholder="argPlaceholderText"
       :model-value="intArg"
-      @update:model-value="update(modifierType, stringArg, $event as number)"
+      @update:model-value="update(modifierType, stringArg, $event as number, crashArg)"
       v-if="hasIntArg"
       class="py-0 h-7 min-w-1"
     />
@@ -49,7 +49,7 @@
       <PopoverContent class="w-[70dvw] max-w-[120ch]">
         <Textarea
           :model-value="stringArg"
-          @update:model-value="update(modifierType, $event as string, intArg)"
+          @update:model-value="update(modifierType, $event as string, intArg, crashArg)"
           class="font-mono whitespace-pre overflow-scroll max-h-[100dvh]"
           rows="10"
           :placeholder="argPlaceholderText"
@@ -57,10 +57,27 @@
         <PopoverArrow class="fill-white stroke-gray-200" />
       </PopoverContent>
     </Popover>
+    <Select
+      v-if="hasCrashArg"
+      :model-value="crashArg"
+      @update:model-value="update(modifierType, stringArg, intArg, $event as CrashSignal)"
+      required
+    >
+      <SelectTrigger class="py-0 h-7 min-w-1">
+        <SelectValue placeholder="Select a crash argument" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          <SelectItem value="FloatingPointException">Floating point exception</SelectItem>
+          <SelectItem value="SegmentationFault">SegmentationFault</SelectItem>
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   </div>
 </template>
 
 <script setup lang="ts">
+import type { CrashSignal, TestModifier } from '@/types.ts'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Select,
@@ -74,7 +91,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LucideGripVertical } from 'lucide-vue-next'
 import { PopoverArrow } from 'reka-ui'
-import type { TestModifier } from '@/types.ts'
 import { Textarea } from '@/components/ui/textarea'
 import { computed } from 'vue'
 
@@ -103,6 +119,14 @@ const intArg = computed(() => {
       return 0
   }
 })
+const crashArg = computed(() => {
+  switch (modifier.value.type) {
+    case 'ShouldCrash':
+      return modifier.value.signal
+    default:
+      return 'FloatingPointException'
+  }
+})
 const hasShortStringArg = computed(() => modifier.value.type === 'ProgramArgument')
 const hasLongStringArg = computed(
   () =>
@@ -111,8 +135,9 @@ const hasLongStringArg = computed(
     modifier.value.type === 'ProgramArgumentFile',
 )
 const hasIntArg = computed(() => modifier.value.type === 'ExitCode')
+const hasCrashArg = computed(() => modifier.value.type === 'ShouldCrash')
 
-function update(type: string, stringVal: string, intVal: number) {
+function update(type: string, stringVal: string, intVal: number, crashVal: CrashSignal) {
   switch (type) {
     case 'ProgramArgument':
       modifier.value = { type, arg: stringVal }
@@ -130,7 +155,7 @@ function update(type: string, stringVal: string, intVal: number) {
       modifier.value = { type, code: intVal }
       break
     case 'ShouldCrash':
-      modifier.value = { type }
+      modifier.value = { type, signal: crashVal }
       break
     case 'ShouldSucceed':
       modifier.value = { type }
