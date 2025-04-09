@@ -52,7 +52,7 @@
               'text-green-600': line.startsWith('+'),
               'text-violet-500': line.startsWith('@@'),
             }"
-            :key="index">{{ line }}</span></pre>
+            :key="index">{{ line }}<br v-if="line.trim().length === 0" /></span></pre>
         </AccordionContent>
       </AccordionItem>
     </Accordion>
