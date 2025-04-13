@@ -148,6 +148,7 @@ impl Database {
         let pool = self.read_lock().await;
         queue::get_queued_tasks(&mut *pool.acquire().await.context(SqlxSnafu)?).await
     }
+
     pub async fn fetch_queued_task(&self, task_id: &TaskId) -> Result<Option<WorkItem>> {
         let pool = self.read_lock().await;
         queue::fetch_queued_task(&mut *pool.acquire().await.context(SqlxSnafu)?, task_id).await

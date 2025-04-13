@@ -188,7 +188,7 @@ pub async fn get_work(
         }));
     }
 
-    let queue = state.db.get_queued_tasks().await?;
+    let queued_tasks = state.db.get_queued_tasks().await?;
     let tests: Vec<CompilerTest> = state
         .db
         .get_tests()
@@ -209,12 +209,12 @@ pub async fn get_work(
         .map(|it| it.test_id.clone().into())
         .collect::<Vec<_>>();
 
-    let task = match state
-        .executor
-        .lock()
-        .unwrap()
-        .assign_work(&runner, &queue, test_ids)
-    {
+    let task = match state.executor.lock().unwrap().assign_work(
+        &runner,
+        &queued_tasks,
+        test_ids,
+        state.queue,
+    ) {
         Err(e) => {
             warn!(
                 error = %Report::from_error(e),

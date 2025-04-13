@@ -1,3 +1,4 @@
+use crate::types::queue::Queue;
 use crate::types::{TeamId, TestId};
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
@@ -26,6 +27,15 @@ pub struct Runner {
 pub enum RunnerWorkForFrontend {
     Testing(WorkItem),
     TestTasting,
+}
+
+impl RunnerWorkForFrontend {
+    pub fn task(&self) -> Option<&WorkItem> {
+        match self {
+            Self::Testing(it) => Some(it),
+            Self::TestTasting => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -240,8 +250,9 @@ impl Executor {
     pub fn assign_work(
         &mut self,
         runner_info: &RunnerInfo,
-        queue: &[WorkItem],
+        all_tasks: &[WorkItem],
         test_ids: Vec<TestId>,
+        queue: Arc<Mutex<Queue>>,
     ) -> Result<Option<WorkItem>, ExecutorError> {
         ensure!(
             self.runners.contains_key(&runner_info.id),
@@ -260,7 +271,13 @@ impl Executor {
             .map(|it| it.id)
             .collect();
 
-        let task = queue.iter().find(|it| !taken.contains(&it.id)).cloned();
+        let task = queue.lock().unwrap().poll_task(
+            all_tasks
+                .iter()
+                .filter(|it| !taken.contains(&it.id))
+                .cloned()
+                .collect(),
+        );
 
         let runner = self.runners.get_mut(&runner_id).unwrap();
         runner.working_on = task.clone();

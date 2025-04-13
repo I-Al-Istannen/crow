@@ -112,12 +112,30 @@ pub async fn get_queue(
     State(state): State<AppState>,
     _claims: Claims,
 ) -> Result<Json<QueueResponse>> {
-    let queue = state.db.get_queued_tasks().await?;
     let tasting_runners = state.test_tasting.lock().unwrap().get_tasting_runners();
-
     let runners = state.executor.lock().unwrap().get_runners(tasting_runners);
 
-    Ok(Json(QueueResponse { queue, runners }))
+    let mut executing_tasks = runners
+        .iter()
+        .flat_map(|runner| runner.working_on.as_ref().and_then(|it| it.task()))
+        .map(Clone::clone)
+        .collect::<Vec<_>>();
+
+    let queue = state
+        .db
+        .get_queued_tasks()
+        .await?
+        .into_iter()
+        .filter(|item| !executing_tasks.iter().any(|it| it.id == item.id))
+        .collect::<Vec<_>>();
+    let queue = state.queue.lock().unwrap().reorder_queue(queue);
+
+    executing_tasks.extend(queue);
+
+    Ok(Json(QueueResponse {
+        queue: executing_tasks,
+        runners,
+    }))
 }
 
 #[instrument(skip_all)]

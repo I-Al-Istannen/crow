@@ -30,11 +30,13 @@ use crate::auth::Keys;
 use crate::config::{ExecutionConfig, TestConfig};
 use crate::db::Database;
 use crate::storage::LocalRepos;
+use crate::types::queue::Queue;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
 mod execution;
 mod external;
+mod queue;
 mod repo;
 mod task;
 mod test;
@@ -52,6 +54,7 @@ pub struct AppState {
     pub test_config: TestConfig,
     pub executor: Arc<Mutex<Executor>>,
     pub test_tasting: Arc<Mutex<TestTasting>>,
+    pub queue: Arc<Mutex<Queue>>,
     pub local_repos: LocalRepos,
     pub github_app_name: Option<String>,
     pub oidc: Oidc,
@@ -74,6 +77,7 @@ impl AppState {
             test_config,
             executor: Executor::new(),
             test_tasting: TestTasting::new(),
+            queue: Arc::new(Mutex::new(Queue::new())),
             local_repos,
             github_app_name,
             oidc,

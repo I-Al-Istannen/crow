@@ -2,7 +2,20 @@ use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
-#[derive(Debug, Clone, Hash, From, PartialEq, Eq, Display, Serialize, Deserialize, sqlx::Type)]
+#[derive(
+    Debug,
+    Clone,
+    Hash,
+    From,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Display,
+    Serialize,
+    Deserialize,
+    sqlx::Type,
+)]
 #[sqlx(transparent)]
 pub struct TeamId(String);
 
