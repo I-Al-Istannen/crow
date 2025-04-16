@@ -53,17 +53,35 @@
             mkdir -p $out/bin
             cp ${backend-naersk}/bin/client $out/bin
           '';
-          frontend = pkgs.buildNpmPackage {
+          frontend = pkgs.stdenv.mkDerivation (finalAttrs: {
             pname = "frontend";
             version = backend-naersk.version;
+
             src = gitignoreSource ./frontend;
-            npmDepsHash = "sha256-vzf8Y6qo+KFe8g4/IKe1357cbq0TkByn+iEM/YZ3EHU=";
+
+            nativeBuildInputs = [
+              pkgs.nodejs
+              pkgs.pnpm_9.configHook
+            ];
+
+            buildPhase = ''
+              runHook preBuild
+              pnpm build
+              runHook postBuild
+            '';
 
             installPhase = ''
+              runHook preInstall
               mkdir $out
               cp -r dist/* $out
+              runHook postInstall
             '';
-          };
+
+            pnpmDeps = pkgs.pnpm_9.fetchDeps {
+              inherit (finalAttrs) pname version src;
+              hash = "sha256-Yr/4HoDfT+15o4+JdNnDqIB68GGDUnM9xztOypA17yY=";
+            };
+          });
           docker = {
             backend = pkgs.dockerTools.buildLayeredImage {
               name = "crow-backend";
