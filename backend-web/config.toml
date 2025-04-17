@@ -100,6 +100,11 @@ id = "admin_team"
 display_name = "The admin team"
 members = ["admin", "2e7d40f3e82822848fef2285aa511fd6d4ae169d8b5feab646e3aed403f3bad2"]
 
+[[teams]]
+id = "foobars"
+display_name = "The foobar team"
+members = []
+
 [oidc]
 client_id = "MZQOu3xu9lDvQLnyUbx9UaE48mQt23Mp56A6IBxW"
 client_secret = "svLCpBVQvPHAQCmPNhWlCH5914cRvgwhR4mfki1KCI8asUX2y7L3bNPKpXLZOztW4gtp9uhzaeFLevtusoAjdzKCyThmHhmt4wxS4xQDKhstXKKHAUjYxjrG5SExED5G"
