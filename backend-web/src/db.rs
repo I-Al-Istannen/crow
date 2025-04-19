@@ -81,11 +81,6 @@ impl Database {
         user::fetch_users(&mut *pool.acquire().await.context(SqlxSnafu)?).await
     }
 
-    pub async fn add_user(&self, user: &UserForAuth) -> Result<()> {
-        let pool = self.write_lock().await;
-        user::add_user(&mut *pool.acquire().await.context(SqlxSnafu)?, user).await
-    }
-
     pub async fn synchronize_oidc_user(&self, user: OidcUser) -> Result<OwnUser> {
         let pool = self.write_lock().await;
         user::synchronize_oidc_user(&mut *pool.acquire().await.context(SqlxSnafu)?, user).await

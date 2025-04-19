@@ -51,24 +51,6 @@ pub(super) async fn fetch_users(con: &mut SqliteConnection) -> Result<Vec<FullUs
 }
 
 #[instrument(skip_all)]
-pub(super) async fn add_user(con: &mut SqliteConnection, user: &UserForAuth) -> Result<()> {
-    let inner = &user.user;
-    query!(
-        "INSERT INTO Users (id, display_name, role, team) VALUES (?, ?, ?, ?)",
-        inner.id,
-        inner.display_name,
-        user.role,
-        inner.team
-    )
-    .execute(con)
-    .instrument(trace_span!("sqlx_add_user"))
-    .await
-    .context(SqlxSnafu)?;
-
-    Ok(())
-}
-
-#[instrument(skip_all)]
 pub(super) async fn synchronize_oidc_user(
     con: &mut SqliteConnection,
     user: OidcUser,

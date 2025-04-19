@@ -1,7 +1,7 @@
 use crate::auth::oidc::Oidc;
 use crate::auth::{Claims, Keys};
 use crate::config::Config;
-use crate::db::{Database, UserForAuth};
+use crate::db::Database;
 use crate::endpoints::{
     delete_test, executor_info, get_integration_status, get_n_recent_tasks, get_queue,
     get_queued_task, get_recent_tasks, get_running_task_info, get_task, get_team_info,
@@ -13,7 +13,7 @@ use crate::endpoints::{
 };
 use crate::error::WebError;
 use crate::storage::LocalRepos;
-use crate::types::{AppState, User, UserRole};
+use crate::types::{AppState, UserRole};
 use axum::extract::{Request, State};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
@@ -96,20 +96,6 @@ async fn main() {
             .expect("Config file is valid");
 
     let db = Database::new(&config.database_path).await.unwrap();
-
-    // TODO: Delete me
-    if db.fetch_users().await.unwrap().is_empty() {
-        db.add_user(&UserForAuth {
-            user: User {
-                id: "admin".to_string().into(),
-                display_name: "Admin".to_string(),
-                team: None,
-            },
-            role: UserRole::Admin,
-        })
-        .await
-        .unwrap();
-    }
 
     db.sync_teams(&config.teams).await.unwrap();
 

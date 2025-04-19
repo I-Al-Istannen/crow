@@ -22,7 +22,7 @@ reference_compiler_image = "ubuntu:latest"
 [[teams]]
 id = "admin_team"
 display_name = "The admin team"
-members = ["admin", "2e7d40f3e82822848fef2285aa511fd6d4ae169d8b5feab646e3aed403f3bad2"]
+members = ["2e7d40f3e82822848fef2285aa511fd6d4ae169d8b5feab646e3aed403f3bad2"]
 
 [[teams]]
 id = "foobars"
