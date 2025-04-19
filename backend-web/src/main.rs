@@ -130,7 +130,7 @@ async fn main() {
             if let Err(e) = integration::run_github_app(github_config, state).await {
                 error!(
                     error = %Report::from_error(e),
-                    "Fatal error in github handler, functionality disabled"
+                    "Fatal error in GitHub handler, functionality disabled"
                 );
             }
         });
