@@ -6,22 +6,54 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Set up netrc attic login
+      id: setup-netrc
+      run: |
+        NETRC_DIR="$(mktemp -d)"
+        echo "machine attic.ialistannen.de" > "$NETRC_DIR/attic-netrc"
+        echo "password ${{ secrets.ATTIC_TOKEN }}" >> "$NETRC_DIR/attic-netrc"
+        echo "netrc-dir=$NETRC_DIR" >> $GITHUB_OUTPUT
     - uses: cachix/install-nix-action@v31
       with:
         github_access_token: ${{ secrets.GITHUB_TOKEN }}
+        extra_nix_config: |
+          substituters = https://attic.ialistannen.de/compiler https://cache.nixos.org
+          trusted-public-keys = compiler:QZch5vn1csz/rveXoPmU04xGuvkRFVNWIFjDUiYWkgQ= cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
+          netrc-file = ${{ steps.setup-netrc.outputs.netrc-dir }}/attic-netrc
+    - name: Set up attic
+      run: |
+        nix profile install github:zhaofengli/attic
+        attic login mine https://attic.ialistannen.de ${{ secrets.ATTIC_TOKEN }}
+
+        # Save original store paths
+        nix path-info --all --json | jq 'keys' > /tmp/original-paths.json
+
+        # Cache attic itself
+        attic push compiler $(which attic)
     - name: Login to GitHub Container Registry
       uses: docker/login-action@v3
       with:
         registry: compiler.vads.kastel.kit.edu
         username: ${{ secrets.REGISTRY_USER }}
         password: ${{ secrets.REGISTRY_PASSWORD }}
-    - run: nix build .#docker.frontend
-    - run: |
+    - name: Build frontend
+      run: |
+        # Best effort upload parallel to build
+        attic watch-store compiler &
+        nix build .#docker.frontend
+    - name: Load frontend docker image
+      run: |
         echo "IMG_FRONTEND=$(docker load --quiet < result | sed -E 's/.+?: (.+)/\1/g')" >> $GITHUB_ENV
-    - run: nix build .#docker.backend
-    - run: |
+    - name: Build backend
+      run: |
+        # Best effort upload parallel to build
+        attic watch-store compiler &
+        nix build .#docker.backend
+    - name: Load backend docker image
+      run: |
         echo "IMG_BACKEND=$(docker load --quiet < result | sed -E 's/.+?: (.+)/\1/g')" >> $GITHUB_ENV
-    - run: |
+    - name: Push docker images
+      run: |
         docker tag "$IMG_FRONTEND" compiler.vads.kastel.kit.edu/crow-frontend:latest
         docker tag "$IMG_FRONTEND" compiler.vads.kastel.kit.edu/crow-frontend:$GITHUB_SHA
         docker rmi "$IMG_FRONTEND"
@@ -31,3 +63,10 @@ jobs:
         docker tag "$IMG_BACKEND" compiler.vads.kastel.kit.edu/crow-backend:$GITHUB_SHA
         docker rmi "$IMG_BACKEND"
         docker push --all-tags compiler.vads.kastel.kit.edu/crow-backend
+    - name: Upload store to attic
+      if: always()
+      run: |
+        # Save new store paths
+        nix path-info --all --json | jq 'keys' > /tmp/new-paths.json
+
+        jq -r -s '(.[1] - .[0]) | .[]' /tmp/original-paths.json /tmp/new-paths.json | attic push compiler --stdin
