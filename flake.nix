@@ -95,6 +95,9 @@
                 pkgs.bash
               ];
 
+              # https://discourse.nixos.org/t/dockertools-buildimage-and-user-writable-tmp/5397/9
+              extraCommands = "mkdir -m 0777 tmp";
+
               config = {
                 Entrypoint = [ "${backend}/bin/backend-web" ];
 
