@@ -250,6 +250,7 @@ impl ContainerConfig {
             Self::WritableRootfs => {
                 let config = include_str!("../resources/runc-read-write.json")
                     .replace("{rootfs}", &rootfs.display().to_string())
+                    .replace("{host_uid}", &users::get_current_uid().to_string())
                     .replace(
                         "{args}",
                         &serde_json::to_string(args).context(ArgsNotJsonSnafu)?,
@@ -278,6 +279,7 @@ impl ContainerConfig {
 
                 let config = include_str!("../resources/runc-overlay.json")
                     .replace("{rootfs}", &rootfs.display().to_string())
+                    .replace("{host_uid}", &users::get_current_uid().to_string())
                     .replace(
                         "{args}",
                         &serde_json::to_string(args).context(ArgsNotJsonSnafu)?,

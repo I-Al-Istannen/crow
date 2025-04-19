@@ -133,14 +133,14 @@
         "uidMappings": [
             {
                 "containerID": 0,
-                "hostID": 1000,
+                "hostID": {host_uid},
                 "size": 1
             }
         ],
         "gidMappings": [
             {
                 "containerID": 0,
-                "hostID": 1000,
+                "hostID": {host_uid},
                 "size": 1
             }
         ],
