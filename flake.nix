@@ -91,6 +91,8 @@
                 pkgs.cacert
                 pkgs.sqlite
                 pkgs.coreutils
+                pkgs.git
+                pkgs.bash
               ];
 
               config = {
