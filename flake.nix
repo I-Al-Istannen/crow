@@ -90,7 +90,7 @@
               contents = [
                 pkgs.cacert
                 pkgs.sqlite
-                pkgs.coreutils
+                pkgs.busybox
                 pkgs.git
                 pkgs.bash
               ];
