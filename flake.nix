@@ -25,11 +25,20 @@
         let
           pkgs = import nixpkgs { inherit system; };
           naersk' = pkgs.callPackage naersk { };
-          inherit (gitignore.lib) gitignoreSource;
+          inherit (gitignore.lib) gitignoreSource gitignoreFilterWith;
 
           backend-naersk = naersk'.buildPackage {
             version = (pkgs.lib.importTOML ./Cargo.toml).workspace.package.version;
-            src = gitignoreSource ./.;
+            src = pkgs.lib.cleanSourceWith {
+              filter = gitignoreFilterWith {
+                basePath = ./.;
+                extraRules = ''
+                  /frontend/
+                  /.github/
+                '';
+              };
+              src = ./.;
+            };
 
             buildInputs = [
               pkgs.dbus
