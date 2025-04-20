@@ -1,7 +1,10 @@
+# The path to the sqlite database file
 database_path = "./target/dev.db"
+# The jwt secret to use for signing tokens. Should be a relatively long random string.
 jwt_secret = "A very cool JWT secret."
 
 [test]
+# The valid categories to use for tests. The categories are used to group tests together.
 categories = [
     "Task 1",
     "Task 2",
@@ -10,76 +13,104 @@ categories = [
 ]
 
 [execution]
+# The authentication token for runners, needs to be set to the same value in the executor invocation
 runner_token = "correct horse battery staple"
+# The command for building the compiler
 build_command = ["sh", "-c", "echo 'Hello world!' && sleep 10"]
+# The command for running the compiler. Additional arguments can be provided by tests.
 compile_command = ["bash", "-c", "echo '#!/usr/bin/env bash' > \"${@: -1}\" && echo 'echo \"Hello test!\"' >> \"${@: -1}\" && chmod +x \"${@: -1}\" && echo \"$*\" && echo -e \"\\n${@: -1}\" && cat \"${@: -1}\" && sleep 5"]
+# Additionally arguments prepended to the binary run command
 binary_arguments = ["--hello"]
+# The timeout for compiler builds
 build_timeout = "5m"
+# The timeout for an individual test
 test_timeout = "10m"
+# The path for caching local directories
 local_repo_path = "target/repos"
+# The docker image containing the reference compiler. If not provided, test tasting is disabled.
 reference_compiler_image = "ubuntu:latest"
 
+# All valid teams. Users are assigned only at startup!
 [[teams]]
+# The internal id of the team (must be unique and alpha-numeric-ish)
 id = "admin_team"
+# The display name of the team (can be anything, used in the UI)
 display_name = "The admin team"
+# The ids of team members (can be gauged from the login logs or by knowing your OIDC provider)
 members = ["2e7d40f3e82822848fef2285aa511fd6d4ae169d8b5feab646e3aed403f3bad2"]
 
+# A second team.
 [[teams]]
 id = "foobars"
 display_name = "The foobar team"
 members = []
 
 [oidc]
+# The oidc client id. This is set by your OIDC provider.
 client_id = "MZQOu3xu9lDvQLnyUbx9UaE48mQt23Mp56A6IBxW"
+# The oidc client secret. This is set by your OIDC provider.
 client_secret = "svLCpBVQvPHAQCmPNhWlCH5914cRvgwhR4mfki1KCI8asUX2y7L3bNPKpXLZOztW4gtp9uhzaeFLevtusoAjdzKCyThmHhmt4wxS4xQDKhstXKKHAUjYxjrG5SExED5G"
+# The issuer URL to request tokens from. This is set by your OIDC provider.
 issuer_url = "http://localhost:9000/application/o/test-oidc/"
+# The oauth scopes to request. This is set by your OIDC provider and must provide crow with an id and display name.
 scopes = ["email", "openid", "profile", "offline_access"]
+# Where to redirect the user after login. Must be your frontend URL suffixed by `/login/oidc-callback`
 redirect_url = "http://localhost:5173/login/oidc-callback"
 
-#[github]
-#status_check_interval = "10s"
-#workflow_check_interval = "5m"
-#app_name = "crow-test"
-#app_id = 12345678
-#workflow_path = ".github/workflows/crow.yml"
-#workflow_template = """
-#name: Crow workflow integration
-#on:
-#  push:
-#    branches:
-#      - main
-#      - master
-#  pull_request:
-#
-#jobs:
-#  trigger-crow:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Checkout repository
-#        uses: actions/checkout@v4
-#        with:
-#          fetch-depth: 0
-#      - name: Set start / end commit for pushes
-#        if: github.event_name == 'push'
-#        run: |
-#          echo "BEFORE=${{ github.event.before }}" >> $GITHUB_ENV
-#          echo "AFTER=${{ github.event.after }}" >> $GITHUB_ENV
-#      - name: Set start / end commit for pull requests
-#        if: github.event_name == 'pull_request'
-#        run: |
-#          echo "BEFORE=origin/$GITHUB_BASE_REF" >> $GITHUB_ENV
-#          echo "AFTER=HEAD" >> $GITHUB_ENV
-#      - name: Triggering crow
-#        run: |
-#          set -euxo pipefail
-#          # This does not work for force-pushes (as before is no longer part of the branch!)
-#          for sha in $(git rev-list "$BEFORE".."$AFTER"); do
-#            echo "Would push sha $sha with auth ${{ secrets.CROW_INTEGRATION_TOKEN }}"
-#            #curl --header 'Authorization: Bearer ${{ secrets.CROW_INTEGRATION_TOKEN }}' http://localhost:3000/integration/token/task/"$sha"
-#          done
-#      - name: Explaining a bit
-#        run: |
-#          echo "The commits were pushed in the crow queue."
-#          echo "Crow periodically syncs the status from its queue to your repository, so a check should appear here soon :)"
-#"""
-#app_private_key = ""
+[github]
+# The GitHub app name. This is provided by GitHub.
+app_name = "crow-test"
+# The GitHub app id. This is provided by GitHub.
+app_id = 12345678
+# The GitHub app private key. This is provided by GitHub.
+app_private_key = """
+"""
+# The interval between which to check for new running/finished tasks and sync them to GitHub
+status_check_interval = "10s"
+# crow will PR a workflow template to repositories if it does not exist or is not up to date.
+# Additionally, crow will update the repository secrets with the integration token.
+# This is the interval between such checks.
+workflow_check_interval = "5m"
+# The path to create the workflow at
+workflow_path = ".github/workflows/crow.yml"
+# The template for the workflow
+workflow_template = """
+name: Crow workflow integration
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  trigger-crow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set start / end commit for pushes
+        if: github.event_name == 'push'
+        run: |
+          echo "BEFORE=${{ github.event.before }}" >> $GITHUB_ENV
+          echo "AFTER=${{ github.event.after }}" >> $GITHUB_ENV
+      - name: Set start / end commit for pull requests
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "BEFORE=origin/$GITHUB_BASE_REF" >> $GITHUB_ENV
+          echo "AFTER=HEAD" >> $GITHUB_ENV
+      - name: Triggering crow
+        run: |
+          set -euxo pipefail
+          # This does not work for force-pushes (as before is no longer part of the branch!)
+          for sha in $(git rev-list "$BEFORE".."$AFTER"); do
+            echo "Would push sha $sha with auth ${{ secrets.CROW_INTEGRATION_TOKEN }}"
+            #curl --header 'Authorization: Bearer ${{ secrets.CROW_INTEGRATION_TOKEN }}' http://localhost:3000/integration/token/task/"$sha"
+          done
+      - name: Explaining a bit
+        run: |
+          echo "The commits were pushed in the crow queue."
+          echo "Crow periodically syncs the status from its queue to your repository, so a check should appear here soon :)"
+"""
