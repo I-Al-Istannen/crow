@@ -22,7 +22,8 @@ jobs:
           netrc-file = ${{ steps.setup-netrc.outputs.netrc-dir }}/attic-netrc
     - name: Set up attic
       run: |
-        nix profile install github:zhaofengli/attic
+        NIXPKGS_OVERRIDE="github:NixOS/nixpkgs/$(jq -r '.nodes.nixpkgs.locked.rev' flake.lock)"
+        nix profile install --override-input nixpkgs "$NIXPKGS_OVERRIDE" github:zhaofengli/attic $NIXPKGS_OVERRIDE#nix-fast-build
         attic login mine https://attic.ialistannen.de ${{ secrets.ATTIC_TOKEN }}
 
         # Save original store paths
@@ -40,7 +41,9 @@ jobs:
       run: |
         # Best effort upload parallel to build
         attic watch-store compiler &
-        nix build .#docker.frontend
+        nix-fast-build --no-nom --flake ".#packages.$(nix eval --raw --impure --expr builtins.currentSystem).docker.frontend"
+        mv result- result
+        sha256sum result
     - name: Load frontend docker image
       run: |
         echo "IMG_FRONTEND=$(docker load --quiet < result | sed -E 's/.+?: (.+)/\1/g')" >> $GITHUB_ENV
@@ -48,7 +51,9 @@ jobs:
       run: |
         # Best effort upload parallel to build
         attic watch-store compiler &
-        nix build .#docker.backend
+        nix-fast-build --no-nom --flake ".#packages.$(nix eval --raw --impure --expr builtins.currentSystem).docker.backend"
+        mv result- result
+        sha256sum result
     - name: Load backend docker image
       run: |
         echo "IMG_BACKEND=$(docker load --quiet < result | sed -E 's/.+?: (.+)/\1/g')" >> $GITHUB_ENV
