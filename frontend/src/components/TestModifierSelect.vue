@@ -46,7 +46,7 @@
           <span v-else class="text-muted-foreground">{{ argPlaceholderText }}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent class="w-[70dvw] max-w-[120ch]">
+      <PopoverContent class="w-[90dvw] sm:w-[70dvw] max-w-[120ch]">
         <Textarea
           :model-value="stringArg"
           @update:model-value="update(modifierType, $event as string, intArg, crashArg)"

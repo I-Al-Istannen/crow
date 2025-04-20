@@ -5,14 +5,12 @@
         <CardTitle>Team Overview</CardTitle>
         <CardDescription>Information about a team and its members</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent v-if="info">
         <DataLoadingExplanation
           :is-loading="isLoading"
           :failure-count="failureCount"
           :failure-reason="failureReason"
         />
-      </CardContent>
-      <CardContent v-if="info">
         <span class="font-medium">{{ info.team.displayName }}</span>
         <span class="text-muted-foreground"> ({{ info.team.id }})</span>
         consists of

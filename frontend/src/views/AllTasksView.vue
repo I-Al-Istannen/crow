@@ -1,7 +1,7 @@
 <template>
   <PageContainer>
     <Card>
-      <CardHeader class="flex flex-row justify-between items-center">
+      <CardHeader class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <div class="flex flex-col gap-y-1.5">
           <CardTitle>All runs</CardTitle>
           <CardDescription>View all runs that ever ran against your code</CardDescription>

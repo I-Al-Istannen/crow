@@ -1,14 +1,14 @@
 <template>
   <nav class="px-2 py-3 border-b border-border bg-background">
-    <div class="container flex items-center justify-between max-w-7xl">
-      <div class="flex space-x-6">
-        <div class="flex items-center justify-center">
-          <img src="/src/crow1337.svg" alt="logo" class="h-[24px]" />
+    <div class="container flex items-center justify-between max-w-7xl max-sm:px-0">
+      <div class="flex md:space-x-6 flex-grow">
+        <div class="flex items-center justify-center flex-shrink-0">
+          <img src="/src/crow1337.svg" alt="logo" class="h-[24px] flex-shrink-0" />
           <span class="ml-2 font-semibold max-md:hidden">crow</span>
         </div>
 
-        <NavigationMenu v-if="accountReady">
-          <NavigationMenuList>
+        <NavigationMenu v-if="accountReady" class="w-full max-sm:max-w-full">
+          <NavigationMenuList class="w-full">
             <NavigationMenuItem v-for="route in routes" :key="route.title">
               <router-link :to="route.route">
                 <NavigationMenuLink
@@ -16,6 +16,7 @@
                     routerLinkClasses,
                     route.route.name == currentRoute.name ? 'bg-accent' : 'bg-background',
                   ]"
+                  class="max-sm:px-2"
                 >
                   {{ route.title }}
                 </NavigationMenuLink>

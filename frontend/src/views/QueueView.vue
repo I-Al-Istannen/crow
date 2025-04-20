@@ -19,7 +19,7 @@
         />
         <div v-if="queueResponse">
           <TooltipProvider>
-            <div class="flex gap-2">
+            <div class="flex gap-2 flex-wrap">
               <div
                 class="p-2 leading-none tracking-tight flex flex-row gap-2 items-center"
                 :class="['rounded-xl', 'border', 'bg-card', 'text-card-foreground']"
@@ -43,7 +43,7 @@
                     <span>
                       {{ runner.id }}
                     </span>
-                    <span class="ml-4 text-sm text-muted-foreground">
+                    <span class="sm:ml-4 text-sm text-muted-foreground">
                       pinged
                       <span class="min-w-[3ch] inline-block">
                         {{ formatApproxDuration(currentTime, runner.lastSeen.getTime()) }}

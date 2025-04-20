@@ -6,7 +6,7 @@
         <span v-else>Task summary</span>
       </CardTitle>
       <CardDescription>
-        <span v-if="taskSummary">{{ taskSummary.info.revisionId }}</span>
+        <span v-if="taskSummary" class="break-all">{{ taskSummary.info.revisionId }}</span>
         <span v-else>A quick summary of the most important points</span>
       </CardDescription>
     </CardHeader>

@@ -2,7 +2,7 @@
   <span class="font-medium" :class="[me?.id === id ? 'gradient-primary' : '']">
     {{ displayName }}
   </span>
-  <span class="text-muted-foreground"> ({{ id }})</span>
+  <span class="text-muted-foreground break-all"> ({{ id }})</span>
 </template>
 
 <script setup lang="ts">

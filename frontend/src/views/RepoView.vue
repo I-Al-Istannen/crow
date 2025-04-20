@@ -26,7 +26,7 @@
           :failure-reason="integrationFailureReason"
         />
         <Tabs default-value="manual" v-if="integrationStatus">
-          <TabsList>
+          <TabsList class="flex-wrap">
             <TabsTrigger value="manual">Manually</TabsTrigger>
             <TabsTrigger value="github" v-if="integrationStatus.github">GitHub App</TabsTrigger>
             <TabsTrigger value="token">Build your own integration</TabsTrigger>

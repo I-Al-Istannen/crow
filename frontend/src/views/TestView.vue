@@ -1,7 +1,7 @@
 <template>
   <PageContainer>
     <Card>
-      <CardHeader class="flex flex-row justify-between">
+      <CardHeader class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <div class="flex flex-col gap-y-1.5">
           <CardTitle>Test all the things</CardTitle>
           <CardDescription>
@@ -29,7 +29,7 @@
             <Accordion type="multiple" v-model="expandedTests">
               <AccordionItem v-for="test in displayedTests" :key="test.id" :value="test.id">
                 <AccordionTrigger>
-                  <span class="flex items-center gap-1">
+                  <span class="flex items-center gap-1 max-sm:flex-wrap">
                     <Tooltip v-if="test.testTasteSuccess">
                       <TooltipTrigger as-child>
                         <LucideBadgeCheck :size="16" class="text-green-600" />
