@@ -1,7 +1,7 @@
 <template>
   <Table v-if="queue.length > 0">
     <TableHeader>
-      <TableHead>Position</TableHead>
+      <TableHead class="text-center">Position</TableHead>
       <TableHead>Commit</TableHead>
       <TableHead>Revision</TableHead>
       <TableHead>Team</TableHead>
@@ -18,7 +18,7 @@
         @click.middle="openDetails(item, true)"
         @click.ctrl.left.capture.stop="openDetails(item, true)"
       >
-        <TableCell class="font-medium">
+        <TableCell class="font-medium text-center">
           {{ index + 1 }}
         </TableCell>
         <TableCell>
