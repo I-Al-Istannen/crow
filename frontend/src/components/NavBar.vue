@@ -43,10 +43,24 @@
                 class="cursor-pointer"
               >
                 Team
+                <span class="flex-grow" />
+                <LucideUsers />
               </router-link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem @click="doLogout" class="cursor-pointer">Logout</DropdownMenuItem>
+            <DropdownMenuItem @click="doLogout" class="cursor-pointer">
+              Logout
+              <span class="flex-grow" />
+              <LucideLogOut />
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <a href="https://github.com/I-Al-Istannen/crow" target="_blank" rel="noopener">
+              <DropdownMenuItem class="cursor-pointer">
+                GitHub
+                <span class="flex-grow" />
+                <LucideExternalLink />
+              </DropdownMenuItem>
+            </a>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -63,7 +77,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Home, User } from 'lucide-vue-next'
+import { Home, LucideExternalLink, LucideLogOut, LucideUsers, User } from 'lucide-vue-next'
 import {
   NavigationMenu,
   NavigationMenuItem,
