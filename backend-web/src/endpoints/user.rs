@@ -1,14 +1,10 @@
-use crate::auth;
 use crate::auth::Claims;
 use crate::endpoints::Json;
-use crate::error::{Result, WebError};
-use crate::types::{
-    AppState, FullUserForAdmin, OwnUser, Team, TeamId, TeamIntegrationToken, User, UserId,
-};
+use crate::error::Result;
+use crate::types::{AppState, FullUserForAdmin, OwnUser, Team, TeamId, TeamIntegrationToken, User};
 use axum::extract::State;
-use serde::{Deserialize, Serialize};
-use snafu::location;
-use tracing::{info, instrument};
+use serde::Serialize;
+use tracing::instrument;
 
 #[instrument(skip_all)]
 pub async fn show_me_myself(
@@ -52,33 +48,11 @@ pub async fn list_users(
     Ok(Json(users))
 }
 
-#[instrument(skip_all)]
-pub async fn login(
-    State(state): State<AppState>,
-    Json(payload): Json<LoginPayload>,
-) -> Result<Json<LoginResponse>> {
-    let Some(auth_user) = state.db.get_user_for_login(&payload.username).await? else {
-        return Err(WebError::not_found(location!()));
-    };
-
-    let user = auth_user.user;
-    let token = auth::create_jwt(user.id.clone(), &state.jwt_keys, auth_user.role)?;
-
-    info!(user = %user.id, "Logged in user");
-
-    Ok(Json(LoginResponse { user, token }))
-}
-
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MeResponse {
     pub user: OwnUser,
     pub team: Option<Team>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct LoginPayload {
-    pub username: UserId,
 }
 
 #[derive(Debug, Serialize)]

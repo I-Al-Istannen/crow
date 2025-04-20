@@ -7,9 +7,9 @@ use crate::endpoints::{
     get_queued_task, get_recent_tasks, get_running_task_info, get_task, get_team_info,
     get_team_repo, get_test, get_test_tasting_work, get_top_task_per_team, get_work, get_work_tar,
     head_running_task_info, integration_get_task_status, integration_request_revision,
-    list_task_ids, list_tests, list_users, login, login_oidc, login_oidc_callback,
-    request_revision, runner_done, runner_ping, runner_register, runner_update, set_team_repo,
-    set_test, show_me_myself, taste_testing_done,
+    list_task_ids, list_tests, list_users, login_oidc, login_oidc_callback, request_revision,
+    runner_done, runner_ping, runner_register, runner_update, set_team_repo, set_test,
+    show_me_myself, taste_testing_done,
 };
 use crate::error::WebError;
 use crate::storage::LocalRepos;
@@ -207,7 +207,6 @@ async fn main_server(
             "/integration/token/task/:task_id",
             get(integration_get_task_status),
         )
-        .route("/login", post(login))
         .route("/queue", get(get_queue))
         .route("/queue/rev/:revision", put(request_revision))
         .route("/queue/task/:task_id", get(get_queued_task))

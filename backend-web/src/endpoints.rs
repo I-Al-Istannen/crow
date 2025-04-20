@@ -38,7 +38,6 @@ pub use self::test::list_tests;
 pub use self::test::set_test;
 pub use self::user::get_integration_status;
 pub use self::user::list_users;
-pub use self::user::login;
 pub use self::user::show_me_myself;
 use crate::error::{HttpError, WebError};
 use axum::extract::rejection::{JsonRejection, PathRejection};
