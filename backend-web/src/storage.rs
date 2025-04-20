@@ -11,7 +11,7 @@ use sync::mpsc;
 use tokio::process::Command;
 use tokio::sync;
 use tokio::sync::mpsc::Receiver;
-use tracing::warn;
+use tracing::{info, warn};
 
 #[derive(Debug, Snafu)]
 pub enum GitError {
@@ -22,7 +22,7 @@ pub enum GitError {
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display("Failed to checkout revision `{revision}` for `{team}` at {location}"))]
+    #[snafu(display("Failed to check out revision `{revision}` for `{team}` at {location}"))]
     NotCheckedOut {
         source: std::io::Error,
         team: TeamId,
@@ -70,6 +70,25 @@ pub enum GitError {
     },
     #[snafu(display("Failed to update repository at `{path:?}` for `{team}` at {location}"))]
     NotUpdated {
+        source: std::io::Error,
+        team: TeamId,
+        path: PathBuf,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display(
+        "Failed to update repository url at `{path:?}` for `{team}` to `{url}` at {location}"
+    ))]
+    UrlNotChanged {
+        source: std::io::Error,
+        team: TeamId,
+        path: PathBuf,
+        url: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Failed to fetch repository url at `{path:?}` for `{team}` at {location}"))]
+    UrlNotFetched {
         source: std::io::Error,
         team: TeamId,
         path: PathBuf,
@@ -138,7 +157,6 @@ impl LocalRepos {
     }
 
     pub async fn update_repo(&self, repo: &Repo) -> Result<(), GitError> {
-        // TODO: Delete if URL is changed(?)
         let path = self.get_repo_path(&repo.team);
         let (done_tx, done_rx) = sync::oneshot::channel();
 
@@ -327,6 +345,41 @@ async fn clone_mirror(repo: &Repo, path: &Path) -> Result<(), GitError> {
 
 async fn update_mirror(repo: &Repo, path: &Path) -> Result<(), GitError> {
     if !path.exists() {
+        return clone_mirror(repo, path).await;
+    }
+
+    let current_url = handle_exitcode(
+        Command::new("git")
+            .arg("remote")
+            .arg("get-url")
+            .arg("origin")
+            .current_dir(path)
+            .output()
+            .await,
+    )
+    .context(UrlNotFetchedSnafu {
+        team: repo.team.clone(),
+        path: path.to_path_buf(),
+    })?;
+
+    let current_url = String::from_utf8_lossy(&current_url.stdout)
+        .trim()
+        .to_string();
+    if current_url != repo.url {
+        info!(
+            team = %repo.team.clone(),
+            path = %path.display(),
+            current_url = %current_url,
+            new_url = %repo.url,
+            "Updating repository URL (nuking repo)",
+        );
+        handle_exitcode(Command::new("rm").arg("-rf").arg(path).output().await).context(
+            UrlNotChangedSnafu {
+                url: repo.url.clone(),
+                team: repo.team.clone(),
+                path: path.to_path_buf(),
+            },
+        )?;
         return clone_mirror(repo, path).await;
     }
 
