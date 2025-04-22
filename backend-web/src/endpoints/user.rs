@@ -36,16 +36,9 @@ pub async fn get_integration_status(
 #[instrument(skip_all)]
 pub async fn list_users(
     State(AppState { db, .. }): State<AppState>,
-    claims: Option<Claims>,
-) -> Result<Json<Vec<UserInfoResponse>>> {
-    let users = db
-        .fetch_users()
-        .await?
-        .into_iter()
-        .flat_map(|x| UserInfoResponse::from_full_user(&claims, x))
-        .collect();
-
-    Ok(Json(users))
+    _claims: Option<Claims>,
+) -> Result<Json<Vec<FullUserForAdmin>>> {
+    Ok(Json(db.fetch_users().await?))
 }
 
 #[derive(Debug, Serialize)]
@@ -59,23 +52,6 @@ pub struct MeResponse {
 pub struct LoginResponse {
     pub user: User,
     pub token: String,
-}
-
-#[derive(Serialize)]
-#[serde(untagged)]
-pub enum UserInfoResponse {
-    User(User),
-    FullUser(FullUserForAdmin),
-}
-
-impl UserInfoResponse {
-    pub fn from_full_user(claims: &Option<Claims>, user: FullUserForAdmin) -> Option<Self> {
-        if Claims::is_admin_opt(claims) {
-            Some(Self::FullUser(user))
-        } else {
-            Some(Self::User(user.into_user()))
-        }
-    }
 }
 
 #[derive(Debug, Serialize)]

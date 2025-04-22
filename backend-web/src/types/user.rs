@@ -66,12 +66,6 @@ pub struct FullUserForAdmin {
     pub role: UserRole,
 }
 
-impl FullUserForAdmin {
-    pub fn into_user(self) -> User {
-        self.user.user
-    }
-}
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize, sqlx::Type)]
 pub enum UserRole {
     Regular,

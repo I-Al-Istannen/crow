@@ -50,10 +50,6 @@ impl<T: Debug + Clone> Claims<T> {
     pub fn is_admin(&self) -> bool {
         self.role == UserRole::Admin
     }
-
-    pub fn is_admin_opt(claims: &Option<Self>) -> bool {
-        claims.as_ref().map(|x| x.role).unwrap_or(UserRole::Regular) == UserRole::Admin
-    }
 }
 
 impl Claims<Option<TeamId>> {
