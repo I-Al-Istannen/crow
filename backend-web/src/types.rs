@@ -32,6 +32,7 @@ use crate::db::Database;
 use crate::storage::LocalRepos;
 use crate::types::queue::Queue;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 mod execution;
@@ -52,6 +53,7 @@ pub struct AppState {
     pub jwt_keys: Keys,
     pub execution_config: ExecutionConfig,
     pub test_config: TestConfig,
+    pub team_mapping: HashMap<UserId, TeamId>,
     pub executor: Arc<Mutex<Executor>>,
     pub test_tasting: Arc<Mutex<TestTasting>>,
     pub queue: Arc<Mutex<Queue>>,
@@ -61,12 +63,14 @@ pub struct AppState {
 }
 
 impl AppState {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         db: Database,
         jwt_secret: Keys,
         github_app_name: Option<String>,
         execution_config: ExecutionConfig,
         test_config: TestConfig,
+        team_mapping: HashMap<UserId, TeamId>,
         local_repos: LocalRepos,
         oidc: Oidc,
     ) -> Self {
@@ -75,6 +79,7 @@ impl AppState {
             jwt_keys: jwt_secret,
             execution_config,
             test_config,
+            team_mapping,
             executor: Executor::new(),
             test_tasting: TestTasting::new(),
             queue: Arc::new(Mutex::new(Queue::new())),

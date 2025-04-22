@@ -1,10 +1,10 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM Repos WHERE team = ?",
+  "query": "SELECT team as \"team!\", url FROM Repos",
   "describe": {
     "columns": [
       {
-        "name": "team",
+        "name": "team!",
         "ordinal": 0,
         "type_info": "Text"
       },
@@ -15,12 +15,12 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
-      false,
+      true,
       false
     ]
   },
-  "hash": "7d323d291eb4848e3bc529801cf580cea9dba99afa4a9b1efbbee7924ea61e59"
+  "hash": "c256a4a512be18b177cfec2f66cc711e5ca020012292a20d4069808b25fd8f33"
 }

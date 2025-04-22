@@ -64,7 +64,12 @@ pub async fn login_oidc_callback(
         }
     };
 
-    let user = state.db.synchronize_oidc_user(user.clone()).await?.user;
+    let team = state.team_mapping.get(&user.id.clone().into()).cloned();
+    let user = state
+        .db
+        .synchronize_oidc_user(user.clone(), team)
+        .await?
+        .user;
     let jwt = create_jwt(user.id.clone(), &state.jwt_keys, UserRole::Regular)?;
 
     info!(

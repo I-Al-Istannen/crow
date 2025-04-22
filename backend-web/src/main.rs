@@ -13,7 +13,7 @@ use crate::endpoints::{
 };
 use crate::error::WebError;
 use crate::storage::LocalRepos;
-use crate::types::{AppState, UserRole};
+use crate::types::{AppState, TeamId, UserId, UserRole};
 use axum::extract::{Request, State};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
@@ -28,6 +28,7 @@ use clap::builder::styling::AnsiColor;
 use clap::builder::Styles;
 use clap::Parser;
 use snafu::{location, Report};
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::{env, fs};
@@ -98,6 +99,15 @@ async fn main() {
     let db = Database::new(&config.database_path).await.unwrap();
 
     db.sync_teams(&config.teams).await.unwrap();
+    let team_mapping: HashMap<UserId, TeamId> = config
+        .teams
+        .into_iter()
+        .flat_map(|team| {
+            team.members
+                .into_iter()
+                .map(move |user| (user, team.id.clone()))
+        })
+        .collect();
 
     let local_repo_path = config.execution.local_repo_path.clone();
     let state = AppState::new(
@@ -106,6 +116,7 @@ async fn main() {
         config.github.as_ref().map(|it| it.app_name.to_string()),
         config.execution,
         config.test,
+        team_mapping,
         LocalRepos::new(local_repo_path),
         Oidc::build_new(config.oidc.clone()).await.unwrap(),
     );

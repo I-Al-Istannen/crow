@@ -1,6 +1,6 @@
 use crate::auth::oidc::OidcUser;
 use crate::error::{Result, SqlxSnafu, WebError};
-use crate::types::{FullUserForAdmin, OwnUser, User, UserId, UserRole};
+use crate::types::{FullUserForAdmin, OwnUser, TeamId, User, UserId, UserRole};
 use snafu::{location, ResultExt};
 use sqlx::{query, SqliteConnection};
 use tracing::{instrument, trace_span, Instrument};
@@ -54,19 +54,22 @@ pub(super) async fn fetch_users(con: &mut SqliteConnection) -> Result<Vec<FullUs
 pub(super) async fn synchronize_oidc_user(
     con: &mut SqliteConnection,
     user: OidcUser,
+    team: Option<TeamId>,
 ) -> Result<OwnUser> {
     query!(
         r#"
         INSERT INTO Users
-            (id, display_name, role)
+            (id, display_name, role, team)
         VALUES
-            (?, ?, ?)
+            (?, ?, ?, ?)
         ON CONFLICT DO UPDATE SET
-            display_name = excluded.display_name
+            display_name = excluded.display_name,
+            team = coalesce(excluded.team, team)
         "#,
         user.id,
         user.name,
-        UserRole::Regular
+        UserRole::Regular,
+        team,
     )
     .execute(&mut *con)
     .await

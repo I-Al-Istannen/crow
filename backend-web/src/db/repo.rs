@@ -9,11 +9,15 @@ pub(super) async fn fetch_repo(
     con: &mut SqliteConnection,
     team_id: &TeamId,
 ) -> Result<Option<Repo>> {
-    query_as!(Repo, r#"SELECT * FROM Repos WHERE team = ?"#, team_id)
-        .fetch_optional(con)
-        .instrument(info_span!("sqlx_get_repo"))
-        .await
-        .context(SqlxSnafu)
+    query_as!(
+        Repo,
+        r#"SELECT team as "team!", url FROM Repos WHERE team = ?"#,
+        team_id
+    )
+    .fetch_optional(con)
+    .instrument(info_span!("sqlx_get_repo"))
+    .await
+    .context(SqlxSnafu)
 }
 
 #[instrument(skip_all)]
@@ -26,7 +30,7 @@ pub(super) async fn get_repo(con: &mut SqliteConnection, team_id: &TeamId) -> Re
 
 #[instrument(skip_all)]
 pub(super) async fn get_repos(con: &mut SqliteConnection) -> Result<Vec<Repo>> {
-    query_as!(Repo, "SELECT team, url FROM Repos")
+    query_as!(Repo, r#"SELECT team as "team!", url FROM Repos"#)
         .fetch_all(con)
         .instrument(info_span!("sqlx_get_repos"))
         .await
@@ -58,11 +62,15 @@ pub(super) async fn patch_or_create_repo(
     .await
     .context(SqlxSnafu)?;
 
-    let repo = query_as!(Repo, "SELECT * FROM Repos WHERE team = ?", team_id)
-        .fetch_one(&mut *con)
-        .instrument(info_span!("sqlx_update_get_repo"))
-        .await
-        .context(SqlxSnafu)?;
+    let repo = query_as!(
+        Repo,
+        r#"SELECT team as "team!", url FROM Repos WHERE team = ?"#,
+        team_id
+    )
+    .fetch_one(&mut *con)
+    .instrument(info_span!("sqlx_update_get_repo"))
+    .await
+    .context(SqlxSnafu)?;
 
     con.commit().await.context(SqlxSnafu)?;
 

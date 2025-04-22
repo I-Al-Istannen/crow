@@ -81,9 +81,14 @@ impl Database {
         user::fetch_users(&mut *pool.acquire().await.context(SqlxSnafu)?).await
     }
 
-    pub async fn synchronize_oidc_user(&self, user: OidcUser) -> Result<OwnUser> {
+    pub async fn synchronize_oidc_user(
+        &self,
+        user: OidcUser,
+        team: Option<TeamId>,
+    ) -> Result<OwnUser> {
         let pool = self.write_lock().await;
-        user::synchronize_oidc_user(&mut *pool.acquire().await.context(SqlxSnafu)?, user).await
+        user::synchronize_oidc_user(&mut *pool.acquire().await.context(SqlxSnafu)?, user, team)
+            .await
     }
 
     pub async fn set_team_repo(&self, team_id: &TeamId, repo_url: &str) -> Result<Repo> {
