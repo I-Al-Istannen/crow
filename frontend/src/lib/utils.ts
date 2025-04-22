@@ -40,7 +40,8 @@ export function formatDuration(millis: number): string {
 }
 
 export function formatApproxDuration(currentTime: number, insertTime: number) {
-  return formatDuration(Math.floor((currentTime - insertTime) / 5000) * 5000)
+  const delta = Math.max(currentTime - insertTime, 0)
+  return formatDuration(Math.floor(delta / 1000) * 1000)
 }
 
 export function statusColor(
