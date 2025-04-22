@@ -11,7 +11,7 @@ use axum::response::Redirect;
 use axum_extra::extract::cookie::{Cookie, Expiration, SameSite};
 use axum_extra::extract::CookieJar;
 use serde::Deserialize;
-use snafu::location;
+use snafu::{location, Report};
 use tracing::{info, warn};
 
 pub async fn login_oidc(
@@ -45,7 +45,7 @@ pub async fn login_oidc_callback(
     };
     let flow_id = OidcFlowId::from_string(flow_id.value().to_string());
 
-    info!(flow_id = flow_id.to_string(), "Handling OIDC callback");
+    info!(flow_id = %flow_id, "Handling OIDC callback");
 
     let res = state
         .oidc
@@ -59,6 +59,7 @@ pub async fn login_oidc_callback(
     let user = match res {
         Ok(user) => user,
         Err(e) => {
+            info!(flow_id = %flow_id, error = %Report::from_error(&e), "OIDC login failed");
             return Err(WebError::http_error(e, location!()));
         }
     };

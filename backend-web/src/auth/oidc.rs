@@ -11,7 +11,7 @@ use openidconnect::{
     AccessTokenHash, AuthorizationCode, Client, ClientId, ClientSecret, CsrfToken,
     EmptyAdditionalClaims, EndpointMaybeSet, EndpointNotSet, EndpointSet, IssuerUrl, Nonce,
     OAuth2TokenResponse, PkceCodeChallenge, RedirectUrl, Scope, StandardErrorResponse,
-    TokenResponse,
+    TokenResponse, UserInfoClaims, UserInfoError,
 };
 use snafu::{ensure, Location, OptionExt, ResultExt, Snafu};
 use std::collections::HashMap;
@@ -102,6 +102,20 @@ pub enum OidcError {
     AccessTokenSignatureVerification {
         actual: String,
         expected: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not build user info request for `{name}` ({subject}) at {location}"))]
+    UserInfoRequestBuild {
+        subject: String,
+        name: String,
+        source: openidconnect::ConfigurationError,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Error during user info request at {location}"))]
+    UserInfoRequest {
+        source: UserInfoError<HttpClientError<reqwest::Error>>,
         #[snafu(implicit)]
         location: Location,
     },
@@ -314,14 +328,57 @@ impl Oidc {
             );
         }
 
-        Ok(OidcUser {
-            id: claims.subject().to_string(),
-            name: claims
-                .preferred_username()
-                .map(|name| name.as_str())
-                .unwrap_or("<not provided>")
-                .to_string(),
-        })
+        let id = claims.subject().to_string();
+        let name = claims
+            .preferred_username()
+            .map(|name| name.as_str())
+            .unwrap_or("<not provided>")
+            .to_string();
+
+        let user = OidcUser { id, name };
+
+        if self
+            .oidc_config
+            .issuer_url
+            .starts_with("https://oidc.scc.kit.edu")
+        {
+            self.get_oidc_user_kit(&token_response, claims, user).await
+        } else {
+            Ok(user)
+        }
+    }
+
+    async fn get_oidc_user_kit(
+        &self,
+        token_response: &CoreTokenResponse,
+        claims: &CoreIdTokenClaims,
+        user: OidcUser,
+    ) -> Result<OidcUser, OidcError> {
+        let info_request = self
+            .oidc_client
+            .user_info(
+                token_response.access_token().clone(),
+                Some(claims.subject().clone()),
+            )
+            .context(UserInfoRequestBuildSnafu {
+                subject: user.id.clone(),
+                name: user.name.clone(),
+            })?;
+        let full_claims: UserInfoClaims<EmptyAdditionalClaims, CoreGenderClaim> = info_request
+            .request_async(&self.http_client)
+            .await
+            .context(UserInfoRequestSnafu)?;
+
+        let id = full_claims
+            .preferred_username()
+            .map(|it| it.to_string())
+            .unwrap_or(user.id);
+        let name = match full_claims.name() {
+            Some(name) => name.get(None).map_or(user.name, |it| it.to_string()),
+            None => user.name,
+        };
+
+        Ok(OidcUser { id, name })
     }
 }
 
