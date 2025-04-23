@@ -117,27 +117,26 @@
             };
             frontend =
               let
-                caddy-config = pkgs.writeText "Caddyfile" ''
-                  :80 {
-                    try_files {path} /
-                    encode gzip
-                    root * ${frontend}
-                    file_server
-                  }
+                lighttpd-config = pkgs.writeText "lighttpd.conf" ''
+                  server.document-root = "${frontend}"
+                  server.error-handler-404 = "/index.html"
+                  server.port = 80
+                  server.upload-dirs = ( "/tmp" )
+                  index-file.names    = ( "index.html" )
                 '';
               in
               pkgs.dockerTools.buildLayeredImage {
                 name = "crow-frontend";
                 tag = backend-naersk.version;
 
+                extraCommands = "mkdir -m 0777 tmp";
+
                 config = {
                   Entrypoint = [
-                    "${pkgs.caddy}/bin/caddy"
-                    "run"
-                    "--adapter"
-                    "caddyfile"
-                    "--config"
-                    caddy-config
+                    "${pkgs.lighttpd}/bin/lighttpd"
+                    "-f"
+                    "${lighttpd-config}"
+                    "-D"
                   ];
 
                   Expose = {
