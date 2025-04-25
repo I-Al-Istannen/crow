@@ -3,7 +3,7 @@
     <LucideGripVertical class="h-5 flex-shrink-0 drag-handle cursor-grab" />
     <Select
       :model-value="modifierType"
-      @update:model-value="update($event as string, stringArg, intArg, crashArg, failArg)"
+      @update:model-value="update($event as string, stringArg, crashArg, failArg)"
       required
     >
       <SelectTrigger class="max-w-[20ch] py-0 h-7 flex-shrink-1 md:flex-shrink-0 min-w-1">
@@ -19,7 +19,6 @@
           <SelectItem value="ExpectedOutput">Expected output</SelectItem>
         </SelectGroup>
         <SelectGroup>
-          <SelectItem value="ExitCode">Exit code</SelectItem>
           <SelectItem v-if="showCrash" value="ShouldCrash">Should crash</SelectItem>
           <SelectItem v-if="showFail" value="ShouldFail">Should fail</SelectItem>
           <SelectItem value="ShouldSucceed">Should succeed</SelectItem>
@@ -30,17 +29,9 @@
       type="text"
       :placeholder="argPlaceholderText"
       :model-value="stringArg"
-      @update:model-value="update(modifierType, $event as string, intArg, crashArg, failArg)"
+      @update:model-value="update(modifierType, $event as string, crashArg, failArg)"
       v-if="hasShortStringArg"
       class="py-0 h-7 min-w-1 text-ellipsis"
-    />
-    <Input
-      type="number"
-      :placeholder="argPlaceholderText"
-      :model-value="intArg"
-      @update:model-value="update(modifierType, stringArg, $event as number, crashArg, failArg)"
-      v-if="hasIntArg"
-      class="py-0 h-7 min-w-1"
     />
     <Popover v-if="hasLongStringArg">
       <PopoverTrigger class="h-7 w-full" as-child>
@@ -54,7 +45,7 @@
       <PopoverContent class="w-[90dvw] sm:w-[70dvw] max-w-[120ch]">
         <Textarea
           :model-value="stringArg"
-          @update:model-value="update(modifierType, $event as string, intArg, crashArg, failArg)"
+          @update:model-value="update(modifierType, $event as string, crashArg, failArg)"
           class="font-mono whitespace-pre overflow-scroll max-h-[100dvh]"
           rows="10"
           :placeholder="argPlaceholderText"
@@ -65,7 +56,7 @@
     <Select
       v-if="hasCrashArg"
       :model-value="crashArg"
-      @update:model-value="update(modifierType, stringArg, intArg, $event as CrashSignal, failArg)"
+      @update:model-value="update(modifierType, stringArg, $event as CrashSignal, failArg)"
       required
     >
       <SelectTrigger class="py-0 h-7 min-w-1">
@@ -81,9 +72,7 @@
     <Select
       v-if="hasFailArg"
       :model-value="failArg"
-      @update:model-value="
-        update(modifierType, stringArg, intArg, crashArg, $event as CompilerFailReason)
-      "
+      @update:model-value="update(modifierType, stringArg, crashArg, $event as CompilerFailReason)"
       required
     >
       <SelectTrigger class="py-0 h-7 min-w-1">
@@ -146,14 +135,6 @@ const stringArg = computed(() => {
       return ''
   }
 })
-const intArg = computed(() => {
-  switch (modifier.value.type) {
-    case 'ExitCode':
-      return modifier.value.code
-    default:
-      return 0
-  }
-})
 const crashArg = computed(() => {
   switch (modifier.value.type) {
     case 'ShouldCrash':
@@ -177,14 +158,12 @@ const hasLongStringArg = computed(
     modifier.value.type === 'ProgramInput' ||
     modifier.value.type === 'ProgramArgumentFile',
 )
-const hasIntArg = computed(() => modifier.value.type === 'ExitCode')
 const hasCrashArg = computed(() => modifier.value.type === 'ShouldCrash')
 const hasFailArg = computed(() => modifier.value.type === 'ShouldFail')
 
 function update(
   type: string,
   stringVal: string,
-  intVal: number,
   crashVal: CrashSignal,
   failVal: CompilerFailReason,
 ) {
@@ -200,9 +179,6 @@ function update(
       break
     case 'ProgramInput':
       modifier.value = { type, input: stringVal }
-      break
-    case 'ExitCode':
-      modifier.value = { type, code: intVal }
       break
     case 'ShouldCrash':
       modifier.value = { type, signal: crashVal }
@@ -226,8 +202,6 @@ const argPlaceholderText = computed(() => {
       return 'Input...'
     case 'ExpectedOutput':
       return 'Output...'
-    case 'ExitCode':
-      return 'Exit code...'
     default:
       return ''
   }

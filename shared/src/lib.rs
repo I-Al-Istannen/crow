@@ -101,7 +101,6 @@ impl CrashSignal {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum TestModifier {
-    ExitCode { code: u32 },
     ExpectedOutput { output: String },
     ProgramArgument { arg: String },
     ProgramArgumentFile { contents: String },
@@ -114,7 +113,6 @@ pub enum TestModifier {
 impl TestModifier {
     pub fn name(&self) -> &'static str {
         match self {
-            Self::ExitCode { .. } => "ExitCode",
             Self::ExpectedOutput { .. } => "ExpectedOutput",
             Self::ProgramArgument { .. } => "ProgramArgument",
             Self::ProgramArgumentFile { .. } => "ProgramArgumentFile",
