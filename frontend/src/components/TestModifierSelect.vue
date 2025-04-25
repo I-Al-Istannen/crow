@@ -13,9 +13,13 @@
         <SelectGroup>
           <SelectItem value="ProgramArgumentFile">Argument File</SelectItem>
           <SelectItem value="ProgramArgument">Argument String</SelectItem>
-          <SelectItem value="ExitCode">Exit code</SelectItem>
-          <SelectItem value="ExpectedOutput">Expected output</SelectItem>
+        </SelectGroup>
+        <SelectGroup>
           <SelectItem value="ProgramInput">Program input</SelectItem>
+          <SelectItem value="ExpectedOutput">Expected output</SelectItem>
+        </SelectGroup>
+        <SelectGroup>
+          <SelectItem value="ExitCode">Exit code</SelectItem>
           <SelectItem value="ShouldCrash">Should crash</SelectItem>
           <SelectItem value="ShouldSucceed">Should succeed</SelectItem>
         </SelectGroup>
@@ -69,7 +73,7 @@
       <SelectContent>
         <SelectGroup>
           <SelectItem value="FloatingPointException">Floating point exception</SelectItem>
-          <SelectItem value="SegmentationFault">SegmentationFault</SelectItem>
+          <SelectItem value="SegmentationFault">Segmentation fault</SelectItem>
         </SelectGroup>
       </SelectContent>
     </Select>
@@ -167,10 +171,12 @@ const argPlaceholderText = computed(() => {
   switch (modifierType.value) {
     case 'ProgramArgument':
       return 'Argument...'
-    case 'ExpectedOutput':
-      return 'Output...'
+    case 'ProgramArgumentFile':
+      return 'File contents...'
     case 'ProgramInput':
       return 'Input...'
+    case 'ExpectedOutput':
+      return 'Output...'
     case 'ExitCode':
       return 'Exit code...'
     default:
