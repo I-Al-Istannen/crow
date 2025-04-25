@@ -27,6 +27,7 @@ pub use self::tasks::integration_get_task_status;
 pub use self::tasks::integration_request_revision;
 pub use self::tasks::list_task_ids;
 pub use self::tasks::request_revision;
+pub use self::team::get_final_tasks;
 pub use self::team::get_n_recent_tasks;
 pub use self::team::get_recent_tasks;
 pub use self::team::get_team_info;

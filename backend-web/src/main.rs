@@ -3,8 +3,8 @@ use crate::auth::{Claims, Keys};
 use crate::config::Config;
 use crate::db::Database;
 use crate::endpoints::{
-    delete_test, executor_info, get_integration_status, get_n_recent_tasks, get_queue,
-    get_queued_task, get_recent_tasks, get_running_task_info, get_task, get_team_info,
+    delete_test, executor_info, get_final_tasks, get_integration_status, get_n_recent_tasks,
+    get_queue, get_queued_task, get_recent_tasks, get_running_task_info, get_task, get_team_info,
     get_team_repo, get_test, get_test_tasting_work, get_top_task_per_team, get_work, get_work_tar,
     head_running_task_info, integration_get_task_status, integration_request_revision,
     list_task_ids, list_tests, list_users, login_oidc, login_oidc_callback, request_revision,
@@ -230,6 +230,7 @@ async fn main_server(
         .route("/team/info/:team_id", get(get_team_info))
         .route("/team/recent-tasks", get(get_recent_tasks))
         .route("/team/recent-tasks/:count", get(get_n_recent_tasks))
+        .route("/team/final-tasks", get(get_final_tasks))
         .route("/tests", get(list_tests))
         .route("/tests/:test_id", delete(delete_test))
         .route("/tests/:test_id", get(get_test))

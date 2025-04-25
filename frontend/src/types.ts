@@ -112,6 +112,11 @@ export const FinishedCompilerTaskSummarySchema = z.discriminatedUnion('type', [
   }),
 ])
 
+export const FinalSelectedTaskSchema = z.object({
+  summary: FinishedCompilerTaskSummarySchema,
+  automaticallySelected: z.boolean(),
+})
+
 // Out of order due to dependencies
 export const GithubIntegrationInfoResponse = z.object({
   url: z.string().url('Not a valid url'),
@@ -265,6 +270,7 @@ export type FinishedExecution = z.infer<typeof FinishedExecutionSchema>
 export type FinishedTaskInfo = z.infer<typeof FinishedTaskInfoSchema>
 export type FinishedTest = z.infer<typeof FinishedTestSchema>
 export type FinishedTestSummary = z.infer<typeof FinishedTestSummarySchema>
+export type FinalSelectedTask = z.infer<typeof FinalSelectedTaskSchema>
 export type GithubIntegrationInfoResponse = z.infer<typeof GithubIntegrationInfoResponse>
 export type IntegrationInfoResponse = z.infer<typeof IntegrationInfoResponseSchema>
 export type InternalError = z.infer<typeof InternalErrorSchema>

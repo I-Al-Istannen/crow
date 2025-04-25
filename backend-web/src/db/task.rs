@@ -479,15 +479,60 @@ pub(super) async fn get_top_task_per_team(
         ExecutionExitStatus::Success
     )
     .fetch_all(&mut *con)
+    .instrument(info_span!("sqlx_get_top_task_per_team"))
     .await
     .context(SqlxSnafu)?;
 
     let mut result = HashMap::new();
 
     for row in query_res {
-        let task = get_task(&mut *con, &row.task_id).await?;
+        let task = get_task(&mut *con, &row.task_id)
+            .instrument(info_span!("sqlx_get_top_task_per_team_inner"))
+            .await?;
         result.insert(row.team_id, task.into());
     }
 
     Ok(result)
+}
+
+#[instrument(skip_all)]
+pub(super) async fn get_top_task_for_team_and_category(
+    con: impl Acquire<'_, Database = Sqlite>,
+    team_id: &TeamId,
+    category: &str,
+) -> Result<Option<FinishedCompilerTaskSummary>> {
+    let mut con = con.begin().await.context(SqlxSnafu)?;
+
+    let query_res = query!(
+        r#"
+        SELECT
+            PASS_BY_TASK.task_id as "task_id!: TaskId"
+        FROM (
+            SELECT TestResults.task_id, COUNT(1) as passed_count
+            FROM TestResults
+            JOIN ExecutionResults ER ON ER.execution_id = TestResults.binary_exec_id
+            JOIN Tests ON Tests.id = TestResults.test_id
+            WHERE ER.result = ? AND Tests.category = ?
+            GROUP BY TestResults.task_id
+        ) PASS_BY_TASK
+        JOIN Tasks ON Tasks.task_id = PASS_BY_TASK.task_id
+        WHERE Tasks.team_id = ?
+        ORDER BY PASS_BY_TASK.passed_count DESC, Tasks.start_time DESC
+        LIMIT 1
+        "#,
+        ExecutionExitStatus::Success,
+        category,
+        team_id
+    )
+    .fetch_optional(&mut *con)
+    .instrument(info_span!("sqlx_get_top_task_for_team_and_category"))
+    .await
+    .context(SqlxSnafu)?;
+
+    let query_res = match query_res {
+        Some(row) => row,
+        None => return Ok(None),
+    };
+
+    Ok(Some(get_task(&mut *con, &query_res.task_id).await?.into()))
 }

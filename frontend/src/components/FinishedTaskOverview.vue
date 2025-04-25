@@ -4,27 +4,29 @@
       class="leading-none tracking-tight flex items-start justify-between p-2 hover:bg-accent hover:text-accent-foreground"
       :class="['rounded-xl', 'border', 'bg-card', 'text-card-foreground']"
     >
-      <span class="flex flex-col justify-center">
-        <span class="mb-1">
+      <div class="flex flex-col justify-center">
+        <div class="mb-1 flex items-center gap-1 flex-wrap mr-1">
           <span class="text-muted-foreground">{{ task.info.revisionId.substring(0, 8) }}: </span>
           <span class="font-medium">{{ task.info.commitMessage }}</span>
-        </span>
+          <AutoSelectedGradedMarker :task-id="task.info.taskId" />
+        </div>
         <TaskQuickOverview class="text-sm" :task="task" />
-      </span>
-      <span class="text-sm text-muted-foreground flex flex-col justify-center items-end">
+      </div>
+      <div class="text-sm text-muted-foreground flex flex-col justify-center items-end">
         <span>
           {{ formatTime(task.info.start) }}
         </span>
         <span>
           {{ formatDurationBetween(task.info.start, task.info.end) }}
         </span>
-      </span>
+      </div>
     </div>
   </router-link>
 </template>
 
 <script setup lang="ts">
 import { formatDurationBetween, formatTime } from '../lib/utils.ts'
+import AutoSelectedGradedMarker from '@/components/AutoSelectedGradedMarker.vue'
 import type { FinishedCompilerTaskSummary } from '@/types.ts'
 import TaskQuickOverview from '@/components/TaskQuickOverview.vue'
 import { toRefs } from 'vue'

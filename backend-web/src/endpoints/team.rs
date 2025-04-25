@@ -3,8 +3,9 @@ use crate::auth::Claims;
 use crate::error::{Result, WebError};
 use crate::types::{AppState, FinishedCompilerTaskSummary, Repo, TeamId, TeamInfo};
 use axum::extract::State;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use snafu::location;
+use std::collections::HashMap;
 use tracing::instrument;
 
 #[instrument(skip_all)]
@@ -60,6 +61,32 @@ pub async fn get_recent_tasks(
 }
 
 #[instrument(skip_all)]
+pub async fn get_final_tasks(
+    State(state): State<AppState>,
+    claims: Claims,
+) -> Result<Json<HashMap<String, FinalSelectedTask>>> {
+    let mut result = HashMap::new();
+
+    for category in state.test_config.categories {
+        if let Some(summary) = state
+            .db
+            .get_top_task_for_team_and_category(&claims.team, &category)
+            .await?
+        {
+            result.insert(
+                category,
+                FinalSelectedTask {
+                    summary,
+                    automatically_selected: true,
+                },
+            );
+        }
+    }
+
+    Ok(Json(result))
+}
+
+#[instrument(skip_all)]
 pub async fn get_team_info(
     State(AppState { db, .. }): State<AppState>,
     claims: Claims,
@@ -76,4 +103,11 @@ pub async fn get_team_info(
 #[serde(rename_all = "camelCase")]
 pub struct TeamPatchPayload {
     pub repo_url: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FinalSelectedTask {
+    pub summary: FinishedCompilerTaskSummary,
+    pub automatically_selected: bool,
 }

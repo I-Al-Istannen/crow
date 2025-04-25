@@ -1,4 +1,6 @@
 import {
+  type FinalSelectedTask,
+  FinalSelectedTaskSchema,
   type FinishedCompilerTask,
   FinishedCompilerTaskSchema,
   type FinishedCompilerTaskSummary,
@@ -385,6 +387,26 @@ export function queryTopTaskPerTeam() {
     queryFn: fetchTopTaskPerTeam,
     meta: {
       purpose: 'fetching top task per team',
+    },
+    enabled: isLoggedIn(),
+  })
+}
+
+export async function fetchFinalSubmittedTasks(): Promise<Map<string, FinalSelectedTask>> {
+  const response = await fetchWithAuth('/team/final-tasks')
+  const result = new Map()
+  for (const [k, v] of Object.entries(await response.json())) {
+    result.set(k, FinalSelectedTaskSchema.parse(v))
+  }
+  return result
+}
+
+export function queryFinalSubmittedTasks() {
+  return useQuery({
+    queryKey: ['final-tasks'],
+    queryFn: fetchFinalSubmittedTasks,
+    meta: {
+      purpose: 'fetching final submitted tasks',
     },
     enabled: isLoggedIn(),
   })

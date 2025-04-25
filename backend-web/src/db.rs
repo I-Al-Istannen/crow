@@ -192,6 +192,15 @@ impl Database {
         task::get_top_task_per_team(&*pool).await
     }
 
+    pub async fn get_top_task_for_team_and_category(
+        &self,
+        team_id: &TeamId,
+        category: &str,
+    ) -> Result<Option<FinishedCompilerTaskSummary>> {
+        let pool = self.read_lock().await;
+        task::get_top_task_for_team_and_category(&*pool, team_id, category).await
+    }
+
     pub async fn add_test(
         &self,
         test: Test,
