@@ -31,6 +31,7 @@ pub struct ExecutionConfig {
     pub build_timeout: Duration,
     #[serde(deserialize_with = "parse_duration")]
     pub test_timeout: Duration,
+    pub build_image: String,
     pub reference_compiler_image: Option<String>,
 
     pub local_repo_path: PathBuf,

@@ -236,14 +236,13 @@ pub async fn get_work(
         }));
     };
 
-    // FIXME: Replace
     let task = CompilerTask {
         task_id: task.id.to_string(),
         team_id: task.team.to_string(),
         revision_id: task.revision.to_string(),
-        commit_message: task.commit_message.clone(),
-        image: "ubuntu:latest".to_string(),
-        build_command: state.execution_config.build_command.clone(),
+        commit_message: task.commit_message,
+        image: state.execution_config.build_image,
+        build_command: state.execution_config.build_command,
         build_timeout: state.execution_config.build_timeout,
         tests,
     };

@@ -25,6 +25,8 @@ binary_arguments = []
 build_timeout = "10m"
 # The timeout for an individual test
 test_timeout = "1m"
+# The docker image for building and executing compilers
+build_image = "archlinux:latest"
 # The path for caching local directories
 local_repo_path = "target/repos"
 # The docker image containing the reference compiler. If not provided, test tasting is disabled.
