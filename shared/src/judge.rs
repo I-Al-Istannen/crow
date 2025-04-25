@@ -1,4 +1,7 @@
-use crate::{CrashSignal, ExecutionOutput, FinishedExecution, TestModifier, TestModifierExt};
+use crate::{
+    CompilerFailReason, CrashSignal, ExecutionOutput, FinishedExecution, TestModifier,
+    TestModifierExt,
+};
 use similar::{DiffableStr, TextDiff};
 use std::fmt::{Display, Formatter};
 use std::os::unix::process::ExitStatusExt;
@@ -41,6 +44,7 @@ pub fn judge_output(
                 judge_program_should_crash(exit_status, *signal)
             }
             TestModifier::ShouldSucceed => judge_program_should_succeed(exit_status),
+            TestModifier::ShouldFail { reason } => judge_program_should_fail(exit_status, *reason),
             TestModifier::ExpectedOutput { .. } => None,
             TestModifier::ProgramArgument { .. } => None,
             TestModifier::ProgramArgumentFile { .. } => None,
@@ -187,4 +191,32 @@ fn judge_program_should_succeed(exit_status: ExitStatus) -> Option<JudgeProblem>
             modifier_name: "ShouldSucceed".to_string()
         })
     }
+}
+
+fn judge_program_should_fail(
+    exit_status: ExitStatus,
+    expected: CompilerFailReason,
+) -> Option<JudgeProblem> {
+    let Some(code) = exit_status.code() else {
+        return Some(JudgeProblem {
+            message: format!(
+                "Program should have failed with {} but it exited with an unknown error: {:?}",
+                expected.name(),
+                exit_status
+            ),
+            modifier_name: "ShouldFail".to_string(),
+        });
+    };
+
+    if code == expected.exit_code() {
+        return None;
+    }
+
+    Some(JudgeProblem {
+        message: format!(
+            "Program should have failed with `{}`, but it exited with {code}.",
+            expected.name()
+        ),
+        modifier_name: "ShouldFail".to_string(),
+    })
 }

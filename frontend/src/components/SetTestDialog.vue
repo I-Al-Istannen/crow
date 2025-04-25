@@ -54,11 +54,19 @@
           </FormField>
           <div>
             <span class="text-sm font-medium">Executing your compiler</span>
-            <TestModifierList v-model:value="compilerModifiers" class="ml-2" />
+            <TestModifierList
+              v-model:value="compilerModifiers"
+              modifier-target="compiler"
+              class="ml-2"
+            />
           </div>
           <div>
             <span class="text-sm font-medium">Executing the compiled binary</span>
-            <TestModifierList v-model:value="binaryModifiers" class="ml-2" />
+            <TestModifierList
+              v-model:value="binaryModifiers"
+              modifier-target="binary"
+              class="ml-2"
+            />
           </div>
           <FormField v-slot="{ value, handleChange }" type="checkbox" name="testTasting">
             <FormItem

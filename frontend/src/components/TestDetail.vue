@@ -21,6 +21,7 @@
           <span class="text-sm font-medium">Executing your compiler</span>
           <TestModifierList
             :value="test.compilerModifiers.map((val, key) => ({ ...val, key }))"
+            modifier-target="compiler"
             readonly
           />
         </div>
@@ -28,6 +29,7 @@
           <span class="text-sm font-medium">Executing the compiled binary</span>
           <TestModifierList
             :value="test.binaryModifiers.map((val, key) => ({ ...val, key }))"
+            modifier-target="binary"
             readonly
           />
         </div>

@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use markdown::mdast::{Code, Text};
 use markdown::{mdast, ParseOptions};
 use mdast::{Heading, Node, Root};
-use shared::{CrashSignal, TestModifier};
+use shared::{CompilerFailReason, CrashSignal, TestModifier};
 use snafu::{ensure, location, IntoError, Location, NoneError, ResultExt, Snafu};
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
@@ -278,6 +278,7 @@ fn modifier_arg_to_string(modifier: &TestModifier) -> Option<String> {
         TestModifier::ProgramArgumentFile { contents } => Some(contents.to_string()),
         TestModifier::ProgramInput { input } => Some(input.to_string()),
         TestModifier::ShouldCrash { signal } => Some(signal.to_string()),
+        TestModifier::ShouldFail { reason } => Some(reason.to_string()),
         TestModifier::ShouldSucceed => None,
     }
 }
@@ -332,6 +333,9 @@ fn modifier_from_string(type_: &str, value: Option<String>) -> Result<TestModifi
         "ShouldCrash" => TestModifier::ShouldCrash {
             signal: parse_crash_signal(&require_value("ShouldCrash", value)?)?,
         },
+        "ShouldFail" => TestModifier::ShouldFail {
+            reason: parse_fail_reason(&require_value("ShouldFail", value)?)?,
+        },
         "ShouldSucceed" => TestModifier::ShouldSucceed,
         _ => {
             return Err(FormatError::MalformedModifier {
@@ -360,7 +364,23 @@ fn parse_crash_signal(val: &str) -> Result<CrashSignal, FormatError> {
         "SegmentationFault" => Ok(CrashSignal::SegmentationFault),
         "FloatingPointException" => Ok(CrashSignal::FloatingPointException),
         other => Err(FormatError::MalformedModifier {
-            message: format!("Unknown crash signal `{other}`"),
+            message: format!(
+                "Unknown crash signal `{other}`. \
+                Valid are `SegmentationFault` and `FloatingPointException`"
+            ),
+            location: location!(),
+        }),
+    }
+}
+
+fn parse_fail_reason(val: &str) -> Result<CompilerFailReason, FormatError> {
+    match val {
+        "Parsing" => Ok(CompilerFailReason::Parsing),
+        "SemanticAnalysis" => Ok(CompilerFailReason::SemanticAnalysis),
+        other => Err(FormatError::MalformedModifier {
+            message: format!(
+                "Unknown fail reason `{other}`. Valid are `Parsing` and `SemanticAnalysis`"
+            ),
             location: location!(),
         }),
     }

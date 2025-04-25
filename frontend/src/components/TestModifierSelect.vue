@@ -3,7 +3,7 @@
     <LucideGripVertical class="h-5 flex-shrink-0 drag-handle cursor-grab" />
     <Select
       :model-value="modifierType"
-      @update:model-value="update($event as string, stringArg, intArg, crashArg)"
+      @update:model-value="update($event as string, stringArg, intArg, crashArg, failArg)"
       required
     >
       <SelectTrigger class="max-w-[20ch] py-0 h-7 flex-shrink-1 md:flex-shrink-0 min-w-1">
@@ -20,7 +20,8 @@
         </SelectGroup>
         <SelectGroup>
           <SelectItem value="ExitCode">Exit code</SelectItem>
-          <SelectItem value="ShouldCrash">Should crash</SelectItem>
+          <SelectItem v-if="showCrash" value="ShouldCrash">Should crash</SelectItem>
+          <SelectItem v-if="showFail" value="ShouldFail">Should fail</SelectItem>
           <SelectItem value="ShouldSucceed">Should succeed</SelectItem>
         </SelectGroup>
       </SelectContent>
@@ -29,7 +30,7 @@
       type="text"
       :placeholder="argPlaceholderText"
       :model-value="stringArg"
-      @update:model-value="update(modifierType, $event as string, intArg, crashArg)"
+      @update:model-value="update(modifierType, $event as string, intArg, crashArg, failArg)"
       v-if="hasShortStringArg"
       class="py-0 h-7 min-w-1 text-ellipsis"
     />
@@ -37,7 +38,7 @@
       type="number"
       :placeholder="argPlaceholderText"
       :model-value="intArg"
-      @update:model-value="update(modifierType, stringArg, $event as number, crashArg)"
+      @update:model-value="update(modifierType, stringArg, $event as number, crashArg, failArg)"
       v-if="hasIntArg"
       class="py-0 h-7 min-w-1"
     />
@@ -53,7 +54,7 @@
       <PopoverContent class="w-[90dvw] sm:w-[70dvw] max-w-[120ch]">
         <Textarea
           :model-value="stringArg"
-          @update:model-value="update(modifierType, $event as string, intArg, crashArg)"
+          @update:model-value="update(modifierType, $event as string, intArg, crashArg, failArg)"
           class="font-mono whitespace-pre overflow-scroll max-h-[100dvh]"
           rows="10"
           :placeholder="argPlaceholderText"
@@ -64,7 +65,7 @@
     <Select
       v-if="hasCrashArg"
       :model-value="crashArg"
-      @update:model-value="update(modifierType, stringArg, intArg, $event as CrashSignal)"
+      @update:model-value="update(modifierType, stringArg, intArg, $event as CrashSignal, failArg)"
       required
     >
       <SelectTrigger class="py-0 h-7 min-w-1">
@@ -77,11 +78,29 @@
         </SelectGroup>
       </SelectContent>
     </Select>
+    <Select
+      v-if="hasFailArg"
+      :model-value="failArg"
+      @update:model-value="
+        update(modifierType, stringArg, intArg, crashArg, $event as CompilerFailReason)
+      "
+      required
+    >
+      <SelectTrigger class="py-0 h-7 min-w-1">
+        <SelectValue placeholder="Select a failure reason" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectGroup>
+          <SelectItem value="Parsing">Parsing</SelectItem>
+          <SelectItem value="SemanticAnalysis">Semantic analysis</SelectItem>
+        </SelectGroup>
+      </SelectContent>
+    </Select>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { CrashSignal, TestModifier } from '@/types.ts'
+import type { CompilerFailReason, CrashSignal, TestModifier } from '@/types.ts'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Select,
@@ -91,14 +110,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { computed, toRefs } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LucideGripVertical } from 'lucide-vue-next'
 import { PopoverArrow } from 'reka-ui'
 import { Textarea } from '@/components/ui/textarea'
-import { computed } from 'vue'
 
 const modifier = defineModel<TestModifier>('modifier', { required: true })
+
+const props = defineProps<{
+  modifierTarget: 'compiler' | 'binary'
+}>()
+const { modifierTarget } = toRefs(props)
+
+const showFail = computed(() => {
+  return modifierTarget.value === 'compiler' || modifier.value.type === 'ShouldFail'
+})
+const showCrash = computed(() => {
+  return modifierTarget.value === 'binary' || modifier.value.type === 'ShouldCrash'
+})
 
 const modifierType = computed(() => modifier.value?.type ?? 'ShouldSucceed')
 const stringArg = computed(() => {
@@ -131,6 +162,14 @@ const crashArg = computed(() => {
       return 'FloatingPointException'
   }
 })
+const failArg = computed(() => {
+  switch (modifier.value.type) {
+    case 'ShouldFail':
+      return modifier.value.reason
+    default:
+      return 'Parsing'
+  }
+})
 const hasShortStringArg = computed(() => modifier.value.type === 'ProgramArgument')
 const hasLongStringArg = computed(
   () =>
@@ -140,8 +179,15 @@ const hasLongStringArg = computed(
 )
 const hasIntArg = computed(() => modifier.value.type === 'ExitCode')
 const hasCrashArg = computed(() => modifier.value.type === 'ShouldCrash')
+const hasFailArg = computed(() => modifier.value.type === 'ShouldFail')
 
-function update(type: string, stringVal: string, intVal: number, crashVal: CrashSignal) {
+function update(
+  type: string,
+  stringVal: string,
+  intVal: number,
+  crashVal: CrashSignal,
+  failVal: CompilerFailReason,
+) {
   switch (type) {
     case 'ProgramArgument':
       modifier.value = { type, arg: stringVal }
@@ -160,6 +206,9 @@ function update(type: string, stringVal: string, intVal: number, crashVal: Crash
       break
     case 'ShouldCrash':
       modifier.value = { type, signal: crashVal }
+      break
+    case 'ShouldFail':
+      modifier.value = { type, reason: failVal }
       break
     case 'ShouldSucceed':
       modifier.value = { type }

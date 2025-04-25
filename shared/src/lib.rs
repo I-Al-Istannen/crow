@@ -51,6 +51,37 @@ impl Display for CrashSignal {
     }
 }
 
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+pub enum CompilerFailReason {
+    Parsing,
+    SemanticAnalysis,
+}
+
+impl Display for CompilerFailReason {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Parsing => write!(f, "Parsing"),
+            Self::SemanticAnalysis => write!(f, "SemanticAnalysis"),
+        }
+    }
+}
+
+impl CompilerFailReason {
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Parsing => "Parsing",
+            Self::SemanticAnalysis => "SemanticAnalysis",
+        }
+    }
+
+    pub fn exit_code(&self) -> i32 {
+        match self {
+            Self::Parsing => 1,
+            Self::SemanticAnalysis => 2,
+        }
+    }
+}
+
 impl CrashSignal {
     pub fn linux_signal_name(&self) -> &'static str {
         match self {
@@ -76,6 +107,7 @@ pub enum TestModifier {
     ProgramArgumentFile { contents: String },
     ProgramInput { input: String },
     ShouldCrash { signal: CrashSignal },
+    ShouldFail { reason: CompilerFailReason },
     ShouldSucceed,
 }
 
@@ -88,6 +120,7 @@ impl TestModifier {
             Self::ProgramArgumentFile { .. } => "ProgramArgumentFile",
             Self::ProgramInput { .. } => "ProgramInput",
             Self::ShouldCrash { .. } => "ShouldCrash",
+            Self::ShouldFail { .. } => "ShouldFail",
             Self::ShouldSucceed => "ShouldSucceed",
         }
     }

@@ -196,6 +196,11 @@ export const CrashSignalSchema = z.union([
   z.literal('FloatingPointException'),
 ])
 
+export const CompilerFailReasonSchema = z.union([
+  z.literal('Parsing'),
+  z.literal('SemanticAnalysis'),
+])
+
 export const TestModifierSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ExitCode'), code: z.number() }),
   z.object({ type: z.literal('ExpectedOutput'), output: z.string() }),
@@ -203,6 +208,7 @@ export const TestModifierSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ProgramArgumentFile'), contents: z.string() }),
   z.object({ type: z.literal('ProgramInput'), input: z.string() }),
   z.object({ type: z.literal('ShouldCrash'), signal: CrashSignalSchema }),
+  z.object({ type: z.literal('ShouldFail'), reason: CompilerFailReasonSchema }),
   z.object({ type: z.literal('ShouldSucceed') }),
 ])
 
@@ -280,6 +286,7 @@ export type TeamIntegrationToken = z.infer<typeof TeamIntegrationTokenSchema>
 export type Test = z.infer<typeof TestSchema>
 export type TestExecutionOutput = z.infer<typeof TestExecutionOutputSchema>
 export type CrashSignal = z.infer<typeof CrashSignalSchema>
+export type CompilerFailReason = z.infer<typeof CompilerFailReasonSchema>
 export type TestModifier = z.infer<typeof TestModifierSchema>
 export type TestWithTestTasting = z.infer<typeof TestWithTestTastingSchema>
 export type TestId = z.infer<typeof TestIdSchema>

@@ -5,6 +5,7 @@
         <TestModifierSelect
           :readonly="readonly"
           :modifier="entry"
+          :modifier-target="modifierTarget"
           @update:modifier="!readonly && Object.assign(entry, $event)"
           class="flex-grow overflow-hidden min-w-1 hover:bg-gray-50"
         />
@@ -52,8 +53,9 @@ const modifierKeyCounter = ref(0)
 const props = defineProps<{
   value: KeyedTestModifier[]
   readonly?: boolean
+  modifierTarget: 'compiler' | 'binary'
 }>()
-const { value: passedInModifiers, readonly } = toRefs(props)
+const { value: passedInModifiers, readonly, modifierTarget } = toRefs(props)
 const emit = defineEmits<{
   'update:value': [modifiers: KeyedTestModifier[]]
 }>()
