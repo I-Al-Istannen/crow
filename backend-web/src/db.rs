@@ -11,9 +11,9 @@ use crate::auth::oidc::OidcUser;
 use crate::config::TeamEntry;
 use crate::error::{Result, SqlxSnafu};
 use crate::types::{
-    CreatedExternalRun, ExternalRunId, ExternalRunStatus, FinishedCompilerTaskSummary,
-    FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, TeamInfo, TeamIntegrationToken, Test,
-    TestId, TestSummary, TestWithTasteTesting, UserId, WorkItem,
+    CreatedExternalRun, ExternalRunId, ExternalRunStatus, FinalSubmittedTask,
+    FinishedCompilerTaskSummary, FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, TeamInfo,
+    TeamIntegrationToken, Test, TestId, TestSummary, TestWithTasteTesting, UserId, WorkItem,
 };
 use shared::{FinishedCompilerTask, TestExecutionOutput};
 use snafu::ResultExt;
@@ -192,13 +192,31 @@ impl Database {
         task::get_top_task_per_team(&*pool).await
     }
 
-    pub async fn get_top_task_for_team_and_category(
+    pub async fn get_final_submitted_task_for_team_and_category(
         &self,
         team_id: &TeamId,
         category: &str,
-    ) -> Result<Option<FinishedCompilerTaskSummary>> {
+    ) -> Result<Option<FinalSubmittedTask>> {
         let pool = self.read_lock().await;
-        task::get_top_task_for_team_and_category(&*pool, team_id, category).await
+        task::get_final_submitted_task(&*pool, team_id, category).await
+    }
+
+    pub async fn set_final_submitted_task(
+        &self,
+        team_id: &TeamId,
+        user_id: &UserId,
+        task_id: Option<&TaskId>,
+        category: &str,
+    ) -> Result<()> {
+        let pool = self.write_lock().await;
+        task::set_final_submitted_task(
+            &mut *pool.acquire().await.context(SqlxSnafu)?,
+            team_id,
+            user_id,
+            task_id,
+            category,
+        )
+        .await
     }
 
     pub async fn add_test(

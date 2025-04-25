@@ -35,7 +35,8 @@ const gradedForCategory = computed(() => {
   return Array.from(gradedTasks.value.entries())
     .filter(
       ([_cat, gradedTask]) =>
-        gradedTask.summary.info.taskId === taskId.value && gradedTask.automaticallySelected,
+        gradedTask.summary.info.taskId === taskId.value &&
+        gradedTask.type === 'AutomaticallySelected',
     )
     .map(([category]) => category)
 })

@@ -1,4 +1,4 @@
-use crate::types::{ExecutionExitStatus, TestId};
+use crate::types::{ExecutionExitStatus, TestId, UserId};
 use serde::{Deserialize, Serialize};
 use shared::{FinishedCompilerTask, FinishedTaskInfo, FinishedTest};
 
@@ -46,4 +46,19 @@ impl From<FinishedCompilerTask> for FinishedCompilerTaskSummary {
             },
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type")]
+pub enum FinalSubmittedTask {
+    #[serde(rename_all = "camelCase")]
+    AutomaticallySelected {
+        summary: FinishedCompilerTaskSummary,
+    },
+    #[serde(rename_all = "camelCase")]
+    ManuallyOverridden {
+        summary: FinishedCompilerTaskSummary,
+        user_id: UserId,
+        time: i64,
+    },
 }

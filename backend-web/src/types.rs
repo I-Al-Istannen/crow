@@ -10,6 +10,7 @@ pub use self::external::CreatedExternalRun;
 pub use self::external::ExternalRunId;
 pub use self::external::ExternalRunStatus;
 pub use self::repo::Repo;
+pub use self::task::FinalSubmittedTask;
 pub use self::task::FinishedCompilerTaskSummary;
 pub use self::test::Test;
 pub use self::test::TestId;

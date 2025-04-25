@@ -8,8 +8,8 @@ use crate::endpoints::{
     get_team_repo, get_test, get_test_tasting_work, get_top_task_per_team, get_work, get_work_tar,
     head_running_task_info, integration_get_task_status, integration_request_revision,
     list_task_ids, list_tests, list_users, login_oidc, login_oidc_callback, request_revision,
-    runner_done, runner_ping, runner_register, runner_update, set_team_repo, set_test,
-    show_me_myself, taste_testing_done,
+    runner_done, runner_ping, runner_register, runner_update, set_final_task, set_team_repo,
+    set_test, show_me_myself, taste_testing_done,
 };
 use crate::error::WebError;
 use crate::storage::LocalRepos;
@@ -231,6 +231,7 @@ async fn main_server(
         .route("/team/recent-tasks", get(get_recent_tasks))
         .route("/team/recent-tasks/:count", get(get_n_recent_tasks))
         .route("/team/final-tasks", get(get_final_tasks))
+        .route("/team/final-tasks", put(set_final_task))
         .route("/tests", get(list_tests))
         .route("/tests/:test_id", delete(delete_test))
         .route("/tests/:test_id", get(get_test))

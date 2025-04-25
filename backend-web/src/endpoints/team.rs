@@ -1,9 +1,11 @@
 use super::{Json, Path};
 use crate::auth::Claims;
 use crate::error::{Result, WebError};
-use crate::types::{AppState, FinishedCompilerTaskSummary, Repo, TeamId, TeamInfo};
+use crate::types::{
+    AppState, FinalSubmittedTask, FinishedCompilerTaskSummary, Repo, TaskId, TeamId, TeamInfo,
+};
 use axum::extract::State;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use snafu::location;
 use std::collections::HashMap;
 use tracing::instrument;
@@ -64,26 +66,46 @@ pub async fn get_recent_tasks(
 pub async fn get_final_tasks(
     State(state): State<AppState>,
     claims: Claims,
-) -> Result<Json<HashMap<String, FinalSelectedTask>>> {
+) -> Result<Json<HashMap<String, FinalSubmittedTask>>> {
     let mut result = HashMap::new();
 
     for category in state.test_config.categories {
-        if let Some(summary) = state
+        if let Some(task) = state
             .db
-            .get_top_task_for_team_and_category(&claims.team, &category)
+            .get_final_submitted_task_for_team_and_category(&claims.team, &category)
             .await?
         {
-            result.insert(
-                category,
-                FinalSelectedTask {
-                    summary,
-                    automatically_selected: true,
-                },
-            );
+            result.insert(category, task);
         }
     }
 
     Ok(Json(result))
+}
+
+#[instrument(skip_all)]
+pub async fn set_final_task(
+    State(state): State<AppState>,
+    claims: Claims,
+    Json(payload): Json<SetFinalTaskPayload>,
+) -> Result<()> {
+    if !state.test_config.categories.contains(&payload.category) {
+        return Err(WebError::named_not_found(
+            format!("category `{}`", payload.category),
+            location!(),
+        ));
+    }
+
+    state
+        .db
+        .set_final_submitted_task(
+            &claims.team,
+            &claims.sub,
+            payload.task_id.as_ref(),
+            &payload.category,
+        )
+        .await?;
+
+    Ok(())
 }
 
 #[instrument(skip_all)]
@@ -105,9 +127,9 @@ pub struct TeamPatchPayload {
     pub repo_url: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct FinalSelectedTask {
-    pub summary: FinishedCompilerTaskSummary,
-    pub automatically_selected: bool,
+pub struct SetFinalTaskPayload {
+    task_id: Option<TaskId>,
+    category: String,
 }

@@ -112,10 +112,18 @@ export const FinishedCompilerTaskSummarySchema = z.discriminatedUnion('type', [
   }),
 ])
 
-export const FinalSelectedTaskSchema = z.object({
-  summary: FinishedCompilerTaskSummarySchema,
-  automaticallySelected: z.boolean(),
-})
+export const FinalSelectedTaskSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('AutomaticallySelected'),
+    summary: FinishedCompilerTaskSummarySchema,
+  }),
+  z.object({
+    type: z.literal('ManuallySelected'),
+    summary: FinishedCompilerTaskSummarySchema,
+    userId: UserIdSchema,
+    time: z.number().transform((ms) => new Date(ms)),
+  })
+])
 
 // Out of order due to dependencies
 export const GithubIntegrationInfoResponse = z.object({

@@ -101,3 +101,15 @@ CREATE TABLE ExternalRuns
 
     PRIMARY KEY (run_id, platform)
 );
+
+CREATE TABLE ManuallySubmittedTasks
+(
+    team_id     VARCHAR(36) NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    category    VARCHAR(10) NOT NULL,
+    task_id     VARCHAR(36) REFERENCES Tasks (task_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    -- user kept for disputes...
+    user_id     VARCHAR(36) NOT NULL REFERENCES Users (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    update_time INTEGER     NOT NULL,
+
+    PRIMARY KEY (team_id, category)
+);

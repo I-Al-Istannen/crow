@@ -1,5 +1,8 @@
 use crate::error::{Result, SqlxSnafu, WebError};
-use crate::types::{ExecutionExitStatus, FinishedCompilerTaskSummary, TaskId, TeamId};
+use crate::types::{
+    ExecutionExitStatus, FinalSubmittedTask, FinishedCompilerTaskSummary, TaskId, TeamId,
+};
+use crate::UserId;
 use shared::{
     AbortedExecution, ExecutionOutput, FinishedCompilerTask, FinishedExecution, FinishedTaskInfo,
     FinishedTest, InternalError, TestExecutionOutput, TestExecutionOutputType,
@@ -496,13 +499,93 @@ pub(super) async fn get_top_task_per_team(
 }
 
 #[instrument(skip_all)]
-pub(super) async fn get_top_task_for_team_and_category(
+pub(super) async fn get_final_submitted_task(
     con: impl Acquire<'_, Database = Sqlite>,
     team_id: &TeamId,
     category: &str,
-) -> Result<Option<FinishedCompilerTaskSummary>> {
+) -> Result<Option<FinalSubmittedTask>> {
     let mut con = con.begin().await.context(SqlxSnafu)?;
 
+    let manual_task = query!(
+        r#"
+        SELECT
+            task_id as "task_id!: TaskId",
+            user_id as "user_id!: UserId",
+            update_time
+        FROM ManuallySubmittedTasks
+        WHERE team_id = ? AND category = ? AND task_id IS NOT NULL
+        "#,
+        team_id,
+        category
+    )
+    .fetch_optional(&mut *con)
+    .instrument(info_span!("sqlx_get_final_submitted_task"))
+    .await
+    .context(SqlxSnafu)?;
+
+    if let Some(override_task) = manual_task {
+        let task = get_task(&mut *con, &override_task.task_id)
+            .instrument(info_span!("sqlx_get_final_submitted_task_inner"))
+            .await?;
+
+        return Ok(Some(FinalSubmittedTask::ManuallyOverridden {
+            summary: task.into(),
+            user_id: override_task.user_id,
+            time: override_task.update_time,
+        }));
+    }
+
+    let task = get_top_task_for_team_and_category(&mut con, team_id, category)
+        .instrument(info_span!("sqlx_get_final_submitted_task_inner"))
+        .await?;
+
+    Ok(task.map(|summary| FinalSubmittedTask::AutomaticallySelected { summary }))
+}
+
+#[instrument(skip_all)]
+pub(super) async fn set_final_submitted_task(
+    con: &mut SqliteConnection,
+    team_id: &TeamId,
+    user_id: &UserId,
+    task_id: Option<&TaskId>,
+    category: &str,
+) -> Result<()> {
+    let current_time = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or(Duration::ZERO)
+        .as_millis() as i64;
+
+    query!(
+        r#"
+        INSERT INTO ManuallySubmittedTasks
+            (team_id, category, task_id, user_id, update_time)
+        VALUES
+            (?, ?, ?, ?, ?)
+        ON CONFLICT DO UPDATE SET
+            task_id = excluded.task_id,
+            user_id = excluded.user_id,
+            update_time = excluded.update_time
+        "#,
+        team_id,
+        category,
+        task_id,
+        user_id,
+        current_time
+    )
+    .execute(con)
+    .instrument(info_span!("sqlx_set_final_submitted_task"))
+    .await
+    .context(SqlxSnafu)?;
+
+    Ok(())
+}
+
+#[instrument(skip_all)]
+async fn get_top_task_for_team_and_category(
+    con: &mut SqliteConnection,
+    team_id: &TeamId,
+    category: &str,
+) -> Result<Option<FinishedCompilerTaskSummary>> {
     let query_res = query!(
         r#"
         SELECT
@@ -534,5 +617,5 @@ pub(super) async fn get_top_task_for_team_and_category(
         None => return Ok(None),
     };
 
-    Ok(Some(get_task(&mut *con, &query_res.task_id).await?.into()))
+    Ok(Some(get_task(con, &query_res.task_id).await?.into()))
 }
