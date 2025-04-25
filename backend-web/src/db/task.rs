@@ -544,38 +544,56 @@ pub(super) async fn get_final_submitted_task(
 
 #[instrument(skip_all)]
 pub(super) async fn set_final_submitted_task(
-    con: &mut SqliteConnection,
+    con: impl Acquire<'_, Database = Sqlite>,
     team_id: &TeamId,
     user_id: &UserId,
-    task_id: Option<&TaskId>,
-    category: &str,
+    task_id: &TaskId,
+    categories: impl Iterator<Item = &str>,
 ) -> Result<()> {
+    let mut con = con.begin().await.context(SqlxSnafu)?;
+
     let current_time = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap_or(Duration::ZERO)
         .as_millis() as i64;
 
+    // Clear previous manual overrides for the same task
     query!(
-        r#"
-        INSERT INTO ManuallySubmittedTasks
-            (team_id, category, task_id, user_id, update_time)
-        VALUES
-            (?, ?, ?, ?, ?)
-        ON CONFLICT DO UPDATE SET
-            task_id = excluded.task_id,
-            user_id = excluded.user_id,
-            update_time = excluded.update_time
-        "#,
+        "DELETE FROM ManuallySubmittedTasks WHERE team_id = ? AND task_id = ?",
         team_id,
-        category,
-        task_id,
-        user_id,
-        current_time
+        task_id
     )
-    .execute(con)
-    .instrument(info_span!("sqlx_set_final_submitted_task"))
+    .execute(&mut *con)
+    .instrument(info_span!("sqlx_set_final_submitted_task_delete"))
     .await
     .context(SqlxSnafu)?;
+
+    // Insert new manual overrides
+    for category in categories {
+        query!(
+            r#"
+            INSERT INTO ManuallySubmittedTasks
+                (team_id, category, task_id, user_id, update_time)
+            VALUES
+                (?, ?, ?, ?, ?)
+            ON CONFLICT DO UPDATE SET
+                task_id = excluded.task_id,
+                user_id = excluded.user_id,
+                update_time = excluded.update_time
+            "#,
+            team_id,
+            category,
+            task_id,
+            user_id,
+            current_time
+        )
+        .execute(&mut *con)
+        .instrument(info_span!("sqlx_set_final_submitted_task"))
+        .await
+        .context(SqlxSnafu)?;
+    }
+
+    con.commit().await.context(SqlxSnafu)?;
 
     Ok(())
 }

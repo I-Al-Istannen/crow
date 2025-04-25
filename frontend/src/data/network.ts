@@ -392,6 +392,17 @@ export function queryTopTaskPerTeam() {
   })
 }
 
+export function queryFinalSubmittedTasks() {
+  return useQuery({
+    queryKey: ['final-tasks'],
+    queryFn: fetchFinalSubmittedTasks,
+    meta: {
+      purpose: 'fetching final submitted tasks',
+    },
+    enabled: isLoggedIn(),
+  })
+}
+
 export async function fetchFinalSubmittedTasks(): Promise<Map<string, FinalSelectedTask>> {
   const response = await fetchWithAuth('/team/final-tasks')
   const result = new Map()
@@ -401,13 +412,29 @@ export async function fetchFinalSubmittedTasks(): Promise<Map<string, FinalSelec
   return result
 }
 
-export function queryFinalSubmittedTasks() {
-  return useQuery({
-    queryKey: ['final-tasks'],
-    queryFn: fetchFinalSubmittedTasks,
-    meta: {
-      purpose: 'fetching final submitted tasks',
+export async function fetchSetFinalSubmittedTask(
+  taskId: TaskId,
+  categories: string[],
+): Promise<void> {
+  await fetchWithAuth('/team/final-tasks', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      taskId,
+      categories,
+    }),
+  })
+}
+
+export function mutateSetFinalSubmittedTask(queryClient: QueryClient) {
+  return useMutation({
+    mutationFn: ([task, categories]: [TaskId, string[]]) =>
+      fetchSetFinalSubmittedTask(task, categories),
+    onSuccess: (_, __, ___) => {
+      queryClient.invalidateQueries({ queryKey: ['final-tasks'] }).then()
     },
-    enabled: isLoggedIn(),
+    meta: {
+      purpose: 'requesting a revision',
+    },
   })
 }

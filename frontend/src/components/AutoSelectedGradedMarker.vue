@@ -5,8 +5,8 @@
         <LucideSparkles class="h-4 w-4 inline-block text-yellow-500"></LucideSparkles>
       </TooltipTrigger>
       <TooltipContent>
-        Automatically submitted for {{ gradedForCategory.join(' and ') }} as it is the best task
-        currently.
+        Automatically submitting this task for {{ gradedForCategory.join(' and ') }}, as it
+        currently passes the most tests.
         <br />
         This will automatically update, you do not need to do anything.
       </TooltipContent>

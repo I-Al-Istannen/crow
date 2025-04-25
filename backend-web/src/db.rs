@@ -205,8 +205,8 @@ impl Database {
         &self,
         team_id: &TeamId,
         user_id: &UserId,
-        task_id: Option<&TaskId>,
-        category: &str,
+        task_id: &TaskId,
+        categories: impl Iterator<Item = &str>,
     ) -> Result<()> {
         let pool = self.write_lock().await;
         task::set_final_submitted_task(
@@ -214,7 +214,7 @@ impl Database {
             team_id,
             user_id,
             task_id,
-            category,
+            categories,
         )
         .await
     }

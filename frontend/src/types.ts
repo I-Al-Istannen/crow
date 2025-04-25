@@ -118,11 +118,11 @@ export const FinalSelectedTaskSchema = z.discriminatedUnion('type', [
     summary: FinishedCompilerTaskSummarySchema,
   }),
   z.object({
-    type: z.literal('ManuallySelected'),
+    type: z.literal('ManuallyOverridden'),
     summary: FinishedCompilerTaskSummarySchema,
     userId: UserIdSchema,
     time: z.number().transform((ms) => new Date(ms)),
-  })
+  }),
 ])
 
 // Out of order due to dependencies

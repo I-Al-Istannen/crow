@@ -88,11 +88,13 @@ pub async fn set_final_task(
     claims: Claims,
     Json(payload): Json<SetFinalTaskPayload>,
 ) -> Result<()> {
-    if !state.test_config.categories.contains(&payload.category) {
-        return Err(WebError::named_not_found(
-            format!("category `{}`", payload.category),
-            location!(),
-        ));
+    for category in &payload.categories {
+        if !state.test_config.categories.contains(category) {
+            return Err(WebError::named_not_found(
+                format!("category `{}`", category),
+                location!(),
+            ));
+        }
     }
 
     state
@@ -100,8 +102,8 @@ pub async fn set_final_task(
         .set_final_submitted_task(
             &claims.team,
             &claims.sub,
-            payload.task_id.as_ref(),
-            &payload.category,
+            &payload.task_id,
+            payload.categories.iter().map(|s| s.as_str()),
         )
         .await?;
 
@@ -130,6 +132,6 @@ pub struct TeamPatchPayload {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SetFinalTaskPayload {
-    task_id: Option<TaskId>,
-    category: String,
+    task_id: TaskId,
+    categories: Vec<String>,
 }
