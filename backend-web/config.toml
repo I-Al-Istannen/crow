@@ -16,15 +16,15 @@ categories = [
 # The authentication token for runners, needs to be set to the same value in the executor invocation
 runner_token = "correct horse battery staple"
 # The command for building the compiler
-build_command = ["sh", "-c", "echo 'Hello world!' && sleep 10"]
+build_command = ["/work/build.sh"]
 # The command for running the compiler. Additional arguments can be provided by tests.
-compile_command = ["bash", "-c", "echo '#!/usr/bin/env bash' > \"${@: -1}\" && echo 'echo \"Hello test!\"' >> \"${@: -1}\" && chmod +x \"${@: -1}\" && echo \"$*\" && echo -e \"\\n${@: -1}\" && cat \"${@: -1}\" && sleep 5"]
-# Additionally arguments prepended to the binary run command
-binary_arguments = ["--hello"]
+compile_command = ["/work/run.sh"]
+# Additional arguments prepended to the binary run command
+binary_arguments = []
 # The timeout for compiler builds
-build_timeout = "5m"
+build_timeout = "10m"
 # The timeout for an individual test
-test_timeout = "10m"
+test_timeout = "1m"
 # The path for caching local directories
 local_repo_path = "target/repos"
 # The docker image containing the reference compiler. If not provided, test tasting is disabled.
@@ -47,15 +47,15 @@ members = []
 
 [oidc]
 # The oidc client id. This is set by your OIDC provider.
-client_id = "MZQOu3xu9lDvQLnyUbx9UaE48mQt23Mp56A6IBxW"
+client_id = ""
 # The oidc client secret. This is set by your OIDC provider.
-client_secret = "svLCpBVQvPHAQCmPNhWlCH5914cRvgwhR4mfki1KCI8asUX2y7L3bNPKpXLZOztW4gtp9uhzaeFLevtusoAjdzKCyThmHhmt4wxS4xQDKhstXKKHAUjYxjrG5SExED5G"
+client_secret = ""
 # The issuer URL to request tokens from. This is set by your OIDC provider.
-issuer_url = "http://localhost:9000/application/o/test-oidc/"
+issuer_url = ""
 # The oauth scopes to request. This is set by your OIDC provider and must provide crow with an id and display name.
-scopes = ["email", "openid", "profile", "offline_access"]
+scopes = ["openid", "profile"]
 # Where to redirect the user after login. Must be your frontend URL suffixed by `/login/oidc-callback`
-redirect_url = "http://localhost:5173/login/oidc-callback"
+redirect_url = ""
 
 [github]
 # The GitHub app name. This is provided by GitHub.
