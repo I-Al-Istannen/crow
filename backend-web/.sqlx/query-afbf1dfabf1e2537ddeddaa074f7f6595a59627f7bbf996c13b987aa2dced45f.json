@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            task_id as \"task_id!: TaskId\",\n            user_id as \"user_id!: UserId\",\n            update_time\n        FROM ManuallySubmittedTasks\n        WHERE team_id = ? AND category = ? AND task_id IS NOT NULL\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "task_id!: TaskId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "user_id!: UserId",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "update_time",
+        "ordinal": 2,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "afbf1dfabf1e2537ddeddaa074f7f6595a59627f7bbf996c13b987aa2dced45f"
+}

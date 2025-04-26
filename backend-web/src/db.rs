@@ -15,6 +15,7 @@ use crate::types::{
     FinishedCompilerTaskSummary, FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, TeamInfo,
     TeamIntegrationToken, Test, TestId, TestSummary, TestWithTasteTesting, UserId, WorkItem,
 };
+use jiff::Timestamp;
 use shared::{FinishedCompilerTask, TestExecutionOutput};
 use snafu::ResultExt;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
@@ -158,15 +159,19 @@ impl Database {
         let pool = self.write_lock().await;
         let mut con = pool.begin().await.context(SqlxSnafu)?;
 
-        queue::remove_queued_task(&mut con, &(result.info().task_id.clone().into())).await?;
-        task::add_finished_task(&mut con, result).await?;
+        let queue_time =
+            queue::remove_queued_task(&mut con, &(result.info().task_id.clone().into())).await?;
+        let queue_time =
+            queue_time.unwrap_or(Timestamp::try_from(result.info().start).expect("valid time"));
+        task::add_finished_task(&mut con, result, queue_time).await?;
 
         con.commit().await.context(SqlxSnafu)?;
 
         Ok(())
     }
 
-    pub async fn get_task(&self, task_id: &TaskId) -> Result<FinishedCompilerTask> {
+    /// Returns the task as well as any outdated tests in it.
+    pub async fn get_task(&self, task_id: &TaskId) -> Result<(FinishedCompilerTask, Vec<TestId>)> {
         let pool = self.read_lock().await;
         task::get_task(&*pool, task_id).await
     }
@@ -178,11 +183,6 @@ impl Database {
     ) -> Result<Vec<FinishedCompilerTaskSummary>> {
         let pool = self.read_lock().await;
         task::get_recent_tasks(&*pool, team_id, count as i64).await
-    }
-
-    pub async fn get_task_ids(&self) -> Result<Vec<TaskId>> {
-        let pool = self.read_lock().await;
-        task::get_task_ids(&mut *pool.acquire().await.context(SqlxSnafu)?).await
     }
 
     pub async fn get_top_task_per_team(

@@ -1,5 +1,6 @@
 use crate::error::{Result, SqlxSnafu};
 use crate::types::{TaskId, TeamId, WorkItem};
+use jiff::Timestamp;
 use snafu::ResultExt;
 use sqlx::{query, SqliteConnection};
 use std::ops::Add;
@@ -30,14 +31,23 @@ pub(super) async fn queue_task(con: &mut SqliteConnection, task: WorkItem) -> Re
 }
 
 #[instrument(skip_all)]
-pub(super) async fn remove_queued_task(con: &mut SqliteConnection, task: &TaskId) -> Result<()> {
+pub(super) async fn remove_queued_task(
+    con: &mut SqliteConnection,
+    task: &TaskId,
+) -> Result<Option<Timestamp>> {
+    let insert_time = query!("SELECT insert_time FROM Queue WHERE id = ?", task)
+        .map(|it| Timestamp::from_millisecond(it.insert_time).expect("valid time"))
+        .fetch_optional(&mut *con)
+        .instrument(info_span!("sqlx_remove_queued_task"))
+        .await
+        .context(SqlxSnafu)?;
     query!("DELETE FROM Queue WHERE id = ?", task)
         .execute(con)
         .instrument(info_span!("sqlx_delete_queue"))
         .await
         .context(SqlxSnafu)?;
 
-    Ok(())
+    Ok(insert_time)
 }
 
 #[instrument(skip_all)]

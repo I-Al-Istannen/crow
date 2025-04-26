@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            id as \"id!: TestId\",\n            owner as \"owner!: TeamId\",\n            category,\n            compiler_modifiers,\n            binary_modifiers,\n            admin_authored\n        FROM Tests\n        WHERE id = ?\n        ",
+  "query": "\n        SELECT\n            id as \"id!: TestId\",\n            owner as \"owner!: TeamId\",\n            category,\n            compiler_modifiers,\n            binary_modifiers,\n            admin_authored,\n            provisional,\n            last_updated\n        FROM Tests\n        WHERE id = ?\n        ",
   "describe": {
     "columns": [
       {
@@ -32,6 +32,16 @@
         "name": "admin_authored",
         "ordinal": 5,
         "type_info": "Bool"
+      },
+      {
+        "name": "provisional",
+        "ordinal": 6,
+        "type_info": "Bool"
+      },
+      {
+        "name": "last_updated",
+        "ordinal": 7,
+        "type_info": "Integer"
       }
     ],
     "parameters": {
@@ -43,8 +53,10 @@
       false,
       false,
       false,
+      false,
+      false,
       false
     ]
   },
-  "hash": "1fedd9b838b1cae511967a30c7942324aac11b0299e5d67d0c2f0cac556f1e63"
+  "hash": "19cbf738dfd95f907a6d2300e6263ac9c78459a8d2b0ab4ce7df6cbef3a38ca3"
 }

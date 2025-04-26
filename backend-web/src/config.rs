@@ -1,5 +1,5 @@
 use crate::types::{TeamId, UserId};
-use jiff::Zoned;
+use jiff::{Timestamp, Zoned};
 use serde::{Deserialize, Deserializer};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -66,7 +66,14 @@ pub struct TestConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct TestCategory {
     pub starts_at: Zoned,
-    pub ends_at: Zoned,
+    pub labs_end_at: Zoned,
+    pub tests_end_at: Zoned,
+}
+
+impl TestCategory {
+    pub fn is_after_test_deadline(&self) -> bool {
+        self.tests_end_at.timestamp() < Timestamp::now()
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

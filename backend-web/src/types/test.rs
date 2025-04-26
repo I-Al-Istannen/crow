@@ -1,5 +1,6 @@
 use crate::types::TeamId;
 use derive_more::{Display, From};
+use jiff::Timestamp;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 use shared::{validate_test_id, TestExecutionOutput, TestModifier};
@@ -46,6 +47,10 @@ pub struct Test {
     pub owner: TeamId,
     pub admin_authored: bool,
     pub category: String,
+    pub provisional: bool,
+    #[serde(serialize_with = "jiff::fmt::serde::timestamp::millisecond::required::serialize")]
+    #[serde(deserialize_with = "jiff::fmt::serde::timestamp::millisecond::required::deserialize")]
+    pub last_updated: Timestamp,
 }
 
 #[derive(Serialize)]
@@ -66,4 +71,8 @@ pub struct TestSummary {
     pub category: String,
     pub hash: String,
     pub test_taste_success: Option<bool>,
+    pub provisional: bool,
+    #[serde(serialize_with = "jiff::fmt::serde::timestamp::millisecond::required::serialize")]
+    #[serde(deserialize_with = "jiff::fmt::serde::timestamp::millisecond::required::deserialize")]
+    pub last_updated: Timestamp,
 }

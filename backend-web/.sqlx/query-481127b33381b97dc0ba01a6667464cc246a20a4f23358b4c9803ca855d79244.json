@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT insert_time FROM Queue WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "insert_time",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "481127b33381b97dc0ba01a6667464cc246a20a4f23358b4c9803ca855d79244"
+}

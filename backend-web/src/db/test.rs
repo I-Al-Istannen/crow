@@ -1,5 +1,6 @@
 use crate::error::{Result, SqlxSnafu, WebError};
 use crate::types::{TeamId, Test, TestId, TestSummary, TestWithTasteTesting};
+use jiff::Timestamp;
 use sha2::{Digest, Sha256};
 use shared::{TestExecutionOutput, TestExecutionOutputType};
 use snafu::{location, ResultExt};
@@ -27,18 +28,21 @@ pub(super) async fn add_test(
     hash.update(test.category.as_bytes());
     let hash = format!("{:x}", hash.finalize());
 
+    let last_updated = test.last_updated.as_millisecond();
     query!(
         r#"
         INSERT INTO Tests
-            (id, owner, category, compiler_modifiers, binary_modifiers, admin_authored, hash)
+            (id, owner, category, compiler_modifiers, binary_modifiers, admin_authored, hash,
+             provisional, last_updated)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT DO UPDATE SET
             compiler_modifiers = excluded.compiler_modifiers,
             binary_modifiers = excluded.binary_modifiers,
             admin_authored = excluded.admin_authored,
             category = excluded.category,
-            hash = excluded.hash
+            hash = excluded.hash,
+            last_updated = excluded.last_updated
         "#,
         test.id,
         test.owner,
@@ -46,7 +50,9 @@ pub(super) async fn add_test(
         compiler_modifiers,
         binary_modifiers,
         test.admin_authored,
-        hash
+        hash,
+        test.provisional,
+        last_updated,
     )
     .execute(&mut *con)
     .instrument(info_span!("sqlx_add_test"))
@@ -88,7 +94,9 @@ pub(super) async fn add_test(
             category,
             compiler_modifiers,
             binary_modifiers,
-            admin_authored
+            admin_authored,
+            provisional,
+            last_updated
         FROM Tests
         WHERE id = ?"#,
         test.id
@@ -115,7 +123,9 @@ pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>> {
             category,
             compiler_modifiers,
             binary_modifiers,
-            admin_authored
+            admin_authored,
+            provisional,
+            last_updated
         FROM Tests
         "#
     )
@@ -140,7 +150,9 @@ pub(super) async fn get_tests_summaries(con: &mut SqliteConnection) -> Result<Ve
             Tests.category,
             Tests.hash,
             (SELECT status == ? FROM TestTastingResults WHERE test_id = Tests.id)
-                as "test_taste_success?: bool"
+                as "test_taste_success?: bool",
+            Tests.provisional,
+            Tests.last_updated as "last_updated!: DbMillis"
         FROM Tests
         JOIN Teams ON Tests.owner = Teams.id
         "#,
@@ -166,7 +178,9 @@ pub(super) async fn fetch_test(
             category,
             compiler_modifiers,
             binary_modifiers,
-            admin_authored
+            admin_authored,
+            provisional,
+            last_updated
         FROM Tests
         WHERE id = ?
         "#,
@@ -242,6 +256,8 @@ struct DbTest {
     compiler_modifiers: String,
     binary_modifiers: String,
     admin_authored: bool,
+    provisional: bool,
+    last_updated: i64,
 }
 
 impl From<DbTest> for Test {
@@ -255,6 +271,17 @@ impl From<DbTest> for Test {
             binary_modifiers: serde_json::from_str(&value.binary_modifiers)
                 .expect("Unexpected json serialize error"),
             admin_authored: value.admin_authored,
+            provisional: value.provisional,
+            last_updated: DbMillis(value.last_updated).into(),
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, sqlx::Type)]
+struct DbMillis(i64);
+
+impl From<DbMillis> for Timestamp {
+    fn from(value: DbMillis) -> Self {
+        Self::from_millisecond(value.0).expect("time is valid")
     }
 }

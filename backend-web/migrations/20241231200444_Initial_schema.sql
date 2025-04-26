@@ -41,6 +41,7 @@ CREATE TABLE Tasks
     team_id        VARCHAR(36)  NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
     revision       VARCHAR(40)  NOT NULL,
     commit_message VARCHAR(120) NOT NULL,
+    queue_time     INTEGER      NOT NULL,
     start_time     INTEGER      NOT NULL,
     end_time       INTEGER      NOT NULL,
     execution_id   VARCHAR(36) DEFAULT NULL REFERENCES ExecutionResults (execution_id) ON DELETE CASCADE ON UPDATE CASCADE
@@ -49,7 +50,7 @@ CREATE TABLE Tasks
 CREATE TABLE TestResults
 (
     task_id          VARCHAR(36) NOT NULL REFERENCES Tasks (task_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    test_id          VARCHAR(36) NOT NULL,
+    test_id          VARCHAR(36) NOT NULL REFERENCES Tests (id) ON DELETE CASCADE ON UPDATE CASCADE,
     compiler_exec_id VARCHAR(36) NOT NULL REFERENCES ExecutionResults (execution_id) ON DELETE CASCADE ON UPDATE CASCADE,
     binary_exec_id   VARCHAR(36) REFERENCES ExecutionResults (execution_id) ON DELETE CASCADE ON UPDATE CASCADE,
     status           VARCHAR(40) NOT NULL,
@@ -76,7 +77,9 @@ CREATE TABLE Tests
     binary_modifiers   TEXT        NOT NULL, -- json serialized modifiers
     admin_authored     BOOLEAN     NOT NULL,
     category           VARCHAR(10) NOT NULL,
-    hash               VARCHAR(40) NOT NULL
+    hash               VARCHAR(40) NOT NULL,
+    provisional        BOOLEAN     NOT NULL, -- if true, the test was submitted after the test deadline
+    last_updated       INTEGER     NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 as INTEGER))
 );
 
 CREATE TABLE TestTastingResults

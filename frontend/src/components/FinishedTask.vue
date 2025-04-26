@@ -69,6 +69,7 @@ function toSummary(task: FinishedCompilerTask): FinishedCompilerTaskSummary {
     type: 'RanTests',
     tests,
     info: task.info,
+    outdated: task.outdated,
   }
 }
 </script>

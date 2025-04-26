@@ -90,6 +90,7 @@ export const FinishedCompilerTaskSchema = z.discriminatedUnion('type', [
     info: FinishedTaskInfoSchema,
     buildOutput: FinishedExecutionSchema,
     tests: z.array(FinishedTestSchema),
+    outdated: z.array(TestIdSchema),
   }),
 ])
 
@@ -109,6 +110,7 @@ export const FinishedCompilerTaskSummarySchema = z.discriminatedUnion('type', [
     type: z.literal('RanTests'),
     info: FinishedTaskInfoSchema,
     tests: z.array(FinishedTestSummarySchema),
+    outdated: z.array(TestIdSchema),
   }),
 ])
 
@@ -231,6 +233,8 @@ export const TestSchema = z.object({
   compilerModifiers: z.array(TestModifierSchema),
   binaryModifiers: z.array(TestModifierSchema),
   adminAuthored: z.boolean(),
+  provisional: z.boolean(),
+  lastUpdated: z.number().transform((ms) => new Date(ms)),
 })
 
 export const TestTastingResultSchema = z.discriminatedUnion('type', [
@@ -261,11 +265,14 @@ export const TestSummarySchema = z.object({
   adminAuthored: z.boolean(),
   category: z.string(),
   testTasteSuccess: z.boolean().nullable(),
+  provisional: z.boolean(),
+  lastUpdated: z.number().transform((ms) => new Date(ms)),
 })
 
 export const TestCategorySchema = z.object({
   startsAt: z.number().transform((ms) => new Date(ms)),
-  endsAt: z.number().transform((ms) => new Date(ms)),
+  labsEndAt: z.number().transform((ms) => new Date(ms)),
+  testsEndAt: z.number().transform((ms) => new Date(ms)),
 })
 
 export const ListTestResponseSchema = z.object({

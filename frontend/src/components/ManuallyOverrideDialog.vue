@@ -30,8 +30,8 @@
         :failure-reason="failureReason"
       />
       <div class="mb-2 text-sm">
-        You can submit this task for grading in a specific categories. This will override the
-        automatic selection.
+        You can submit this solution for grading in specific labs. This will override the automatic
+        selection.
       </div>
       <Select
         v-if="data"
@@ -41,7 +41,7 @@
         multiple
       >
         <SelectTrigger>
-          <SelectValue placeholder="Category" />
+          <SelectValue placeholder="Labs" />
         </SelectTrigger>
         <SelectContent @closeAutoFocus="isPopoverOpen = false">
           <SelectGroup>
@@ -98,7 +98,7 @@ const availableCategories = computed(() => {
     return []
   }
   const validCategories = Array.from(Object.entries(data.value.categories))
-    .filter(([_name, meta]) => meta.startsAt <= new Date() && new Date() <= meta.endsAt)
+    .filter(([_name, meta]) => meta.startsAt <= new Date() && new Date() <= meta.labsEndAt)
     .map(([name]) => name)
 
   const allCategories = new Set(validCategories)

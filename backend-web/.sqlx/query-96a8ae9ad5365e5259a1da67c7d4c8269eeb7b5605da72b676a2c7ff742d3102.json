@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM ManuallySubmittedTasks WHERE team_id = ? AND task_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "96a8ae9ad5365e5259a1da67c7d4c8269eeb7b5605da72b676a2c7ff742d3102"
+}

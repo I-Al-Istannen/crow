@@ -1,9 +1,10 @@
 use crate::config::TestCategory;
 use crate::error::{Result, SqlxSnafu, WebError};
 use crate::types::{
-    ExecutionExitStatus, FinalSubmittedTask, FinishedCompilerTaskSummary, TaskId, TeamId,
+    ExecutionExitStatus, FinalSubmittedTask, FinishedCompilerTaskSummary, TaskId, TeamId, TestId,
 };
 use crate::UserId;
+use jiff::Timestamp;
 use shared::{
     AbortedExecution, ExecutionOutput, FinishedCompilerTask, FinishedExecution, FinishedTaskInfo,
     FinishedTest, InternalError, TestExecutionOutput, TestExecutionOutputType,
@@ -19,6 +20,7 @@ use tracing::{info_span, instrument, Instrument};
 pub(super) async fn add_finished_task(
     con: impl Acquire<'_, Database = Sqlite>,
     result: &FinishedCompilerTask,
+    queue_time: Timestamp,
 ) -> Result<()> {
     let mut con = con.begin().await.context(SqlxSnafu)?;
 
@@ -34,11 +36,12 @@ pub(super) async fn add_finished_task(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or(Duration::ZERO)
         .as_millis() as i64;
+    let queue_time = queue_time.as_millisecond();
 
     match result {
         FinishedCompilerTask::BuildFailed { build_output, .. } => {
             let id = record_execution_output(&mut con, build_output).await?;
-            record_task(&mut con, result, start_time, end_time, &id).await?;
+            record_task(&mut con, result, start_time, end_time, &id, queue_time).await?;
         }
         FinishedCompilerTask::RanTests {
             tests,
@@ -53,7 +56,10 @@ pub(super) async fn add_finished_task(
                 ExecutionExitStatus::Success,
             )
             .await?;
-            record_task(&mut con, result, start_time, end_time, &build_id).await?;
+            record_task(
+                &mut con, result, start_time, end_time, &build_id, queue_time,
+            )
+            .await?;
 
             for test in tests {
                 let (compiler_exec_id, binary_exec_id) =
@@ -90,7 +96,7 @@ pub(super) async fn add_finished_task(
 pub(super) async fn get_task(
     con: impl Acquire<'_, Database = Sqlite>,
     task_id: &TaskId,
-) -> Result<FinishedCompilerTask> {
+) -> Result<(FinishedCompilerTask, Vec<TestId>)> {
     let mut con = con.begin().await.context(SqlxSnafu)?;
 
     let task = query!(
@@ -129,8 +135,27 @@ pub(super) async fn get_task(
         team_id: task.team_id.to_string(),
     };
 
+    let outdated_tests = query!(
+        r#"
+        SELECT test_id as "test_id!: TestId"
+        FROM TestResults
+        JOIN Tests ON Tests.id = TestResults.test_id
+        JOIN Tasks ON Tasks.task_id = TestResults.task_id
+        WHERE Tasks.task_id = ? AND Tests.last_updated > Tasks.queue_time
+        "#,
+        task_id
+    )
+    .map(|it| it.test_id)
+    .fetch_all(&mut *con)
+    .instrument(info_span!("sqlx_get_task_outdated_tests"))
+    .await
+    .context(SqlxSnafu)?;
+
     if !matches!(build_output, ExecutionOutput::Success(_)) {
-        return Ok(FinishedCompilerTask::BuildFailed { info, build_output });
+        return Ok((
+            FinishedCompilerTask::BuildFailed { info, build_output },
+            Vec::new(),
+        ));
     }
 
     let tests = query!(
@@ -165,11 +190,14 @@ pub(super) async fn get_task(
         })
     }
 
-    Ok(FinishedCompilerTask::RanTests {
-        info,
-        build_output: build_output.into_finished_execution().unwrap(),
-        tests: finished_tests,
-    })
+    Ok((
+        FinishedCompilerTask::RanTests {
+            info,
+            build_output: build_output.into_finished_execution().unwrap(),
+            tests: finished_tests,
+        },
+        outdated_tests,
+    ))
 }
 
 pub(super) async fn get_recent_tasks(
@@ -207,16 +235,6 @@ pub(super) async fn get_recent_tasks(
     }
 
     Ok(finished_tasks)
-}
-
-#[instrument(skip_all)]
-pub(super) async fn get_task_ids(con: &mut SqliteConnection) -> Result<Vec<TaskId>> {
-    query!(r#"SELECT task_id as "task_id!: TaskId" FROM Tasks"#)
-        .map(|it| it.task_id)
-        .fetch_all(con)
-        .instrument(info_span!("sqlx_get_task_ids"))
-        .await
-        .context(SqlxSnafu)
 }
 
 #[instrument(skip_all)]
@@ -348,13 +366,15 @@ async fn record_task(
     start_time: i64,
     end_time: i64,
     build_id: &str,
+    queue_time: i64,
 ) -> Result<()> {
     query!(
         r#"
         INSERT INTO Tasks
-            (task_id, team_id, revision, commit_message, start_time, end_time, execution_id)
+            (task_id, team_id, revision, commit_message, start_time, end_time, execution_id,
+             queue_time)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         result.info().task_id,
         result.info().team_id,
@@ -362,7 +382,8 @@ async fn record_task(
         result.info().commit_message,
         start_time,
         end_time,
-        build_id
+        build_id,
+        queue_time
     )
     .execute(&mut *con)
     .instrument(info_span!("sqlx_add_finished_insert_task"))
@@ -608,7 +629,7 @@ async fn get_top_task_for_team_and_category(
     meta: &TestCategory,
 ) -> Result<Option<FinishedCompilerTaskSummary>> {
     let starts_at = meta.starts_at.timestamp().as_millisecond();
-    let ends_at = meta.ends_at.timestamp().as_millisecond();
+    let ends_at = meta.labs_end_at.timestamp().as_millisecond();
 
     let query_res = query!(
         r#"
@@ -623,8 +644,8 @@ async fn get_top_task_for_team_and_category(
             GROUP BY TestResults.task_id
         ) PASS_BY_TASK
         JOIN Tasks ON Tasks.task_id = PASS_BY_TASK.task_id
-        WHERE Tasks.team_id = ? AND Tasks.start_time BETWEEN ? AND ?
-        ORDER BY PASS_BY_TASK.passed_count DESC, Tasks.start_time DESC
+        WHERE Tasks.team_id = ? AND Tasks.queue_time BETWEEN ? AND ?
+        ORDER BY PASS_BY_TASK.passed_count DESC, Tasks.queue_time DESC
         LIMIT 1
         "#,
         ExecutionExitStatus::Success,

@@ -16,6 +16,10 @@
     <span v-if="testStatistics.abort > 0" class="text-gray-500">
       {{ testStatistics.abort }} aborted
     </span>
+    <span v-if="outdatedTests.length > 0" class="text-muted-foreground">
+      but {{ outdatedTests.length }} test{{ outdatedTests.length > 1 ? 's have' : ' has' }} changed
+      since
+    </span>
   </span>
   <span v-else-if="task.type === 'BuildFailed'" :class="[statusColor(task.status, 'text')]">
     Build did not succeed.
@@ -48,5 +52,11 @@ const testStatistics = computed(() => {
   const timeout = tests.value.filter((test) => test.output === 'Timeout').length
 
   return { abort, error, failure, finish, timeout }
+})
+const outdatedTests = computed(() => {
+  if (task.value.type !== 'RanTests') {
+    return []
+  }
+  return task.value.outdated
 })
 </script>

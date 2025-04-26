@@ -33,6 +33,12 @@ pub enum WebError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display("No permission to {what} at {location}"))]
+    NamedUnauthorized {
+        what: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
     #[snafu(display("Invalid credentials at {location}"))]
     InvalidCredentials {
         #[snafu(implicit)]
@@ -96,6 +102,9 @@ impl WebError {
     pub fn unauthorized(location: Location) -> Self {
         Self::Unauthorized { location }
     }
+    pub fn named_unauthorized(what: String, location: Location) -> Self {
+        Self::NamedUnauthorized { what, location }
+    }
 
     pub fn invalid_credentials(location: Location) -> Self {
         Self::InvalidCredentials { location }
@@ -114,6 +123,7 @@ impl HttpError for WebError {
     fn to_http_code(&self) -> StatusCode {
         match self {
             Self::Unauthorized { .. } => StatusCode::UNAUTHORIZED,
+            Self::NamedUnauthorized { .. } => StatusCode::UNAUTHORIZED,
             Self::InvalidCredentials { .. } => StatusCode::UNAUTHORIZED,
             Self::NamedNotFound { .. } => StatusCode::NOT_FOUND,
             Self::NotFound { .. } => StatusCode::NOT_FOUND,
@@ -127,6 +137,7 @@ impl HttpError for WebError {
     fn to_error_code(&self) -> &'static str {
         match self {
             Self::Unauthorized { .. } => "unauthorized",
+            Self::NamedUnauthorized { .. } => "named_unauthorized",
             Self::InvalidCredentials { .. } => "invalid_credentials",
             Self::NamedNotFound { .. } => "named_not_found",
             Self::NotFound { .. } => "not_found",
@@ -140,6 +151,7 @@ impl HttpError for WebError {
     fn to_extra(&self) -> Option<Value> {
         match self {
             Self::Unauthorized { .. } => None,
+            Self::NamedUnauthorized { what, .. } => Some(json!({ "what": what })),
             Self::InvalidCredentials { .. } => None,
             Self::NamedNotFound { what, .. } => Some(json!({ "what": what })),
             Self::NotFound { .. } => None,

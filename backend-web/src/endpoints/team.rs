@@ -5,7 +5,6 @@ use crate::types::{
     AppState, FinalSubmittedTask, FinishedCompilerTaskSummary, Repo, TaskId, TeamId, TeamInfo,
 };
 use axum::extract::State;
-use jiff::Timestamp;
 use serde::Deserialize;
 use snafu::location;
 use std::collections::HashMap;
@@ -96,13 +95,9 @@ pub async fn set_final_task(
                 location!(),
             ));
         };
-        let now = Timestamp::now();
-        if now < category.starts_at.timestamp() || now > category.ends_at.timestamp() {
-            return Err(WebError::named_not_found(
-                format!(
-                    "category `{}` is not in the valid time range",
-                    category_name
-                ),
+        if category.is_after_test_deadline() {
+            return Err(WebError::named_unauthorized(
+                format!("submit solution, as `{}` was already due", category_name),
                 location!(),
             ));
         }

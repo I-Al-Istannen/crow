@@ -700,7 +700,7 @@ async fn finish_check(
         // Task is not in queue but also not finished?
         Err(WebError::NotFound { .. }) => CheckRunConclusion::Stale,
         Err(e) => return Err(OurBackendSnafu.into_error(e)),
-        Ok(task) => {
+        Ok((task, _)) => {
             let status: QueuedTaskStatus = task.into();
             match status {
                 QueuedTaskStatus::Error => CheckRunConclusion::Failure,

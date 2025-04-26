@@ -49,9 +49,9 @@
                       <TooltipTrigger>
                         <LucideBadgeAlert :size="16" class="text-gray-400" />
                       </TooltipTrigger>
-                      <TooltipContent
-                        >This test was never run against the reference compiler</TooltipContent
-                      >
+                      <TooltipContent>
+                        This test was never run against the reference compiler
+                      </TooltipContent>
                     </Tooltip>
                     {{ test.id }}
                     <span class="text-sm text-muted-foreground">by {{ test.creatorName }}</span>
@@ -60,6 +60,14 @@
                         <LucideShieldCheck :size="16" />
                       </TooltipTrigger>
                       <TooltipContent>Created by an administrator</TooltipContent>
+                    </Tooltip>
+                    <Tooltip v-if="test.provisional">
+                      <TooltipTrigger as-child>
+                        <LucideEyeOff :size="16" class="text-orange-500" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Created after test deadline. This test will only count in the next cycle.
+                      </TooltipContent>
                     </Tooltip>
                   </span>
                   <span class="flex flex-grow justify-end mr-2 items-center gap-2">
@@ -109,6 +117,7 @@ import {
   LucideBadgeAlert,
   LucideBadgeCheck,
   LucideBadgeX,
+  LucideEyeOff,
   LucidePencil,
   LucideShieldCheck,
 } from 'lucide-vue-next'
@@ -162,6 +171,7 @@ async function openEditDialog(testSummary: TestSummary) {
 }
 
 function canEdit(test: TestSummary): boolean {
+  // TODO: Consider admins and test end periods
   return test.creatorId === team.value?.id
 }
 

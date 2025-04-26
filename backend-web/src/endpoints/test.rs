@@ -3,7 +3,7 @@ use crate::auth::Claims;
 use crate::error::{Result, WebError};
 use crate::types::{AppState, Test, TestId, TestSummary, TestWithTasteTesting};
 use axum::extract::State;
-use jiff::Zoned;
+use jiff::{Timestamp, Zoned};
 use serde::{Deserialize, Serialize};
 use shared::{TestExecutionOutput, TestModifier};
 use snafu::location;
@@ -43,8 +43,20 @@ pub async fn set_test(
         }
     }
 
-    if !state.test_config.categories.contains_key(&payload.category) {
+    let Some(category_meta) = state.test_config.categories.get(&payload.category) else {
         return Err(WebError::named_not_found(payload.category, location!()));
+    };
+
+    let provisional = category_meta.is_after_test_deadline();
+    // If the time is up you can no longer edit finalized tests as a normal user
+    // (just create new ones)
+    if let Some(test) = state.db.fetch_test(&test_id).await? {
+        if provisional && !claims.is_admin() && !test.provisional {
+            return Err(WebError::named_unauthorized(
+                "edit an existing test after test deadline".to_string(),
+                location!(),
+            ));
+        }
     }
 
     let test = Test {
@@ -54,6 +66,8 @@ pub async fn set_test(
         category: payload.category,
         compiler_modifiers: payload.compiler_modifiers,
         binary_modifiers: payload.binary_modifiers,
+        provisional,
+        last_updated: Timestamp::now(),
     };
 
     // Let the reference compiler taste it first
@@ -106,7 +120,9 @@ pub async fn get_test(
 
 #[instrument(skip_all)]
 pub async fn delete_test(
-    State(AppState { db, .. }): State<AppState>,
+    State(AppState {
+        db, test_config, ..
+    }): State<AppState>,
     claims: Claims,
     Path(test_id): Path<TestId>,
 ) -> Result<()> {
@@ -117,6 +133,15 @@ pub async fn delete_test(
 
         if !claims.is_admin() && test.owner != claims.team {
             return Err(WebError::unauthorized(location!()));
+        }
+
+        if let Some(category) = test_config.categories.get(&test.category) {
+            if !test.provisional && category.is_after_test_deadline() {
+                return Err(WebError::named_unauthorized(
+                    "delete a finalized test".to_string(),
+                    location!(),
+                ));
+            }
         }
     }
 
@@ -146,14 +171,17 @@ pub struct TestCategory {
     #[serde(serialize_with = "zoned_as_millis")]
     pub starts_at: Zoned,
     #[serde(serialize_with = "zoned_as_millis")]
-    pub ends_at: Zoned,
+    pub labs_end_at: Zoned,
+    #[serde(serialize_with = "zoned_as_millis")]
+    pub tests_end_at: Zoned,
 }
 
 impl From<crate::config::TestCategory> for TestCategory {
     fn from(value: crate::config::TestCategory) -> Self {
         Self {
             starts_at: value.starts_at,
-            ends_at: value.ends_at,
+            labs_end_at: value.labs_end_at,
+            tests_end_at: value.tests_end_at,
         }
     }
 }

@@ -193,7 +193,7 @@ const categories = computed(() => {
     return undefined
   }
   return Array.from(Object.entries(testResponse.value.categories))
-    .filter(([_name, meta]) => meta.startsAt <= new Date() && meta.endsAt >= new Date())
+    .filter(([_name, meta]) => meta.startsAt <= new Date())
     .map(([name]) => name)
     .sort((a, b) => a.localeCompare(b))
 })

@@ -30,11 +30,12 @@ pub enum FinishedCompilerTaskSummary {
     RanTests {
         info: FinishedTaskInfo,
         tests: Vec<FinishedTestSummary>,
+        outdated: Vec<TestId>,
     },
 }
 
-impl From<FinishedCompilerTask> for FinishedCompilerTaskSummary {
-    fn from(value: FinishedCompilerTask) -> Self {
+impl From<(FinishedCompilerTask, Vec<TestId>)> for FinishedCompilerTaskSummary {
+    fn from((value, outdated): (FinishedCompilerTask, Vec<TestId>)) -> Self {
         match value {
             FinishedCompilerTask::BuildFailed { info, build_output } => Self::BuildFailed {
                 info,
@@ -43,6 +44,7 @@ impl From<FinishedCompilerTask> for FinishedCompilerTaskSummary {
             FinishedCompilerTask::RanTests { info, tests, .. } => Self::RanTests {
                 info,
                 tests: tests.into_iter().map(Into::into).collect(),
+                outdated,
             },
         }
     }

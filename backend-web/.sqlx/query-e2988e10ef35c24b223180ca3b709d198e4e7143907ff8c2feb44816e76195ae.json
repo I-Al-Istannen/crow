@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            INSERT INTO ManuallySubmittedTasks\n                (team_id, category, task_id, user_id, update_time)\n            VALUES\n                (?, ?, ?, ?, ?)\n            ON CONFLICT DO UPDATE SET\n                task_id = excluded.task_id,\n                user_id = excluded.user_id,\n                update_time = excluded.update_time\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "e2988e10ef35c24b223180ca3b709d198e4e7143907ff8c2feb44816e76195ae"
+}

@@ -3,7 +3,7 @@ use crate::auth::Claims;
 use crate::error::{Result, WebError};
 use crate::types::{
     AppState, ExecutorInfo, FinishedCompilerTaskSummary, QueuedTaskStatus, RunnerForFrontend,
-    TaskId, TeamId, WorkItem,
+    TaskId, TeamId, TestId, WorkItem,
 };
 use axum::extract::State;
 use axum::response::{IntoResponse, Response};
@@ -67,7 +67,7 @@ pub async fn integration_get_task_status(
         }));
     }
 
-    let task = state.db.get_task(&task_id).await?;
+    let (task, _) = state.db.get_task(&task_id).await?;
     Ok(Json(IntegrationTaskStatusResponse {
         status: task.into(),
     }))
@@ -165,8 +165,8 @@ pub async fn get_task(
     State(state): State<AppState>,
     _claims: Claims,
     Path(task_id): Path<TaskId>,
-) -> Result<Json<FinishedCompilerTask>> {
-    Ok(Json(state.db.get_task(&task_id).await?))
+) -> Result<Json<FinishedCompilerTaskWithOutdated>> {
+    Ok(Json(state.db.get_task(&task_id).await?.into()))
 }
 
 #[instrument(skip_all)]
@@ -175,14 +175,6 @@ pub async fn get_top_task_per_team(
     _claims: Claims,
 ) -> Result<Json<HashMap<TeamId, FinishedCompilerTaskSummary>>> {
     Ok(Json(state.db.get_top_task_per_team().await?))
-}
-
-#[instrument(skip_all)]
-pub async fn list_task_ids(
-    State(state): State<AppState>,
-    _claims: Claims,
-) -> Result<Json<Vec<TaskId>>> {
-    Ok(Json(state.db.get_task_ids().await?))
 }
 
 #[instrument(skip_all)]
@@ -205,4 +197,18 @@ pub struct QueueResponse {
 #[serde(rename_all = "camelCase")]
 pub struct IntegrationTaskStatusResponse {
     status: QueuedTaskStatus,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FinishedCompilerTaskWithOutdated {
+    #[serde(flatten)]
+    pub task: FinishedCompilerTask,
+    pub outdated: Vec<TestId>,
+}
+
+impl From<(FinishedCompilerTask, Vec<TestId>)> for FinishedCompilerTaskWithOutdated {
+    fn from((task, outdated): (FinishedCompilerTask, Vec<TestId>)) -> Self {
+        Self { task, outdated }
+    }
 }
