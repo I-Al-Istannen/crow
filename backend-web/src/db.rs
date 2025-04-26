@@ -8,7 +8,7 @@ mod user;
 
 pub use self::user::UserForAuth;
 use crate::auth::oidc::OidcUser;
-use crate::config::TeamEntry;
+use crate::config::{TeamEntry, TestCategory};
 use crate::error::{Result, SqlxSnafu};
 use crate::types::{
     CreatedExternalRun, ExternalRunId, ExternalRunStatus, FinalSubmittedTask,
@@ -196,9 +196,10 @@ impl Database {
         &self,
         team_id: &TeamId,
         category: &str,
+        meta: &TestCategory,
     ) -> Result<Option<FinalSubmittedTask>> {
         let pool = self.read_lock().await;
-        task::get_final_submitted_task(&*pool, team_id, category).await
+        task::get_final_submitted_task(&*pool, team_id, category, meta).await
     }
 
     pub async fn set_final_submitted_task(

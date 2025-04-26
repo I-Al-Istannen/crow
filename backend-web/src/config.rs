@@ -1,5 +1,7 @@
 use crate::types::{TeamId, UserId};
+use jiff::Zoned;
 use serde::{Deserialize, Deserializer};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -58,7 +60,13 @@ pub struct GithubConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct TestConfig {
-    pub categories: Vec<String>,
+    pub categories: HashMap<String, TestCategory>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct TestCategory {
+    pub starts_at: Zoned,
+    pub ends_at: Zoned,
 }
 
 #[derive(Debug, Clone, Deserialize)]

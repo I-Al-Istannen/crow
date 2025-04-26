@@ -1,3 +1,4 @@
+use crate::config::TestCategory;
 use crate::error::{Result, SqlxSnafu, WebError};
 use crate::types::{
     ExecutionExitStatus, FinalSubmittedTask, FinishedCompilerTaskSummary, TaskId, TeamId,
@@ -503,6 +504,7 @@ pub(super) async fn get_final_submitted_task(
     con: impl Acquire<'_, Database = Sqlite>,
     team_id: &TeamId,
     category: &str,
+    meta: &TestCategory,
 ) -> Result<Option<FinalSubmittedTask>> {
     let mut con = con.begin().await.context(SqlxSnafu)?;
 
@@ -535,7 +537,7 @@ pub(super) async fn get_final_submitted_task(
         }));
     }
 
-    let task = get_top_task_for_team_and_category(&mut con, team_id, category)
+    let task = get_top_task_for_team_and_category(&mut con, team_id, category, meta)
         .instrument(info_span!("sqlx_get_final_submitted_task_inner"))
         .await?;
 
@@ -603,7 +605,11 @@ async fn get_top_task_for_team_and_category(
     con: &mut SqliteConnection,
     team_id: &TeamId,
     category: &str,
+    meta: &TestCategory,
 ) -> Result<Option<FinishedCompilerTaskSummary>> {
+    let starts_at = meta.starts_at.timestamp().as_millisecond();
+    let ends_at = meta.ends_at.timestamp().as_millisecond();
+
     let query_res = query!(
         r#"
         SELECT
@@ -617,13 +623,15 @@ async fn get_top_task_for_team_and_category(
             GROUP BY TestResults.task_id
         ) PASS_BY_TASK
         JOIN Tasks ON Tasks.task_id = PASS_BY_TASK.task_id
-        WHERE Tasks.team_id = ?
+        WHERE Tasks.team_id = ? AND Tasks.start_time BETWEEN ? AND ?
         ORDER BY PASS_BY_TASK.passed_count DESC, Tasks.start_time DESC
         LIMIT 1
         "#,
         ExecutionExitStatus::Success,
         category,
-        team_id
+        team_id,
+        starts_at,
+        ends_at
     )
     .fetch_optional(&mut *con)
     .instrument(info_span!("sqlx_get_top_task_for_team_and_category"))

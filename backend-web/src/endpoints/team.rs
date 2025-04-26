@@ -5,6 +5,7 @@ use crate::types::{
     AppState, FinalSubmittedTask, FinishedCompilerTaskSummary, Repo, TaskId, TeamId, TeamInfo,
 };
 use axum::extract::State;
+use jiff::Timestamp;
 use serde::Deserialize;
 use snafu::location;
 use std::collections::HashMap;
@@ -69,13 +70,13 @@ pub async fn get_final_tasks(
 ) -> Result<Json<HashMap<String, FinalSubmittedTask>>> {
     let mut result = HashMap::new();
 
-    for category in state.test_config.categories {
+    for (name, meta) in state.test_config.categories {
         if let Some(task) = state
             .db
-            .get_final_submitted_task_for_team_and_category(&claims.team, &category)
+            .get_final_submitted_task_for_team_and_category(&claims.team, &name, &meta)
             .await?
         {
-            result.insert(category, task);
+            result.insert(name, task);
         }
     }
 
@@ -88,14 +89,26 @@ pub async fn set_final_task(
     claims: Claims,
     Json(payload): Json<SetFinalTaskPayload>,
 ) -> Result<()> {
-    for category in &payload.categories {
-        if !state.test_config.categories.contains(category) {
+    for category_name in &payload.categories {
+        let Some(category) = state.test_config.categories.get(category_name) else {
             return Err(WebError::named_not_found(
-                format!("category `{}`", category),
+                format!("category `{}`", category_name),
+                location!(),
+            ));
+        };
+        let now = Timestamp::now();
+        if now < category.starts_at.timestamp() || now > category.ends_at.timestamp() {
+            return Err(WebError::named_not_found(
+                format!(
+                    "category `{}` is not in the valid time range",
+                    category_name
+                ),
                 location!(),
             ));
         }
     }
+
+    // FIXME: Require that all existing expired categories stay
 
     state
         .db

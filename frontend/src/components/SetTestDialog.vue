@@ -188,7 +188,15 @@ const { data: testResponse } = queryTests()
 const { mutateAsync: mutateDelTest, isPending: deletePending } = mutateDeleteTest(useQueryClient())
 const mutationPending = computed(() => editPending.value || deletePending.value)
 const tests = computed(() => testResponse.value?.tests)
-const categories = computed(() => testResponse.value?.categories)
+const categories = computed(() => {
+  if (!testResponse.value) {
+    return undefined
+  }
+  return Array.from(Object.entries(testResponse.value.categories))
+    .filter(([_name, meta]) => meta.startsAt <= new Date() && meta.endsAt >= new Date())
+    .map(([name]) => name)
+    .sort((a, b) => a.localeCompare(b))
+})
 
 const emit = defineEmits<{
   'test-deleted': [test_id: TestId]

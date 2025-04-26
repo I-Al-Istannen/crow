@@ -3,9 +3,11 @@ use crate::auth::Claims;
 use crate::error::{Result, WebError};
 use crate::types::{AppState, Test, TestId, TestSummary, TestWithTasteTesting};
 use axum::extract::State;
+use jiff::Zoned;
 use serde::{Deserialize, Serialize};
 use shared::{TestExecutionOutput, TestModifier};
 use snafu::location;
+use std::collections::HashMap;
 use tracing::{debug, instrument};
 
 #[instrument(skip_all)]
@@ -15,7 +17,12 @@ pub async fn list_tests(
 ) -> Result<Json<ListTestsResponse>> {
     Ok(Json(ListTestsResponse {
         tests: state.db.get_test_summaries().await?,
-        categories: state.test_config.categories,
+        categories: state
+            .test_config
+            .categories
+            .into_iter()
+            .map(|(name, category)| (name, category.into()))
+            .collect(),
     }))
 }
 
@@ -36,7 +43,7 @@ pub async fn set_test(
         }
     }
 
-    if !state.test_config.categories.contains(&payload.category) {
+    if !state.test_config.categories.contains_key(&payload.category) {
         return Err(WebError::named_not_found(payload.category, location!()));
     }
 
@@ -130,7 +137,25 @@ pub struct AddTestPayload {
 #[serde(rename_all = "camelCase")]
 pub struct ListTestsResponse {
     pub tests: Vec<TestSummary>,
-    pub categories: Vec<String>,
+    pub categories: HashMap<String, TestCategory>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TestCategory {
+    #[serde(serialize_with = "zoned_as_millis")]
+    pub starts_at: Zoned,
+    #[serde(serialize_with = "zoned_as_millis")]
+    pub ends_at: Zoned,
+}
+
+impl From<crate::config::TestCategory> for TestCategory {
+    fn from(value: crate::config::TestCategory) -> Self {
+        Self {
+            starts_at: value.starts_at,
+            ends_at: value.ends_at,
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -138,4 +163,11 @@ pub struct ListTestsResponse {
 pub enum SetTestResponse {
     TestAdded(Test),
     TastingFailed { output: TestExecutionOutput },
+}
+
+fn zoned_as_millis<S>(zoned: &Zoned, serializer: S) -> std::result::Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    jiff::fmt::serde::timestamp::millisecond::required::serialize(&zoned.timestamp(), serializer)
 }

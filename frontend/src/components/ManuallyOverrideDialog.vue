@@ -3,8 +3,8 @@
     <PopoverTrigger
       :class="
         clsx(
-          categories.length > 0 ? 'text-orange-500' : 'text-gray-800',
-          categories.length > 0 ? 'opacity-100' : 'opacity-0',
+          assignedCategories.length > 0 ? 'text-orange-500' : 'text-gray-800',
+          assignedCategories.length > 0 ? 'opacity-100' : 'opacity-0',
           'transition-opacity',
           'group-hover:opacity-50',
           'hover:!opacity-100',
@@ -16,8 +16,8 @@
           <TooltipTrigger>
             <LucideUpload @click.prevent class="h-4 w-4" />
           </TooltipTrigger>
-          <TooltipContent v-if="categories.length > 0">
-            Submitting this task for {{ categories.join(' and ') }}. Click to change.
+          <TooltipContent v-if="assignedCategories.length > 0">
+            Submitting this task for {{ assignedCategories.join(' and ') }}. Click to change.
           </TooltipContent>
           <TooltipContent v-else>Configure manual overrides for task submission.</TooltipContent>
         </Tooltip>
@@ -35,7 +35,7 @@
       </div>
       <Select
         v-if="data"
-        :model-value="categories"
+        :model-value="assignedCategories"
         @update:model-value="overrideCategory"
         :disabled="isMutating"
         multiple
@@ -45,7 +45,7 @@
         </SelectTrigger>
         <SelectContent @closeAutoFocus="isPopoverOpen = false">
           <SelectGroup>
-            <SelectItem v-for="category in data.categories" :key="category" :value="category">
+            <SelectItem v-for="category in availableCategories" :key="category" :value="category">
               {{ category }}
             </SelectItem>
           </SelectGroup>
@@ -93,7 +93,21 @@ const { data, isLoading, failureCount, failureReason } = queryTests()
 const { data: gradedTasks } = queryFinalSubmittedTasks()
 const { mutateAsync } = mutateSetFinalSubmittedTask(useQueryClient())
 
-const categories = computed(() => {
+const availableCategories = computed(() => {
+  if (!data.value) {
+    return []
+  }
+  const validCategories = Array.from(Object.entries(data.value.categories))
+    .filter(([_name, meta]) => meta.startsAt <= new Date() && new Date() <= meta.endsAt)
+    .map(([name]) => name)
+
+  const allCategories = new Set(validCategories)
+  assignedCategories.value.forEach((it) => allCategories.add(it))
+
+  return Array.from(allCategories.values()).sort((a, b) => a.localeCompare(b))
+})
+
+const assignedCategories = computed(() => {
   if (!gradedTasks.value) {
     return []
   }

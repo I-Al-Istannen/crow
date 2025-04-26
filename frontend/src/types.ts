@@ -263,9 +263,14 @@ export const TestSummarySchema = z.object({
   testTasteSuccess: z.boolean().nullable(),
 })
 
+export const TestCategorySchema = z.object({
+  startsAt: z.number().transform((ms) => new Date(ms)),
+  endsAt: z.number().transform((ms) => new Date(ms)),
+})
+
 export const ListTestResponseSchema = z.object({
   tests: z.array(TestSummarySchema),
-  categories: z.array(z.string()),
+  categories: z.record(z.string(), TestCategorySchema),
 })
 
 export type AbortedExecution = z.infer<typeof AbortedExecutionSchema>
@@ -283,6 +288,7 @@ export type GithubIntegrationInfoResponse = z.infer<typeof GithubIntegrationInfo
 export type IntegrationInfoResponse = z.infer<typeof IntegrationInfoResponseSchema>
 export type InternalError = z.infer<typeof InternalErrorSchema>
 export type ListTestResponse = z.infer<typeof ListTestResponseSchema>
+export type TestCategory = z.infer<typeof TestCategorySchema>
 export type QueueResponse = z.infer<typeof QueueResponseSchema>
 export type Repo = z.infer<typeof RepoSchema>
 export type RequestRevision = z.infer<typeof RequestRevisionSchema>
