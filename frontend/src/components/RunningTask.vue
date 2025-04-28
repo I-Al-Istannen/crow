@@ -20,7 +20,7 @@
       v-if="status === 'OPEN' && buildExecutionOutput"
       :task-or-output="buildExecutionOutput"
     />
-    <TestOverview v-if="status === 'OPEN' && testingStarted" of-whom="yours" :tests="tests" />
+    <TestOverviewMatrix v-if="status === 'OPEN' && testingStarted" of-whom="yours" :tests="tests" />
   </div>
 </template>
 
@@ -37,7 +37,7 @@ import {
 import { computed, ref } from 'vue'
 import { BACKEND_URL } from '@/data/fetching.ts'
 import BuildOutputOverview from '@/components/BuildOutputOverview.vue'
-import TestOverview from '@/components/TestOverview.vue'
+import TestOverviewMatrix from '@/components/TestOverviewMatrix.vue'
 import { storeToRefs } from 'pinia'
 import { toast } from 'vue-sonner'
 import { useUserStore } from '@/stores/user.ts'

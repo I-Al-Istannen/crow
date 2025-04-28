@@ -20,7 +20,7 @@
   </Card>
 
   <BuildOutputOverview :task-or-output="task" v-if="task" />
-  <TestOverview :tests="tests" of-whom="yours" v-if="tests && task" />
+  <TestOverviewMatrix :tests="tests" of-whom="yours" v-if="tests && task" />
 </template>
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -33,7 +33,7 @@ import {
 } from '@/types.ts'
 import BuildOutputOverview from '@/components/BuildOutputOverview.vue'
 import TaskQuickOverview from '@/components/TaskQuickOverview.vue'
-import TestOverview from '@/components/TestOverview.vue'
+import TestOverviewMatrix from '@/components/TestOverviewMatrix.vue'
 import { computed } from 'vue'
 import { queryTask } from '@/data/network.ts'
 
