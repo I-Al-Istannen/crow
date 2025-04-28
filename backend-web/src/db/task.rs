@@ -644,7 +644,7 @@ async fn get_top_task_for_team_and_category(
             FROM TestResults
             JOIN ExecutionResults ER ON ER.execution_id = TestResults.binary_exec_id
             JOIN Tests ON Tests.id = TestResults.test_id
-            WHERE ER.result = ? AND Tests.category = ?
+            WHERE ER.result = ? AND Tests.category = ? AND Tests.provisional_for_category IS NULL
             GROUP BY TestResults.task_id
         ) PASS_BY_TASK
         JOIN Tasks ON Tasks.task_id = PASS_BY_TASK.task_id
