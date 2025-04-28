@@ -1,4 +1,4 @@
-use crate::types::{ExecutionExitStatus, TestId, UserId};
+use crate::types::{ExecutionExitStatus, TaskId, TestId, UserId};
 use serde::{Deserialize, Serialize};
 use shared::{FinishedCompilerTask, FinishedTaskInfo, FinishedTest};
 
@@ -34,6 +34,15 @@ pub enum FinishedCompilerTaskSummary {
     },
 }
 
+impl FinishedCompilerTaskSummary {
+    pub fn info(&self) -> &FinishedTaskInfo {
+        match self {
+            Self::BuildFailed { info, .. } => info,
+            Self::RanTests { info, .. } => info,
+        }
+    }
+}
+
 impl From<(FinishedCompilerTask, Vec<TestId>)> for FinishedCompilerTaskSummary {
     fn from((value, outdated): (FinishedCompilerTask, Vec<TestId>)) -> Self {
         match value {
@@ -63,4 +72,13 @@ pub enum FinalSubmittedTask {
         user_id: UserId,
         time: i64,
     },
+}
+
+impl FinalSubmittedTask {
+    pub fn task_id(&self) -> TaskId {
+        match self {
+            Self::AutomaticallySelected { summary } => summary.info().task_id.clone().into(),
+            Self::ManuallyOverridden { summary, .. } => summary.info().task_id.clone().into(),
+        }
+    }
 }

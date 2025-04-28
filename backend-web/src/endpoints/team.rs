@@ -1,5 +1,6 @@
 use super::{Json, Path};
 use crate::auth::Claims;
+use crate::config::TestCategory;
 use crate::error::{Result, WebError};
 use crate::types::{
     AppState, FinalSubmittedTask, FinishedCompilerTaskSummary, Repo, TaskId, TeamId, TeamInfo,
@@ -7,7 +8,7 @@ use crate::types::{
 use axum::extract::State;
 use serde::Deserialize;
 use snafu::location;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use tracing::instrument;
 
 #[instrument(skip_all)]
@@ -88,25 +89,21 @@ pub async fn set_final_task(
     claims: Claims,
     Json(payload): Json<SetFinalTaskPayload>,
 ) -> Result<()> {
-    for category_name in &payload.categories {
-        let Some(category) = state.test_config.categories.get(category_name) else {
-            return Err(WebError::named_not_found(
-                format!("category `{}`", category_name),
-                location!(),
-            ));
-        };
-        if category.is_after_test_deadline() {
-            return Err(WebError::named_unauthorized(
-                format!("submit solution, as `{}` was already due", category_name),
-                location!(),
-            ));
+    let mut current_categories = HashMap::new();
+    for (name, category) in &state.test_config.categories {
+        let task = state
+            .db
+            .get_final_submitted_task_for_team_and_category(&claims.team, name, category)
+            .await?;
+        if let Some(task) = task {
+            if task.task_id() == payload.task_id {
+                current_categories.insert(name.clone(), category.clone());
+            }
         }
     }
 
-    // FIXME: Require that all existing expired categories stay
-    // FIXME: [x] Show which tests are outdated in detail view
-    // FIXME: [x] Show which tests are provisional => Fix this in the task
-    // FIXME: Do not consider provisional tests in heuristic
+    ensure_added_categories_not_past_due(&state, &payload, &mut current_categories)?;
+    ensure_removed_categories_not_past_due(&state, &claims, &payload).await?;
 
     state
         .db
@@ -118,6 +115,60 @@ pub async fn set_final_task(
         )
         .await?;
 
+    Ok(())
+}
+
+fn ensure_added_categories_not_past_due(
+    state: &AppState,
+    payload: &SetFinalTaskPayload,
+    current_categories: &mut HashMap<String, TestCategory>,
+) -> Result<()> {
+    for new_category in &payload.categories {
+        if current_categories.contains_key(new_category) {
+            continue;
+        }
+        let category = state
+            .test_config
+            .categories
+            .get(new_category)
+            .ok_or_else(|| {
+                WebError::named_not_found(format!("category `{}`", new_category), location!())
+            })?;
+        if category.is_after_labs_deadline() {
+            return Err(WebError::named_unauthorized(
+                format!(
+                    "submit solution, as `{}` is already past the deadline",
+                    new_category
+                ),
+                location!(),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+async fn ensure_removed_categories_not_past_due(
+    state: &AppState,
+    claims: &Claims,
+    payload: &SetFinalTaskPayload,
+) -> Result<()> {
+    for (name, category) in &state.test_config.categories {
+        if category.is_after_labs_deadline() && !payload.categories.contains(name) {
+            let current_submitted_task = state
+                .db
+                .get_final_submitted_task_for_team_and_category(&claims.team, name, category)
+                .await?;
+            if let Some(current_submitted_task) = current_submitted_task {
+                if current_submitted_task.task_id() == payload.task_id {
+                    return Err(WebError::named_unauthorized(
+                        format!("change the solution, as `{}` was already due", name),
+                        location!(),
+                    ));
+                }
+            }
+        }
+    }
     Ok(())
 }
 
@@ -144,5 +195,5 @@ pub struct TeamPatchPayload {
 #[serde(rename_all = "camelCase")]
 pub struct SetFinalTaskPayload {
     task_id: TaskId,
-    categories: Vec<String>,
+    categories: HashSet<String>,
 }

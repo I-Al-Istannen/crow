@@ -74,6 +74,10 @@ impl TestCategory {
     pub fn is_after_test_deadline(&self) -> bool {
         self.tests_end_at.timestamp() < Timestamp::now()
     }
+
+    pub fn is_after_labs_deadline(&self) -> bool {
+        self.labs_end_at.timestamp() < Timestamp::now()
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
