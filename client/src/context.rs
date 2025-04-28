@@ -231,5 +231,5 @@ pub struct MyselfResponse {
 #[serde(tag = "type")]
 pub enum SetTestResponse {
     TestAdded(#[allow(dead_code)] serde_json::Value),
-    TastingFailed(FinishedTest),
+    TastingFailed(Box<FinishedTest>),
 }

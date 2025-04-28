@@ -34,6 +34,7 @@ pub struct CompilerTest {
     pub binary_arguments: Vec<String>,
     pub compiler_modifiers: Vec<TestModifier>,
     pub binary_modifiers: Vec<TestModifier>,
+    pub provisional_for_category: Option<String>,
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
@@ -332,6 +333,7 @@ impl FromStr for TestExecutionOutputType {
 pub struct FinishedTest {
     pub test_id: String,
     pub output: TestExecutionOutput,
+    pub provisional_for_category: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

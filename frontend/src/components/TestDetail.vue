@@ -62,6 +62,7 @@ const testTastingError = computed<FinishedTest | null>(() => {
   return {
     testId: testId.value,
     output: test.value.testTastingResult.output,
+    provisionalForCategory: test.value.provisionalForCategory,
   }
 })
 </script>

@@ -147,6 +147,7 @@ pub fn command_run_test(args: CliRunTestArgs) -> Result<bool, CrowClientError> {
             binary_modifiers: test.detail.binary_modifiers,
             compile_command: vec![args.compiler_run.display().to_string()],
             binary_arguments: vec![],
+            provisional_for_category: None,
         },
         tempdir.path(),
         &tempdir.path().join("out.🦆"),

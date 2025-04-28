@@ -69,15 +69,17 @@ pub(super) async fn add_finished_task(
                 query!(
                     r#"
                     INSERT INTO TestResults
-                        (task_id, test_id, compiler_exec_id, binary_exec_id, status)
+                        (task_id, test_id, compiler_exec_id, binary_exec_id, status,
+                         provisional_for_category)
                     VALUES
-                        (?, ?, ?, ?, ?)
+                        (?, ?, ?, ?, ?, ?)
                     "#,
                     result.info().task_id,
                     test.test_id,
                     compiler_exec_id,
                     binary_exec_id,
-                    status
+                    status,
+                    test.provisional_for_category
                 )
                 .execute(&mut *con)
                 .instrument(info_span!("sqlx_add_finished_insert_test"))
@@ -164,7 +166,8 @@ pub(super) async fn get_task(
             test_id,
             compiler_exec_id as "compiler_exec_id!",
             binary_exec_id,
-            status
+            status,
+            provisional_for_category as "provisional_for_category?"
         FROM TestResults
         WHERE task_id = ?"#,
         task_id
@@ -187,6 +190,7 @@ pub(super) async fn get_task(
         finished_tests.push(FinishedTest {
             test_id,
             output: execution_output,
+            provisional_for_category: test.provisional_for_category,
         })
     }
 

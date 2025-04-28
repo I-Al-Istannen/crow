@@ -289,7 +289,11 @@ const onSubmit = form.handleSubmit(async (values) => {
     dialogOpen.value = false
   } else {
     toast.error('The test failed on the reference compiler')
-    failedTestTasting.value = { testId: values.id, output: res.output }
+    failedTestTasting.value = {
+      testId: values.id,
+      output: res.output,
+      provisionalForCategory: null,
+    }
     form.setFieldError('testTasting', 'Failed on reference compiler. Details are on the right.')
   }
 })

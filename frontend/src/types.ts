@@ -76,6 +76,7 @@ export const TestExecutionOutputSchema = z.discriminatedUnion('type', [
 // Out of order due to dependencies
 export const FinishedTestSchema = z.object({
   testId: z.string(),
+  provisionalForCategory: z.string().nullable(),
   output: TestExecutionOutputSchema,
 })
 
@@ -233,7 +234,7 @@ export const TestSchema = z.object({
   compilerModifiers: z.array(TestModifierSchema),
   binaryModifiers: z.array(TestModifierSchema),
   adminAuthored: z.boolean(),
-  provisional: z.boolean(),
+  provisionalForCategory: z.string().nullable(),
   lastUpdated: z.number().transform((ms) => new Date(ms)),
 })
 
@@ -265,7 +266,7 @@ export const TestSummarySchema = z.object({
   adminAuthored: z.boolean(),
   category: z.string(),
   testTasteSuccess: z.boolean().nullable(),
-  provisional: z.boolean(),
+  provisionalForCategory: z.string().nullable(),
   lastUpdated: z.number().transform((ms) => new Date(ms)),
 })
 

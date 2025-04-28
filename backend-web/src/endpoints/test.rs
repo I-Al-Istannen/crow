@@ -51,13 +51,18 @@ pub async fn set_test(
     // If the time is up you can no longer edit finalized tests as a normal user
     // (just create new ones)
     if let Some(test) = state.db.fetch_test(&test_id).await? {
-        if provisional && !claims.is_admin() && !test.provisional {
+        if provisional && !claims.is_admin() && test.provisional_for_category.is_none() {
             return Err(WebError::named_unauthorized(
                 "edit an existing test after test deadline".to_string(),
                 location!(),
             ));
         }
     }
+    let provisional_for_category = if provisional {
+        Some(payload.category.clone())
+    } else {
+        None
+    };
 
     let test = Test {
         id: test_id,
@@ -66,7 +71,7 @@ pub async fn set_test(
         category: payload.category,
         compiler_modifiers: payload.compiler_modifiers,
         binary_modifiers: payload.binary_modifiers,
-        provisional,
+        provisional_for_category,
         last_updated: Timestamp::now(),
     };
 
@@ -136,7 +141,7 @@ pub async fn delete_test(
         }
 
         if let Some(category) = test_config.categories.get(&test.category) {
-            if !test.provisional && category.is_after_test_deadline() {
+            if test.provisional_for_category.is_none() && category.is_after_test_deadline() {
                 return Err(WebError::named_unauthorized(
                     "delete a finalized test".to_string(),
                     location!(),

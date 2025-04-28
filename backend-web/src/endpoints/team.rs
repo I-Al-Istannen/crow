@@ -104,6 +104,9 @@ pub async fn set_final_task(
     }
 
     // FIXME: Require that all existing expired categories stay
+    // FIXME: [x] Show which tests are outdated in detail view
+    // FIXME: [x] Show which tests are provisional => Fix this in the task
+    // FIXME: Do not consider provisional tests in heuristic
 
     state
         .db

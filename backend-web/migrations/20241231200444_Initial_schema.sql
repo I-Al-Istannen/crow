@@ -49,11 +49,12 @@ CREATE TABLE Tasks
 
 CREATE TABLE TestResults
 (
-    task_id          VARCHAR(36) NOT NULL REFERENCES Tasks (task_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    test_id          VARCHAR(36) NOT NULL REFERENCES Tests (id) ON DELETE CASCADE ON UPDATE CASCADE,
-    compiler_exec_id VARCHAR(36) NOT NULL REFERENCES ExecutionResults (execution_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    binary_exec_id   VARCHAR(36) REFERENCES ExecutionResults (execution_id) ON DELETE CASCADE ON UPDATE CASCADE,
-    status           VARCHAR(40) NOT NULL,
+    task_id                  VARCHAR(36) NOT NULL REFERENCES Tasks (task_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    test_id                  VARCHAR(36) NOT NULL REFERENCES Tests (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    provisional_for_category VARCHAR(10),
+    compiler_exec_id         VARCHAR(36) NOT NULL REFERENCES ExecutionResults (execution_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    binary_exec_id           VARCHAR(36) REFERENCES ExecutionResults (execution_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    status                   VARCHAR(40) NOT NULL,
 
     PRIMARY KEY (task_id, test_id)
 );
@@ -71,15 +72,15 @@ CREATE TABLE ExecutionResults
 
 CREATE TABLE Tests
 (
-    id                 VARCHAR(120) PRIMARY KEY,
-    owner              VARCHAR(36) NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
-    compiler_modifiers TEXT        NOT NULL, -- json serialized modifiers
-    binary_modifiers   TEXT        NOT NULL, -- json serialized modifiers
-    admin_authored     BOOLEAN     NOT NULL,
-    category           VARCHAR(10) NOT NULL,
-    hash               VARCHAR(40) NOT NULL,
-    provisional        BOOLEAN     NOT NULL, -- if true, the test was submitted after the test deadline
-    last_updated       INTEGER     NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 as INTEGER))
+    id                       VARCHAR(120) PRIMARY KEY,
+    owner                    VARCHAR(36) NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,
+    compiler_modifiers       TEXT        NOT NULL, -- json serialized modifiers
+    binary_modifiers         TEXT        NOT NULL, -- json serialized modifiers
+    admin_authored           BOOLEAN     NOT NULL,
+    category                 VARCHAR(10) NOT NULL,
+    hash                     VARCHAR(40) NOT NULL,
+    provisional_for_category VARCHAR(10),          -- if set, the test was submitted after category test deadline
+    last_updated             INTEGER     NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 as INTEGER))
 );
 
 CREATE TABLE TestTastingResults

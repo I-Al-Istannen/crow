@@ -33,7 +33,7 @@ pub(super) async fn add_test(
         r#"
         INSERT INTO Tests
             (id, owner, category, compiler_modifiers, binary_modifiers, admin_authored, hash,
-             provisional, last_updated)
+             provisional_for_category, last_updated)
         VALUES
             (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT DO UPDATE SET
@@ -42,7 +42,8 @@ pub(super) async fn add_test(
             admin_authored = excluded.admin_authored,
             category = excluded.category,
             hash = excluded.hash,
-            last_updated = excluded.last_updated
+            last_updated = excluded.last_updated,
+            provisional_for_category = excluded.provisional_for_category
         "#,
         test.id,
         test.owner,
@@ -51,7 +52,7 @@ pub(super) async fn add_test(
         binary_modifiers,
         test.admin_authored,
         hash,
-        test.provisional,
+        test.provisional_for_category,
         last_updated,
     )
     .execute(&mut *con)
@@ -95,7 +96,7 @@ pub(super) async fn add_test(
             compiler_modifiers,
             binary_modifiers,
             admin_authored,
-            provisional,
+            provisional_for_category,
             last_updated
         FROM Tests
         WHERE id = ?"#,
@@ -124,7 +125,7 @@ pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>> {
             compiler_modifiers,
             binary_modifiers,
             admin_authored,
-            provisional,
+            provisional_for_category,
             last_updated
         FROM Tests
         "#
@@ -151,7 +152,7 @@ pub(super) async fn get_tests_summaries(con: &mut SqliteConnection) -> Result<Ve
             Tests.hash,
             (SELECT status == ? FROM TestTastingResults WHERE test_id = Tests.id)
                 as "test_taste_success?: bool",
-            Tests.provisional,
+            Tests.provisional_for_category,
             Tests.last_updated as "last_updated!: DbMillis"
         FROM Tests
         JOIN Teams ON Tests.owner = Teams.id
@@ -179,7 +180,7 @@ pub(super) async fn fetch_test(
             compiler_modifiers,
             binary_modifiers,
             admin_authored,
-            provisional,
+            provisional_for_category,
             last_updated
         FROM Tests
         WHERE id = ?
@@ -256,7 +257,7 @@ struct DbTest {
     compiler_modifiers: String,
     binary_modifiers: String,
     admin_authored: bool,
-    provisional: bool,
+    provisional_for_category: Option<String>,
     last_updated: i64,
 }
 
@@ -271,7 +272,7 @@ impl From<DbTest> for Test {
             binary_modifiers: serde_json::from_str(&value.binary_modifiers)
                 .expect("Unexpected json serialize error"),
             admin_authored: value.admin_authored,
-            provisional: value.provisional,
+            provisional_for_category: value.provisional_for_category,
             last_updated: DbMillis(value.last_updated).into(),
         }
     }

@@ -61,7 +61,7 @@
                       </TooltipTrigger>
                       <TooltipContent>Created by an administrator</TooltipContent>
                     </Tooltip>
-                    <Tooltip v-if="test.provisional">
+                    <Tooltip v-if="test.provisionalForCategory !== null">
                       <TooltipTrigger as-child>
                         <LucideEyeOff :size="16" class="text-orange-500" />
                       </TooltipTrigger>

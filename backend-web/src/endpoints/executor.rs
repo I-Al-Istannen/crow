@@ -201,6 +201,7 @@ pub async fn get_work(
             binary_arguments: state.execution_config.binary_arguments.clone(),
             binary_modifiers: test.binary_modifiers,
             compiler_modifiers: test.compiler_modifiers,
+            provisional_for_category: test.provisional_for_category,
         })
         .collect();
 
@@ -325,6 +326,7 @@ pub async fn get_test_tasting_work(
             binary_arguments: state.execution_config.binary_arguments,
             compiler_modifiers: task.test.compiler_modifiers,
             binary_modifiers: task.test.binary_modifiers,
+            provisional_for_category: task.test.provisional_for_category,
         },
         image_id,
     });

@@ -21,6 +21,12 @@
 
   <BuildOutputOverview :task-or-output="task" v-if="task" />
   <TestOverviewMatrix :tests="tests" of-whom="yours" v-if="tests && task" />
+  <TestOverviewTable
+    :outdated="outdatedTests"
+    :tests="tests"
+    of-whom="yours"
+    v-if="tests && task"
+  />
 </template>
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,6 +40,7 @@ import {
 import BuildOutputOverview from '@/components/BuildOutputOverview.vue'
 import TaskQuickOverview from '@/components/TaskQuickOverview.vue'
 import TestOverviewMatrix from '@/components/TestOverviewMatrix.vue'
+import TestOverviewTable from '@/components/TestOverviewTable.vue'
 import { computed } from 'vue'
 import { queryTask } from '@/data/network.ts'
 
@@ -52,6 +59,13 @@ const tests = computed(() => {
   return task.value.tests
 })
 
+const outdatedTests = computed(() => {
+  if (task.value?.type !== 'RanTests') {
+    return []
+  }
+  return task.value.outdated
+})
+
 function toSummary(task: FinishedCompilerTask): FinishedCompilerTaskSummary {
   if (task.type == 'BuildFailed') {
     return {
@@ -60,11 +74,11 @@ function toSummary(task: FinishedCompilerTask): FinishedCompilerTaskSummary {
       status: task.buildOutput.type,
     }
   }
+
   const tests: FinishedTestSummary[] = task.tests.map((test) => ({
     output: toExecutionStatus(test.output),
     testId: test.testId,
   }))
-
   return {
     type: 'RanTests',
     tests,

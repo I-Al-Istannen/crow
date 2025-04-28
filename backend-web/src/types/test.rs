@@ -47,7 +47,7 @@ pub struct Test {
     pub owner: TeamId,
     pub admin_authored: bool,
     pub category: String,
-    pub provisional: bool,
+    pub provisional_for_category: Option<String>,
     #[serde(serialize_with = "jiff::fmt::serde::timestamp::millisecond::required::serialize")]
     #[serde(deserialize_with = "jiff::fmt::serde::timestamp::millisecond::required::deserialize")]
     pub last_updated: Timestamp,
@@ -71,7 +71,7 @@ pub struct TestSummary {
     pub category: String,
     pub hash: String,
     pub test_taste_success: Option<bool>,
-    pub provisional: bool,
+    pub provisional_for_category: Option<String>,
     #[serde(serialize_with = "jiff::fmt::serde::timestamp::millisecond::required::serialize")]
     #[serde(deserialize_with = "jiff::fmt::serde::timestamp::millisecond::required::deserialize")]
     pub last_updated: Timestamp,

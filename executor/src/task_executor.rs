@@ -171,6 +171,7 @@ fn execute_task_impl(
             let result = FinishedTest {
                 test_id: test.test_id,
                 output: result,
+                provisional_for_category: test.provisional_for_category,
             };
             results.push(result.clone());
             let _ = message_channel.send(RunnerUpdate::FinishedTest { result });
