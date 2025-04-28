@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            Tests.id as \"id!: TestId\",\n            Teams.display_name as \"creator_name\",\n            Teams.id as \"creator_id!: TeamId\",\n            Tests.admin_authored,\n            Tests.category,\n            Tests.hash,\n            (SELECT status == ? FROM TestTastingResults WHERE test_id = Tests.id)\n                as \"test_taste_success?: bool\",\n            Tests.provisional,\n            Tests.last_updated as \"last_updated!: DbMillis\"\n        FROM Tests\n        JOIN Teams ON Tests.owner = Teams.id\n        ",
+  "query": "\n        SELECT\n            Tests.id as \"id!: TestId\",\n            Teams.display_name as \"creator_name\",\n            Teams.id as \"creator_id!: TeamId\",\n            Tests.admin_authored,\n            Tests.category,\n            Tests.hash,\n            (SELECT status == ? FROM TestTastingResults WHERE test_id = Tests.id)\n                as \"test_taste_success?: bool\",\n            Tests.provisional_for_category,\n            Tests.last_updated as \"last_updated!: DbMillis\"\n        FROM Tests\n        JOIN Teams ON Tests.owner = Teams.id\n        ",
   "describe": {
     "columns": [
       {
@@ -39,9 +39,9 @@
         "type_info": "Integer"
       },
       {
-        "name": "provisional",
+        "name": "provisional_for_category",
         "ordinal": 7,
-        "type_info": "Bool"
+        "type_info": "Text"
       },
       {
         "name": "last_updated!: DbMillis",
@@ -60,9 +60,9 @@
       false,
       false,
       true,
-      false,
+      true,
       false
     ]
   },
-  "hash": "676db79d5675f5cc1d506cb69fca55b6bbe21ec10c7a7911373aa970d0c6d740"
+  "hash": "efedb0d82db5923e594f57c29795ba052384269ed4978391a3bf2e22ef9d5299"
 }
