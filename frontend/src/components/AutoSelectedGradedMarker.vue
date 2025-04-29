@@ -5,10 +5,12 @@
         <LucideSparkles class="h-4 w-4 inline-block text-yellow-500"></LucideSparkles>
       </TooltipTrigger>
       <TooltipContent>
-        Automatically submitting this task for {{ gradedForCategory.join(' and ') }}, as it
-        currently passes the most tests.
+        <span class="text-white">crow</span> will submit this task for
+        {{ gradedForCategory.join(' and ') }}, as it currently passes the most tests.
         <br />
-        This will automatically update, you do not need to do anything.
+        This will automatically update to the newest task with the highest pass count.
+        <br />
+        You do not need to do anything, but you can override crow's selection.
       </TooltipContent>
     </Tooltip>
   </TooltipProvider>

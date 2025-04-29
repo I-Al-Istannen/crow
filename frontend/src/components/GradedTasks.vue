@@ -3,8 +3,8 @@
     <CardHeader>
       <CardTitle>Tasks for grading</CardTitle>
       <CardDescription>
-        Your best runs for each category, automatically cherry picked. You do not need to do
-        anything.
+        The currently submitted tasks for each category. Tasks marked with a star were automatically
+        selected by crow, hover it for more info.
       </CardDescription>
     </CardHeader>
     <CardContent v-auto-animate>
