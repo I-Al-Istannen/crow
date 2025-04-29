@@ -19,6 +19,7 @@
     "@formkit/drag-and-drop": "^0.4.2",
     "@radix-icons/vue": "^1.0.0",
     "@tanstack/vue-query": "^5.74.8",
+    "@tanstack/vue-table": "^8.21.3",
     "@vee-validate/zod": "^4.15.0",
     "@vueuse/core": "^12.8.2",
     "class-variance-authority": "^0.7.1",

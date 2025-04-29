@@ -13,40 +13,47 @@
         :of-whom="ofWhom"
         v-model:dialog-open="dialogOpen"
       />
+      <div class="flex gap-2 w-full flex-wrap">
+        <Input
+          :model-value="table.getColumn('testId')?.getFilterValue() as string"
+          @update:model-value="table.getColumn('testId')?.setFilterValue($event)"
+          placeholder="Test name..."
+          class="max-w-[30ch]"
+        />
+        <span class="flex-grow" />
+        <DataTableViewOptions :table="table" />
+      </div>
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>
-              Status
-              <LucideArrowDownAz class="inline" :size="16" />
-              <LucideArrowUpAz class="inline" :size="16" />
+          <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
+            <TableHead v-for="header in headerGroup.headers" :key="header.id">
+              <FlexRender
+                v-if="!header.placeholderId"
+                :render="header.column.columnDef.header"
+                :props="header.getContext()"
+              />
             </TableHead>
-            <TableHead>Outdated</TableHead>
-            <TableHead>Provisional</TableHead>
-            <TableHead>Details</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow v-for="test in sortedTests" :key="test.testId">
-            <TableCell>{{ test.testId }}</TableCell>
-            <TableCell :class="statusColor(toExecutionStatus(test.output), 'text')">
-              {{ test.output.type }}
-            </TableCell>
-            <TableCell>
-              <span v-if="outdated.has(test.testId)" class="text-muted-foreground">Outdated</span>
-            </TableCell>
-            <TableCell
-              :class="{
-                'text-muted-foreground': !outdated.has(test.testId),
-              }"
+          <template v-if="table.getRowModel().rows.length > 0">
+            <TableRow
+              v-for="row in table.getRowModel().rows"
+              :key="row.id"
+              :data-state="row.getIsSelected() ? 'selected' : undefined"
             >
-              {{ test.provisionalForCategory }}
-            </TableCell>
-            <TableCell>
-              <Button variant="outline" @click="handleTestClick(test)">Show details</Button>
-            </TableCell>
-          </TableRow>
+              <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
+                <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
+              </TableCell>
+            </TableRow>
+          </template>
+          <template v-else>
+            <TableRow>
+              <TableCell :colspan="columns.length" class="h-24 text-center">
+                No results.
+              </TableCell>
+            </TableRow>
+          </template>
         </TableBody>
       </Table>
     </CardContent>
@@ -55,8 +62,16 @@
 
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  type ColumnDef,
+  FlexRender,
+  type Table as TanstackTable,
+  createColumnHelper,
+  getCoreRowModel,
+  getSortedRowModel,
+  useVueTable,
+} from '@tanstack/vue-table'
 import { type FinishedTest, type TestId, toExecutionStatus } from '@/types.ts'
-import { LucideArrowDownAz, LucideArrowUpAz } from 'lucide-vue-next'
 import {
   Table,
   TableBody,
@@ -65,9 +80,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { computed, ref, toRefs } from 'vue'
+import { computed, h, ref, toRefs } from 'vue'
 import { Button } from '@/components/ui/button'
+import DataTableColumnHeader from '@/components/ui/data-table/DataTableColumnHeader.vue'
+import DataTableViewOptions from '@/components/ui/data-table/DataTableViewOptions.vue'
 import FinishedTestDetailDialog from '@/components/FinishedTestDetailDialog.vue'
+import { Input } from '@/components/ui/input'
 import { statusColor } from '@/lib/utils.ts'
 
 const clickedTest = ref<FinishedTest | undefined>(undefined)
@@ -86,6 +104,86 @@ const outdated = computed(() => new Set(props.outdated))
 const sortedTests = computed(() =>
   tests.value.slice().sort((a, b) => a.testId.localeCompare(b.testId)),
 )
+
+const columnHelper = createColumnHelper<FinishedTest>()
+const isMultiSorting = computed(() => {
+  return table.getState().sorting.length > 1
+})
+
+const columns: ColumnDef<FinishedTest, never>[] = [
+  columnHelper.accessor((test) => test.testId, {
+    header: (column) =>
+      h(DataTableColumnHeader<FinishedTest>, {
+        column: column.column,
+        title: 'Name',
+      }),
+    id: 'testId',
+    meta: {
+      isMultiSorting: isMultiSorting,
+    },
+  }),
+  columnHelper.accessor((test) => test.output.type, {
+    header: (column) =>
+      h(DataTableColumnHeader<FinishedTest>, {
+        column: column.column,
+        title: 'Status',
+      }),
+    id: 'status',
+    meta: {
+      isMultiSorting: isMultiSorting,
+    },
+    cell: (cell) =>
+      h(
+        'span',
+        { class: statusColor(toExecutionStatus(cell.row.original.output), 'text') },
+        cell.getValue(),
+      ),
+  }),
+  columnHelper.accessor((test) => outdated.value.has(test.testId), {
+    header: (column) =>
+      h(DataTableColumnHeader<FinishedTest>, {
+        column: column.column,
+        title: 'Outdated',
+      }),
+    id: 'outdated',
+    meta: {
+      isMultiSorting: isMultiSorting,
+    },
+    cell: (val) =>
+      val.getValue() ? h('span', { class: 'text-muted-foreground' }, 'Outdated') : '-',
+  }),
+  columnHelper.accessor((test) => test.provisionalForCategory, {
+    header: (column) =>
+      h(DataTableColumnHeader<FinishedTest>, {
+        column: column.column,
+        title: 'Provisional',
+      }),
+    id: 'provisional',
+    meta: {
+      isMultiSorting: isMultiSorting,
+    },
+  }),
+  columnHelper.display({
+    header: 'Details',
+    cell: (val) =>
+      h(
+        Button,
+        { variant: 'outline', onClick: () => handleTestClick(val.row.original) },
+        () => 'Show details',
+      ),
+  }),
+]
+
+const table: TanstackTable<FinishedTest> = useVueTable({
+  get data() {
+    return tests
+  },
+  get columns() {
+    return columns
+  },
+  getCoreRowModel: getCoreRowModel(),
+  getSortedRowModel: getSortedRowModel(),
+})
 
 const handleTestClick = (test: FinishedTest) => {
   clickedTest.value = test
