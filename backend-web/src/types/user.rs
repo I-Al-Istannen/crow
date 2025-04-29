@@ -55,6 +55,7 @@ pub struct OwnUser {
     #[serde(flatten)]
     #[sqlx(flatten)]
     pub user: User,
+    pub role: UserRole,
 }
 
 #[derive(Debug, Clone, Serialize, FromRow)]

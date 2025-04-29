@@ -1,7 +1,7 @@
 use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::Result;
-use crate::types::{AppState, FullUserForAdmin, OwnUser, Team, TeamId, TeamIntegrationToken, User};
+use crate::types::{AppState, FullUserForAdmin, OwnUser, Team, TeamId, TeamIntegrationToken};
 use axum::extract::State;
 use serde::Serialize;
 use tracing::instrument;
@@ -50,7 +50,7 @@ pub struct MeResponse {
 
 #[derive(Debug, Serialize)]
 pub struct LoginResponse {
-    pub user: User,
+    pub user: OwnUser,
     pub token: String,
 }
 

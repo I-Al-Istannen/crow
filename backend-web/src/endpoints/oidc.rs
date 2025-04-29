@@ -65,11 +65,8 @@ pub async fn login_oidc_callback(
     };
 
     let team = state.team_mapping.get(&user.id.clone().into()).cloned();
-    let user = state
-        .db
-        .synchronize_oidc_user(user.clone(), team)
-        .await?
-        .user;
+    let own_user = state.db.synchronize_oidc_user(user.clone(), team).await?;
+    let user = &own_user.user;
     let jwt = create_jwt(user.id.clone(), &state.jwt_keys, UserRole::Regular)?;
 
     info!(
@@ -81,7 +78,10 @@ pub async fn login_oidc_callback(
 
     Ok((
         cookies.remove("oidc_flow_id"),
-        Json(LoginResponse { user, token: jwt }),
+        Json(LoginResponse {
+            user: own_user,
+            token: jwt,
+        }),
     ))
 }
 
