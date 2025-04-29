@@ -102,6 +102,7 @@
                 pkgs.busybox
                 pkgs.git
                 pkgs.bash
+                pkgs.openssh
               ];
 
               # https://discourse.nixos.org/t/dockertools-buildimage-and-user-writable-tmp/5397/9
