@@ -28,9 +28,11 @@
       <div v-if="loggedIn">
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
-            <Button variant="outline" size="icon">
-              <User></User>
-            </Button>
+            <div :class="clsx(isAdmin && 'p-[2px] bg-gradient-primary rounded-md')">
+              <Button variant="outline" size="icon">
+                <User />
+              </Button>
+            </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuLabel class="flex flex-col space-y-1">
@@ -85,6 +87,7 @@ import {
   NavigationMenuList,
 } from '@/components/ui/navigation-menu'
 import { Button } from '@/components/ui/button'
+import { clsx } from 'clsx'
 import { computed } from 'vue'
 import router from '@/router'
 import { storeToRefs } from 'pinia'
@@ -98,7 +101,7 @@ const routerLinkClasses =
   ' disabled:opacity-50 data-[active]:bg-accent'
 
 const currentRoute = useRoute()
-const { user, accountReady, loggedIn } = storeToRefs(useUserStore())
+const { accountReady, isAdmin, loggedIn, user } = storeToRefs(useUserStore())
 const userName = computed(() => user.value?.displayName)
 
 const routes = computed(() =>

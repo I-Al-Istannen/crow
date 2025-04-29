@@ -202,8 +202,14 @@ export const RunnerUpdateMessageSchema = z.object({
   time: z.number().transform((ms) => new Date(ms)),
 })
 
+export const OwnUserSchema = UserSchema.merge(
+  z.object({
+    role: z.enum(['Admin', 'Regular']),
+  }),
+)
+
 export const ShowMyselfResponseSchema = z.object({
-  user: UserSchema,
+  user: OwnUserSchema,
   team: TeamSchema.nullable(),
 })
 
@@ -319,6 +325,7 @@ export type TestWithTestTasting = z.infer<typeof TestWithTestTastingSchema>
 export type TestId = z.infer<typeof TestIdSchema>
 export type TestSummary = z.infer<typeof TestSummarySchema>
 export type User = z.infer<typeof UserSchema>
+export type OwnUser = z.infer<typeof OwnUserSchema>
 export type UserId = z.infer<typeof UserIdSchema>
 export type RunnerWorkingOn = z.infer<typeof RunnerWorkingOnSchema>
 export type WorkItem = z.infer<typeof WorkItemSchema>

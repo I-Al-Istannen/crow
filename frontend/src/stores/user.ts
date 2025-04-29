@@ -1,15 +1,17 @@
-import { type Team, type User, UserSchema } from '@/types.ts'
+import { type OwnUser, OwnUserSchema, type Team } from '@/types.ts'
 import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { fetchWithError } from '@/data/fetching.ts'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string | null>(null)
-  const user = ref<User | null>(null)
+  const user = ref<OwnUser | null>(null)
   const team = ref<Team | null>(null)
 
   const loggedIn = computed(() => token.value !== null)
   const accountReady = computed(() => loggedIn.value && team.value !== null)
+
+  const isAdmin = computed(() => user.value?.role === 'Admin')
 
   async function logIn(oidc_code: string, oidc_state: string) {
     const res = await fetchWithError(
@@ -22,7 +24,7 @@ export const useUserStore = defineStore('user', () => {
       },
     )
     const json = await res.json()
-    user.value = UserSchema.parse(json['user'])
+    user.value = OwnUserSchema.parse(json['user'])
     token.value = json['token']
 
     localStorage.setItem('userStore', JSON.stringify({ token: token.value }))
@@ -66,7 +68,7 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  return { accountReady, token, team, user, loggedIn, logIn, logOut, validateToken }
+  return { accountReady, isAdmin, token, team, user, loggedIn, logIn, logOut, validateToken }
 })
 
 export function hydrateUserStore() {
