@@ -8,7 +8,7 @@
           <LucideArrowUpAZ v-else-if="column.getIsSorted() === 'asc'" class="w-4 h-4" />
           <LucideArrowUpDown v-else class="w-4 h-4" />
           <span
-            class="-ml-1 text-xs -translate-y-1 font-mono"
+            class="-ml-[0.4rem] text-xs -translate-y-1 font-mono"
             :class="{ 'opacity-0': !isMultiSorting || column.getSortIndex() < 0 }"
           >
             {{ column.getSortIndex() + 1 }}

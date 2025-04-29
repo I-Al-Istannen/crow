@@ -20,7 +20,15 @@
       v-if="status === 'OPEN' && buildExecutionOutput"
       :task-or-output="buildExecutionOutput"
     />
-    <TestOverviewMatrix v-if="status === 'OPEN' && testingStarted" of-whom="yours" :tests="tests" />
+    <Card v-if="status === 'OPEN' && testingStarted">
+      <CardHeader>
+        <CardTitle>Test results</CardTitle>
+        <CardDescription>Information about individual tests</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <TestOverviewMatrix of-whom="yours" :tests="tests" />
+      </CardContent>
+    </Card>
   </div>
 </template>
 

@@ -19,35 +19,60 @@
     </CardContent>
   </Card>
 
+  <FinishedTestDetailDialog :test="clickedTest" of-whom="yours" v-model:dialog-open="dialogOpen" />
   <BuildOutputOverview :task-or-output="task" v-if="task" />
-  <TestOverviewMatrix :tests="tests" of-whom="yours" v-if="tests && task" />
-  <TestOverviewTable
-    :outdated="outdatedTests"
-    :tests="tests"
-    of-whom="yours"
-    v-if="tests && task"
-  />
+
+  <Card v-if="tests && task">
+    <CardHeader class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+      <div class="flex flex-col gap-y-1.5">
+        <CardTitle>Test results</CardTitle>
+        <CardDescription>Information about individual tests</CardDescription>
+      </div>
+      <div>
+        <Button variant="link" @click="showTableView = !showTableView">
+          <span v-if="showTableView">Switch to Matrix view</span>
+          <span v-else>Switch to Table view</span>
+        </Button>
+      </div>
+    </CardHeader>
+    <CardContent>
+      <TestOverviewTable
+        v-if="showTableView"
+        :outdated="outdatedTests"
+        :tests="tests"
+        @test-clicked="handleTestClicked"
+      />
+      <TestOverviewMatrix v-else :tests="tests" @test-clicked="handleTestClicked" />
+    </CardContent>
+  </Card>
 </template>
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   type FinishedCompilerTask,
   type FinishedCompilerTaskSummary,
+  type FinishedTest,
   type FinishedTestSummary,
   type TaskId,
   toExecutionStatus,
 } from '@/types.ts'
+import { computed, ref } from 'vue'
 import BuildOutputOverview from '@/components/BuildOutputOverview.vue'
+import { Button } from '@/components/ui/button'
+import FinishedTestDetailDialog from '@/components/FinishedTestDetailDialog.vue'
 import TaskQuickOverview from '@/components/TaskQuickOverview.vue'
 import TestOverviewMatrix from '@/components/TestOverviewMatrix.vue'
 import TestOverviewTable from '@/components/TestOverviewTable.vue'
-import { computed } from 'vue'
 import { queryTask } from '@/data/network.ts'
 
 const props = defineProps<{
   taskId: TaskId
 }>()
 const { taskId } = props
+
+const clickedTest = ref<FinishedTest | undefined>(undefined)
+const dialogOpen = ref<boolean>(false)
+const showTableView = ref<boolean>(true)
 
 const { data: task, isFetched, isLoading } = queryTask(taskId)
 const taskSummary = computed(() => (task.value ? toSummary(task.value) : undefined))
@@ -85,5 +110,10 @@ function toSummary(task: FinishedCompilerTask): FinishedCompilerTaskSummary {
     info: task.info,
     outdated: task.outdated,
   }
+}
+
+function handleTestClicked(test: FinishedTest) {
+  clickedTest.value = test
+  dialogOpen.value = true
 }
 </script>
