@@ -21,6 +21,8 @@ pub struct TeamEntry {
     pub id: TeamId,
     pub display_name: String,
     pub members: Vec<UserId>,
+    #[serde(default)]
+    pub is_admin: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]

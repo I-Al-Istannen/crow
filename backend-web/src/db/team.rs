@@ -1,6 +1,6 @@
 use crate::config::TeamEntry;
 use crate::error::{Result, SqlxSnafu, WebError};
-use crate::types::{Team, TeamId, TeamInfo, TeamIntegrationToken, User};
+use crate::types::{Team, TeamId, TeamInfo, TeamIntegrationToken, User, UserRole};
 use snafu::{location, ResultExt};
 use sqlx::{query, query_as, Acquire, Sqlite, SqliteConnection};
 use std::collections::HashSet;
@@ -105,11 +105,21 @@ pub(super) async fn sync_teams(
         .context(SqlxSnafu)?;
 
         for member in &team.members {
-            let res = query!("UPDATE Users SET team = ? WHERE id = ?", team.id, member)
-                .execute(&mut *con)
-                .instrument(info_span!("sqlx_sync_teams_update_user"))
-                .await
-                .context(SqlxSnafu)?;
+            let role = if team.is_admin {
+                UserRole::Admin
+            } else {
+                UserRole::Regular
+            };
+            let res = query!(
+                "UPDATE Users SET team = ?, role = ? WHERE id = ?",
+                team.id,
+                role,
+                member
+            )
+            .execute(&mut *con)
+            .instrument(info_span!("sqlx_sync_teams_update_user"))
+            .await
+            .context(SqlxSnafu)?;
 
             if res.rows_affected() == 0 {
                 warn!(user = ?member, team = ?team.id, "User not found when adding to team");
