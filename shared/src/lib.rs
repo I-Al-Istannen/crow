@@ -77,8 +77,8 @@ impl CompilerFailReason {
 
     pub fn exit_code(&self) -> i32 {
         match self {
-            Self::Parsing => 1,
-            Self::SemanticAnalysis => 2,
+            Self::Parsing => 42,
+            Self::SemanticAnalysis => 7,
         }
     }
 }
