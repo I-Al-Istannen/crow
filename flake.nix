@@ -109,6 +109,8 @@
 
               config = {
                 Entrypoint = [ "${backend}/bin/backend-web" ];
+                # The config uses the local timezone
+                Env = ["TZDIR=${pkgs.tzdata}/share/zoneinfo"];
 
                 Expose = {
                   "3000/tcp" = { };
