@@ -71,7 +71,6 @@
                     </Tooltip>
                   </span>
                   <span class="flex flex-grow justify-end mr-2 items-center gap-2">
-                    <Badge variant="secondary">{{ test.category }}</Badge>
                     <Button
                       v-if="canEdit(test)"
                       variant="ghost"
@@ -81,6 +80,7 @@
                     >
                       <LucidePencil :size="16" :class="{ 'animate-spin': testToEditLoading }" />
                     </Button>
+                    <Badge variant="secondary">{{ test.category }}</Badge>
                   </span>
                 </AccordionTrigger>
                 <AccordionContent>
@@ -143,7 +143,7 @@ const testToEdit = ref<Test | undefined>(undefined)
 const testToEditLoading = ref(false)
 const displayedTests = ref<TestSummary[]>([])
 
-const { team } = storeToRefs(useUserStore())
+const { isAdmin, team } = storeToRefs(useUserStore())
 const { data: testResp, isLoading, failureCount, failureReason } = queryTests()
 
 const tests = computed(() => sortTests(testResp.value?.tests))
@@ -171,8 +171,31 @@ async function openEditDialog(testSummary: TestSummary) {
 }
 
 function canEdit(test: TestSummary): boolean {
-  // TODO: Consider admins and test end periods
-  return test.creatorId === team.value?.id
+  // Admins can edit all
+  if (isAdmin.value) {
+    return true
+  }
+
+  // I can only edit my own
+  const isMine = test.creatorId === team.value?.id
+
+  // If it is provisional, we can edit it
+  if (test.provisionalForCategory === test.category) {
+    return isMine
+  }
+
+  // If we have no category info, we fall back to "everything I can touch"
+  if (testResp.value?.categories === undefined) {
+    return isMine
+  }
+
+  // Check if the deadline has passed
+  const category = Object.entries(testResp.value.categories).find(([id, _]) => id === test.category)
+  if (category && category[1].testsEndAt < new Date()) {
+    return false
+  }
+
+  return isMine
 }
 
 function sortTests(tests?: TestSummary[]): TestSummary[] | undefined {
