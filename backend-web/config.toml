@@ -3,14 +3,26 @@ database_path = "./target/dev.db"
 # The jwt secret to use for signing tokens. Should be a relatively long random string.
 jwt_secret = "A very cool JWT secret."
 
-[test]
 # The valid categories to use for tests. The categories are used to group tests together.
-categories = [
-    "Task 1",
-    "Task 2",
-    "Task 3",
-    "Task 4"
-]
+[test.categories."Task 1"]
+starts_at = "2025-04-20 14:00:00[Europe/Berlin]"
+labs_end_at = "2025-05-26 14:00:00[Europe/Berlin]"
+tests_end_at = "2025-05-26 14:00:00[Europe/Berlin]"
+
+[test.categories."Task 2"]
+starts_at = "2025-04-21 14:00:00[Europe/Berlin]"
+labs_end_at = "2025-04-26 14:00:00[Europe/Berlin]"
+tests_end_at = "2025-04-25 14:00:00[Europe/Berlin]"
+
+[test.categories."Task 3"]
+starts_at = "2025-04-30 14:00:00[Europe/Berlin]"
+labs_end_at = "2025-05-01 14:00:00[Europe/Berlin]"
+tests_end_at = "2025-05-01 14:00:00[Europe/Berlin]"
+
+[test.categories."Task 4"]
+starts_at = "2025-05-10 14:00:00[Europe/Berlin]"
+labs_end_at = "2025-05-12 14:00:00[Europe/Berlin]"
+tests_end_at = "2025-05-12 14:00:00[Europe/Berlin]"
 
 [execution]
 # The authentication token for runners, needs to be set to the same value in the executor invocation
