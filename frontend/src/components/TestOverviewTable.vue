@@ -160,5 +160,6 @@ const table: TanstackTable<FinishedTest> = useVueTable({
   getCoreRowModel: getCoreRowModel(),
   getSortedRowModel: getSortedRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
+  getColumnCanGlobalFilter: (column) => column.columnDef.enableGlobalFilter !== false,
 })
 </script>
