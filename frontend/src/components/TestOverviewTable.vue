@@ -135,6 +135,14 @@ const columns: ColumnDef<FinishedTest, never>[] = [
         title: 'Provisional',
       }),
     id: 'provisional',
+    cell: (val) =>
+      h(
+        'span',
+        {
+          class: val.getValue() ? '' : 'text-muted-foreground',
+        },
+        `${val.getValue() || '-'}`,
+      ),
     meta: {
       isMultiSorting: isMultiSorting,
     },
