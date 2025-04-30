@@ -3,6 +3,7 @@ use crate::types::{Repo, TeamId};
 use axum::http::StatusCode;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
+use shared::indent;
 use snafu::{location, Location, Snafu};
 use snafu::{Report, ResultExt};
 use std::path::{Path, PathBuf};
@@ -410,15 +411,18 @@ fn handle_exitcode(output: std::io::Result<Output>) -> std::io::Result<Output> {
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
 
-    Err(std::io::Error::new(
-        std::io::ErrorKind::Other,
-        format!(
-            "Exited with code {:?}\nstderr:\n{}\n\nstdout\n{}",
-            output.status.code(),
-            stderr.trim(),
-            stdout.trim()
-        ),
-    ))
+    let mut response = "".to_string();
+    if let Some(code) = output.status.code() {
+        response.push_str(&format!("Exited with code {code}\n"));
+    }
+    if !stdout.trim().is_empty() {
+        response.push_str(&format!("stdout:\n{}\n", indent(stdout.trim(), 2)));
+    }
+    if !stderr.trim().is_empty() {
+        response.push_str(&format!("stderr:\n{}", indent(stderr.trim(), 2)));
+    }
+
+    Err(std::io::Error::new(std::io::ErrorKind::Other, response))
 }
 
 async fn repo_updater(mut rx: Receiver<RepoUpdateRequest>) {

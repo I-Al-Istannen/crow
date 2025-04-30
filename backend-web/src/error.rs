@@ -55,6 +55,12 @@ pub enum WebError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display("Bad request {what} at {location}"))]
+    NamedBadRequest {
+        what: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
     #[snafu(display("User not in a team at {location}"))]
     NotInTeam {
         #[snafu(implicit)]
@@ -102,8 +108,13 @@ impl WebError {
     pub fn unauthorized(location: Location) -> Self {
         Self::Unauthorized { location }
     }
+
     pub fn named_unauthorized(what: String, location: Location) -> Self {
         Self::NamedUnauthorized { what, location }
+    }
+
+    pub fn named_bad_request(what: String, location: Location) -> Self {
+        Self::NamedBadRequest { what, location }
     }
 
     pub fn invalid_credentials(location: Location) -> Self {
@@ -126,6 +137,7 @@ impl HttpError for WebError {
             Self::NamedUnauthorized { .. } => StatusCode::UNAUTHORIZED,
             Self::InvalidCredentials { .. } => StatusCode::UNAUTHORIZED,
             Self::NamedNotFound { .. } => StatusCode::NOT_FOUND,
+            Self::NamedBadRequest { .. } => StatusCode::BAD_REQUEST,
             Self::NotFound { .. } => StatusCode::NOT_FOUND,
             Self::NotInTeam { .. } => StatusCode::FORBIDDEN,
             Self::FromHttp { source, .. } => source.to_http_code(),
@@ -140,6 +152,7 @@ impl HttpError for WebError {
             Self::NamedUnauthorized { .. } => "named_unauthorized",
             Self::InvalidCredentials { .. } => "invalid_credentials",
             Self::NamedNotFound { .. } => "named_not_found",
+            Self::NamedBadRequest { .. } => "named_bad_request",
             Self::NotFound { .. } => "not_found",
             Self::NotInTeam { .. } => "not_in_team",
             Self::FromHttp { source, .. } => source.to_error_code(),
@@ -154,6 +167,7 @@ impl HttpError for WebError {
             Self::NamedUnauthorized { what, .. } => Some(json!({ "what": what })),
             Self::InvalidCredentials { .. } => None,
             Self::NamedNotFound { what, .. } => Some(json!({ "what": what })),
+            Self::NamedBadRequest { what, .. } => Some(json!({ "what": what })),
             Self::NotFound { .. } => None,
             Self::NotInTeam { .. } => None,
             Self::FromHttp { source, .. } => source.to_extra(),

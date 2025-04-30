@@ -2,14 +2,15 @@ use super::{Json, Path};
 use crate::auth::Claims;
 use crate::config::TestCategory;
 use crate::error::{Result, WebError};
+use crate::storage::GitError;
 use crate::types::{
     AppState, FinalSubmittedTask, FinishedCompilerTaskSummary, Repo, TaskId, TeamId, TeamInfo,
 };
 use axum::extract::State;
 use serde::Deserialize;
-use snafu::location;
+use snafu::{location, Report};
 use std::collections::{HashMap, HashSet};
-use tracing::instrument;
+use tracing::{info, instrument};
 
 #[instrument(skip_all)]
 pub async fn set_team_repo(
@@ -22,11 +23,31 @@ pub async fn set_team_repo(
         return Err(WebError::unauthorized(location!()));
     }
 
-    let repo = state
-        .db
-        .set_team_repo(&target_team, &payload.repo_url)
-        .await?;
-    state.local_repos.update_repo(&repo).await?;
+    let repo = Repo {
+        team: target_team,
+        url: payload.repo_url,
+    };
+
+    if let Err(e) = state.local_repos.update_repo(&repo).await {
+        info!(
+            error = %Report::from_error(&e),
+            team = %repo.team,
+            url = %repo.url,
+            "Failed to update repo"
+        );
+
+        if matches!(e, GitError::NotCloned { .. }) {
+            return Err(WebError::named_bad_request(
+                Report::from_error(&e).to_string(),
+                location!(),
+            ));
+        }
+
+        return Err(e)?;
+    }
+
+    // Update only after a successful clone
+    let repo = state.db.set_team_repo(&repo.team, &repo.url).await?;
 
     Ok(Json(repo))
 }

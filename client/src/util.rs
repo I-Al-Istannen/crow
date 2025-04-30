@@ -1,5 +1,5 @@
 use console::style;
-use shared::{ExecutionOutput, TestExecutionOutput};
+use shared::{indent, ExecutionOutput, TestExecutionOutput};
 use std::fmt::{Display, Formatter};
 use std::path::Path;
 use tracing::{error, info};
@@ -108,21 +108,6 @@ pub fn print_test_output(output: &TestExecutionOutput) {
         TestExecutionOutput::Success { .. } => {
             info!("{}", style("Test passed!").bright().bold().green());
         }
-    }
-}
-
-fn indent(string: &str, count: usize) -> String {
-    let indented = string
-        .trim()
-        .lines()
-        .map(|it| format!("{:indent$}{}", "", it, indent = count))
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    if string.ends_with("\n") {
-        format!("{}\n", indented)
-    } else {
-        indented
     }
 }
 
