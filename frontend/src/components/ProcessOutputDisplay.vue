@@ -19,6 +19,21 @@
           }}</pre>
         </AccordionContent>
       </AccordionItem>
+      <AccordionItem value="accumulatedErrors" v-if="accumulatedErrors">
+        <AccordionTrigger>
+          <span>
+            Errors
+            <span v-if="ofWhomText" class="text-sm text-muted-foreground">
+              {{ ofWhomText }}
+            </span>
+          </span>
+        </AccordionTrigger>
+        <AccordionContent>
+          <pre class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto">{{
+            accumulatedErrors
+          }}</pre>
+        </AccordionContent>
+      </AccordionItem>
       <AccordionItem value="stdout" v-if="buildOutput.stdout.length > 0">
         <AccordionTrigger>
           <span>
@@ -87,12 +102,19 @@ const stderrLines = computed(() => {
 
 const ofWhomText = computed(() => {
   if (ofWhom.value === 'reference') {
-    return ' of the reference compiler'
+    return ' for the reference compiler'
   }
   if (ofWhom.value === 'yours') {
-    return ' of your compiler'
+    return ' for your compiler'
   }
   return null
+})
+
+const accumulatedErrors = computed(() => {
+  if (output.value.type !== 'Failure') {
+    return null
+  }
+  return output.value.accumulatedErrors
 })
 
 function getBuildOutput(task: ExecutionOutput): {
