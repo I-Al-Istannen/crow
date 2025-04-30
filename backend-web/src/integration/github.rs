@@ -772,7 +772,11 @@ async fn drain_github_events(
         };
 
         if let Err(e) = res {
-            info!(error = %Report::from_error(e), event = ?event, "Failed to process event");
+            if matches!(e, GitHubError::NoAppInstallation { .. }) {
+                debug!(error = %Report::from_error(e), event = ?event, "No app installation found");
+            } else {
+                info!(error = %Report::from_error(e), event = ?event, "Failed to process event");
+            }
         }
     }
 }
@@ -922,12 +926,21 @@ async fn init_workflow_iteration(
             if let Err(e) =
                 init_workflow_single_repo(state, &mut github, &repo, &repo_name, config).await
             {
-                warn!(
-                    error = %Report::from_error(e),
-                    repo_name = %repo_name,
-                    team_id = %repo.team,
-                    "Failed to update workflow integration"
-                );
+                if matches!(e, GitHubError::NoAppInstallation { .. }) {
+                    debug!(
+                        error = %Report::from_error(e),
+                        repo_name = %repo_name,
+                        team_id = %repo.team,
+                        "Failed to update workflow integration"
+                    );
+                } else {
+                    warn!(
+                        error = %Report::from_error(e),
+                        repo_name = %repo_name,
+                        team_id = %repo.team,
+                        "Failed to update workflow integration"
+                    );
+                }
             }
             drop(github);
         }
