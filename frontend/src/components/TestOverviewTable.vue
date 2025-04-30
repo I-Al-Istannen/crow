@@ -125,8 +125,7 @@ const columns: ColumnDef<FinishedTest, never>[] = [
     meta: {
       isMultiSorting: isMultiSorting,
     },
-    cell: (val) =>
-      val.getValue() ? h('span', { class: 'text-muted-foreground' }, 'Outdated') : '-',
+    cell: (val) => h('span', { class: 'text-muted-foreground' }, val.getValue() ? 'Outdated' : '-'),
   }),
   columnHelper.accessor((test) => test.provisionalForCategory, {
     header: (column) =>
