@@ -18,6 +18,9 @@
       <LoaderCircle class="animate-spin mr-2 -ml-2" v-if="mutationPending" />
       Submit
     </Button>
+    <div v-if="error !== null" class="text-red-500 whitespace-pre">
+      {{ error }}
+    </div>
   </form>
 </template>
 
@@ -48,7 +51,7 @@ import { z } from 'zod'
 const { team } = storeToRefs(useUserStore())
 const teamId = computed(() => team.value?.id)
 
-const { mutateAsync, isPending: mutationPending } = mutateRepo(useQueryClient())
+const { mutateAsync, isPending: mutationPending, error } = mutateRepo(useQueryClient())
 
 const props = defineProps<{
   repo?: Repo | null

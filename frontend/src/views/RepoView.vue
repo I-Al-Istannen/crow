@@ -3,7 +3,7 @@
     <Card>
       <CardHeader>
         <CardTitle>Repository settings</CardTitle>
-        <CardDescription>Change your repository URL and crows behaviour</CardDescription>
+        <CardDescription>Change your repository URL and crow's behaviour</CardDescription>
       </CardHeader>
       <CardContent>
         <DataLoadingExplanation
