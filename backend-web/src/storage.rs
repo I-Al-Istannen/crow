@@ -333,6 +333,7 @@ async fn clone_mirror(repo: &Repo, path: &Path) -> Result<(), GitError> {
             .arg("--mirror")
             .arg(&repo.url)
             .arg(path)
+            .env("GIT_TERMINAL_PROMPT", "0")
             .output()
             .await,
     )
@@ -414,8 +415,8 @@ fn handle_exitcode(output: std::io::Result<Output>) -> std::io::Result<Output> {
         format!(
             "Exited with code {:?}\nstderr:\n{}\n\nstdout\n{}",
             output.status.code(),
-            stderr,
-            stdout
+            stderr.trim(),
+            stdout.trim()
         ),
     ))
 }
