@@ -41,9 +41,9 @@ const CLAP_STYLE: Styles = Styles::styled()
 #[command(version, about, long_about = None, styles = CLAP_STYLE)]
 #[command(propagate_version = true)]
 struct CliArgs {
-    #[clap(long, default_value = "http://localhost:5173")]
+    #[clap(long, default_value = "https://compiler.vads.kastel.kit.edu")]
     frontend_url: String,
-    #[clap(long, default_value = "http://127.0.0.1:3000")]
+    #[clap(long, default_value = "https://compiler.vads.kastel.kit.edu/api")]
     backend_url: String,
     #[clap(subcommand)]
     subcommand: CliCommand,
