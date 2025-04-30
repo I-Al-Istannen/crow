@@ -99,6 +99,7 @@ fn parse_url_to_repo_owner(url: &str) -> Option<(String, String)> {
     }
 
     if let Some(rest) = url.strip_prefix("git@github.com:") {
+        let rest = rest.strip_suffix(".git").unwrap_or(rest);
         return parse_path_to_repo_owner(rest);
     }
 
