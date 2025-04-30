@@ -480,7 +480,7 @@ where
 pub fn validate_test_id(input: &str) -> Result<(), &'static str> {
     let is_allowed_chars = input
         .chars()
-        .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == ' ');
+        .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == ' ' || c == '(' || c == ')');
 
     if !is_allowed_chars {
         return Err("Test id must only contain alphanumerics, dashes, underscores or spaces");
