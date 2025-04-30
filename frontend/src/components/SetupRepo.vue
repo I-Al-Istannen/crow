@@ -58,7 +58,7 @@ const { repo } = toRefs(props)
 const form = useForm({
   validationSchema: toTypedSchema(
     z.object({
-      repoUrl: z.string().url('invalid url'),
+      repoUrl: z.string(),
     }),
   ),
   initialValues: {
