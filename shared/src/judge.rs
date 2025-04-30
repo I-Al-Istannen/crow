@@ -24,10 +24,6 @@ pub fn judge_output(
     exit_status: ExitStatus,
     execution: FinishedExecution,
 ) -> ExecutionOutput {
-    if !exit_status.success() {
-        return ExecutionOutput::Failure(execution);
-    }
-
     let mut problems = Vec::new();
 
     let expected_output = (&modifiers).full_output();
