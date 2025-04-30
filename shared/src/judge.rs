@@ -176,8 +176,9 @@ fn judge_program_should_fail(
     let Some(code) = exit_status.code() else {
         return Some(JudgeProblem {
             message: format!(
-                "Program should have failed with {} but it exited with an unknown error: {:?}",
+                "Program should have failed with `{}` (`{}`) but it exited with an unknown error: {:?}",
                 expected.name(),
+                expected.exit_code(),
                 exit_status
             ),
             modifier_name: "ShouldFail".to_string(),
@@ -190,8 +191,9 @@ fn judge_program_should_fail(
 
     Some(JudgeProblem {
         message: format!(
-            "Program should have failed with `{}`, but it exited with {code}.",
-            expected.name()
+            "Program should have failed with `{}` (`{}`), but it exited with {code}.",
+            expected.name(),
+            expected.exit_code()
         ),
         modifier_name: "ShouldFail".to_string(),
     })
