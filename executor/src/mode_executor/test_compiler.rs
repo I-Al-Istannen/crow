@@ -8,7 +8,7 @@ use snafu::{location, Report, ResultExt};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 pub struct TestCompilerState {
     thread_pool: ThreadPool,
@@ -89,7 +89,7 @@ impl super::Iteration for TestCompilerState {
         };
         let Some(task) = task.task else {
             let current_backoff = &mut NO_TASK_BACKOFF.clone();
-            info!(backoff = ?current_backoff, "No task received");
+            debug!(backoff = ?current_backoff, "No task received");
             backoff(current_backoff, shutdown_requested);
             return Ok(());
         };

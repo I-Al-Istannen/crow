@@ -10,7 +10,7 @@ use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 pub struct TestTastingState {
     pub container: Rc<RefCell<Option<TaskContainer<Built>>>>,
@@ -84,7 +84,7 @@ impl super::Iteration for TestTastingState {
         };
         let Some(task) = task.task else {
             let current_backoff = &mut NO_TASK_BACKOFF.clone();
-            info!(backoff = ?current_backoff, "No test received");
+            debug!(backoff = ?current_backoff, "No task received");
             super::backoff(current_backoff, shutdown_requested);
             return Ok(());
         };
