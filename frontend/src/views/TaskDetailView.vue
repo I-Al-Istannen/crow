@@ -1,6 +1,10 @@
 <template>
   <PageContainer>
-    <FinishedTask v-if="taskStatus === 'finished' && taskId" :task-id="taskId" />
+    <FinishedTask
+      v-if="taskStatus === 'finished' && taskId"
+      :task-id="taskId"
+      :initial-view="wasOnceRunning ? 'matrix' : undefined"
+    />
     <RunningTask
       v-else-if="taskStatus === 'running' && taskId"
       :task-id="taskId"
@@ -72,6 +76,7 @@ const queuedTask = ref<WorkItem | null>(null)
 const lastUpdate = ref<Date | null>(null)
 const failureReason = ref<Error | null>(null)
 const failureCount = ref<number>(0)
+const wasOnceRunning = ref(false)
 
 const { pause, resume } = useIntervalFn(
   async () => {
@@ -85,6 +90,16 @@ const currentTimeMs = useTimestamp({ interval: 500 })
 watch([taskId, loggedIn], () => {
   resume()
 })
+
+watch(
+  taskStatus,
+  (status) => {
+    if (status === 'running') {
+      wasOnceRunning.value = true
+    }
+  },
+  { immediate: true },
+)
 
 onMounted(async () => {
   initDone.value = true

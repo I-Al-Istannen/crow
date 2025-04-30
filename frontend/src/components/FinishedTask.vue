@@ -67,12 +67,13 @@ import { queryTask } from '@/data/network.ts'
 
 const props = defineProps<{
   taskId: TaskId
+  initialView?: 'matrix' | 'table'
 }>()
 const { taskId } = props
 
 const clickedTest = ref<FinishedTest | undefined>(undefined)
 const dialogOpen = ref<boolean>(false)
-const showTableView = ref<boolean>(true)
+const showTableView = ref<boolean>(props.initialView !== 'matrix')
 
 const { data: task, isFetched, isLoading } = queryTask(taskId)
 const taskSummary = computed(() => (task.value ? toSummary(task.value) : undefined))
