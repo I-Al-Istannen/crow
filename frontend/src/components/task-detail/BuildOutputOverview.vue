@@ -14,7 +14,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { ExecutionOutput, FinishedCompilerTask } from '@/types.ts'
 import { computed, toRefs } from 'vue'
-import ProcessOutputDisplay from '@/components/ProcessOutputDisplay.vue'
+import ProcessOutputDisplay from '@/components/test-view/ProcessOutputDisplay.vue'
 
 const props = defineProps<{
   taskOrOutput: FinishedCompilerTask | ExecutionOutput

@@ -26,11 +26,11 @@
 </template>
 
 <script setup lang="ts">
-import { formatDurationBetween, formatTime } from '../lib/utils.ts'
-import AutoSelectedGradedMarker from '@/components/AutoSelectedGradedMarker.vue'
+import { formatDurationBetween, formatTime } from '@/lib/utils.ts'
+import AutoSelectedGradedMarker from '@/components/task-overview/AutoSelectedGradedMarker.vue'
 import type { FinishedCompilerTaskSummary } from '@/types.ts'
-import ManuallyOverrideDialog from '@/components/ManuallyOverrideDialog.vue'
-import TaskQuickOverview from '@/components/TaskQuickOverview.vue'
+import ManuallyOverrideDialog from '@/components/task-overview/ManuallyOverrideDialog.vue'
+import TaskQuickOverview from '@/components/task-overview/TaskQuickOverview.vue'
 import { toRefs } from 'vue'
 
 const props = defineProps<{

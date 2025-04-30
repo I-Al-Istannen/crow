@@ -26,7 +26,7 @@
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
-import FinishedTaskOverview from '@/components/FinishedTaskOverview.vue'
+import FinishedTaskOverview from '@/components/task-overview/FinishedTaskOverview.vue'
 import { computed } from 'vue'
 import { queryFinalSubmittedTasks } from '@/data/network.ts'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'

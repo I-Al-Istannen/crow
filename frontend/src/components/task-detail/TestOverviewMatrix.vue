@@ -14,7 +14,7 @@
 <script setup lang="ts">
 import type { ExecutingTest, FinishedTest } from '@/types.ts'
 import { computed, toRefs } from 'vue'
-import FinishedTestcaseIcon from '@/components/FinishedTestcaseSummaryIcon.vue'
+import FinishedTestcaseIcon from '@/components/task-detail/FinishedTestcaseSummaryIcon.vue'
 
 const props = defineProps<{
   tests: (FinishedTest | ExecutingTest)[]

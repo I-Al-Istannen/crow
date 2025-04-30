@@ -57,12 +57,12 @@ import {
   toExecutionStatus,
 } from '@/types.ts'
 import { computed, ref } from 'vue'
-import BuildOutputOverview from '@/components/BuildOutputOverview.vue'
+import BuildOutputOverview from '@/components/task-detail/BuildOutputOverview.vue'
 import { Button } from '@/components/ui/button'
-import FinishedTestDetailDialog from '@/components/FinishedTestDetailDialog.vue'
-import TaskQuickOverview from '@/components/TaskQuickOverview.vue'
-import TestOverviewMatrix from '@/components/TestOverviewMatrix.vue'
-import TestOverviewTable from '@/components/TestOverviewTable.vue'
+import FinishedTestDetailDialog from '@/components/test-view/FinishedTestDetailDialog.vue'
+import TaskQuickOverview from '@/components/task-overview/TaskQuickOverview.vue'
+import TestOverviewMatrix from '@/components/task-detail/TestOverviewMatrix.vue'
+import TestOverviewTable from '@/components/task-detail/TestOverviewTable.vue'
 import { queryTask } from '@/data/network.ts'
 
 const props = defineProps<{

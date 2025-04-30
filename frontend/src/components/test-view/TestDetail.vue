@@ -41,9 +41,9 @@
 <script setup lang="ts">
 import type { FinishedTest, TestId } from '@/types.ts'
 import { computed, ref, toRefs } from 'vue'
-import FinishedTestDetailDialog from '@/components/FinishedTestDetailDialog.vue'
-import FinishedTestcaseSummaryIcon from '@/components/FinishedTestcaseSummaryIcon.vue'
-import TestModifierList from '@/components/ui/TestModifierList.vue'
+import FinishedTestDetailDialog from '@/components/test-view/FinishedTestDetailDialog.vue'
+import FinishedTestcaseSummaryIcon from '@/components/task-detail/FinishedTestcaseSummaryIcon.vue'
+import TestModifierList from '@/components/test-edit/TestModifierList.vue'
 import { queryTest } from '@/data/network.ts'
 
 const failedTastingDialogOpen = ref<boolean>(false)

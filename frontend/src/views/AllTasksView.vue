@@ -46,7 +46,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Command, CommandInput } from '@/components/ui/command'
 import { computed, ref, watch } from 'vue'
 import type { FinishedCompilerTaskSummary } from '@/types.ts'
-import FinishedTaskOverview from '@/components/FinishedTaskOverview.vue'
+import FinishedTaskOverview from '@/components/task-overview/FinishedTaskOverview.vue'
 import PageContainer from '@/components/PageContainer.vue'
 import PaginationControls from '@/components/PaginationControls.vue'
 import { queryRecentTasks } from '@/data/network.ts'

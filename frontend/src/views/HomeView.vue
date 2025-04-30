@@ -32,10 +32,10 @@
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
-import FinishedTaskOverview from '@/components/FinishedTaskOverview.vue'
-import GradedTasks from '@/components/GradedTasks.vue'
+import FinishedTaskOverview from '@/components/task-overview/FinishedTaskOverview.vue'
+import GradedTasks from '@/components/team/GradedTasks.vue'
 import PageContainer from '@/components/PageContainer.vue'
-import TopRunsPerTeam from '@/components/TopRunsPerTeam.vue'
+import TopRunsPerTeam from '@/components/team/TopRunsPerTeam.vue'
 import { queryRecentTasks } from '@/data/network.ts'
 
 const { data, isLoading, failureCount, failureReason } = queryRecentTasks()

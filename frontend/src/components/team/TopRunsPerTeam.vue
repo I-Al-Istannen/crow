@@ -24,7 +24,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
 import type { FinishedCompilerTaskSummary } from '@/types.ts'
-import FinishedTaskOverview from '@/components/FinishedTaskOverview.vue'
+import FinishedTaskOverview from '@/components/task-overview/FinishedTaskOverview.vue'
 import { computed } from 'vue'
 import { queryTopTaskPerTeam } from '@/data/network.ts'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'

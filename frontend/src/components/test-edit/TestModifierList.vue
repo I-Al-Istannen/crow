@@ -43,7 +43,7 @@ import { computed, ref, toRefs, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import type { SortEventData } from '@formkit/drag-and-drop'
 import type { TestModifier } from '@/types.ts'
-import TestModifierSelect from '@/components/TestModifierSelect.vue'
+import TestModifierSelect from '@/components/test-edit/TestModifierSelect.vue'
 import { useDragAndDrop } from '@formkit/drag-and-drop/vue'
 
 type KeyedTestModifier = TestModifier & { key: number }

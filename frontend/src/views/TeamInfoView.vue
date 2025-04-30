@@ -29,7 +29,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
 import PageContainer from '@/components/PageContainer.vue'
 import type { TeamId } from '@/types.ts'
-import UsernameDisplay from '@/components/UsernameDisplay.vue'
+import UsernameDisplay from '@/components/team/UsernameDisplay.vue'
 import { computed } from 'vue'
 import { queryTeamInfo } from '@/data/network.ts'
 import { useRoute } from 'vue-router'
