@@ -53,6 +53,7 @@ pub(super) async fn add_finished_task(
                 &mut con,
                 &build_id,
                 build_output,
+                &None,
                 ExecutionExitStatus::Success,
             )
             .await?;
@@ -277,6 +278,7 @@ async fn fetch_execution(
             execution_id,
             stdout,
             stderr,
+            accumulated_errors,
             error,
             result as "result!: ExecutionExitStatus",
             duration_ms as "duration_ms!: u64",
@@ -304,12 +306,15 @@ async fn fetch_execution(
             message: execution.error.unwrap_or("N/A".to_string()),
             runtime: Duration::from_millis(execution.duration_ms),
         }),
-        ExecutionExitStatus::Failure => ExecutionOutput::Failure(FinishedExecution {
-            stdout: execution.stdout,
-            stderr: execution.stderr,
-            runtime: Duration::from_millis(execution.duration_ms),
-            exit_status: execution.exit_code,
-        }),
+        ExecutionExitStatus::Failure => ExecutionOutput::Failure {
+            execution: FinishedExecution {
+                stdout: execution.stdout,
+                stderr: execution.stderr,
+                runtime: Duration::from_millis(execution.duration_ms),
+                exit_status: execution.exit_code,
+            },
+            accumulated_errors: execution.accumulated_errors,
+        },
         ExecutionExitStatus::Success => ExecutionOutput::Success(FinishedExecution {
             stdout: execution.stdout,
             stderr: execution.stderr,
@@ -349,14 +354,26 @@ pub(super) async fn record_execution_output(
     match e {
         ExecutionOutput::Aborted(e) => record_aborted(con, &execution_id, e).await?,
         ExecutionOutput::Error(e) => record_internal_error(con, &execution_id, e).await?,
-        ExecutionOutput::Failure(e) => {
-            record_finished_execution(con, &execution_id, e, ExecutionExitStatus::Failure).await?
+        ExecutionOutput::Failure {
+            execution,
+            accumulated_errors,
+        } => {
+            record_finished_execution(
+                con,
+                &execution_id,
+                execution,
+                accumulated_errors,
+                ExecutionExitStatus::Failure,
+            )
+            .await?
         }
         ExecutionOutput::Success(e) => {
-            record_finished_execution(con, &execution_id, e, ExecutionExitStatus::Success).await?
+            record_finished_execution(con, &execution_id, e, &None, ExecutionExitStatus::Success)
+                .await?
         }
         ExecutionOutput::Timeout(e) => {
-            record_finished_execution(con, &execution_id, e, ExecutionExitStatus::Timeout).await?
+            record_finished_execution(con, &execution_id, e, &None, ExecutionExitStatus::Timeout)
+                .await?
         }
     }
 
@@ -402,20 +419,22 @@ async fn record_finished_execution(
     con: &mut SqliteConnection,
     execution_id: &str,
     e: &FinishedExecution,
+    accumulated_errors: &Option<String>,
     status: ExecutionExitStatus,
 ) -> Result<()> {
     let runtime = e.runtime.as_millis() as i64;
 
     query!(
         "INSERT INTO ExecutionResults
-            (execution_id, stdout, stderr, error, result, duration_ms, exit_code)
+            (execution_id, stdout, stderr, error, accumulated_errors, result, duration_ms, exit_code)
          VALUES
-            (?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?)
         ",
         execution_id,
         e.stdout,
         e.stderr,
         None::<&str>,
+        accumulated_errors,
         status,
         runtime,
         e.exit_status

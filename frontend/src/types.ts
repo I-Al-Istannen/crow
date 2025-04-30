@@ -43,7 +43,11 @@ export const FinishedExecutionSchema = z.object({
 export const ExecutionOutputSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('Aborted') }).merge(AbortedExecutionSchema),
   z.object({ type: z.literal('Error') }).merge(InternalErrorSchema),
-  z.object({ type: z.literal('Failure') }).merge(FinishedExecutionSchema),
+  z.object({
+    type: z.literal('Failure'),
+    execution: FinishedExecutionSchema,
+    accumulatedErrors: z.string().nullable(),
+  }),
   z.object({ type: z.literal('Success') }).merge(FinishedExecutionSchema),
   z.object({ type: z.literal('Timeout') }).merge(FinishedExecutionSchema),
 ])

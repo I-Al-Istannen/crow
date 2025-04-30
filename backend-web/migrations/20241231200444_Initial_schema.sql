@@ -61,13 +61,14 @@ CREATE TABLE TestResults
 
 CREATE TABLE ExecutionResults
 (
-    execution_id VARCHAR(36) PRIMARY KEY,
-    stdout       TEXT        NOT NULL,
-    stderr       TEXT        NOT NULL,
-    error        TEXT,
-    result       VARCHAR(30) NOT NULL,
-    duration_ms  INTEGER     NOT NULL,
-    exit_code    INTEGER
+    execution_id       VARCHAR(36) PRIMARY KEY,
+    stdout             TEXT        NOT NULL,
+    stderr             TEXT        NOT NULL,
+    error              TEXT,
+    accumulated_errors TEXT,
+    result             VARCHAR(30) NOT NULL,
+    duration_ms        INTEGER     NOT NULL,
+    exit_code          INTEGER
 );
 
 CREATE TABLE Tests

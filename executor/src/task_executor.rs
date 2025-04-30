@@ -124,7 +124,10 @@ fn execute_task_impl(
                 revision_id: task.revision_id,
                 commit_message: task.commit_message,
             },
-            build_output: ExecutionOutput::Failure(build_output),
+            build_output: ExecutionOutput::Failure {
+                execution: build_output,
+                accumulated_errors: None,
+            },
         });
     }
 

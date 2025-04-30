@@ -164,18 +164,28 @@ fn execution_output_to_string(output: &ExecutionOutput) -> String {
                     .append(indent(s.stderr.trim(), 1))
             )
         }
-        ExecutionOutput::Failure(e) => {
+        ExecutionOutput::Failure {
+            execution,
+            accumulated_errors,
+        } => {
             format!(
                 "{}\n",
                 st("Execution was ")
                     .append(style("unsuccessful").red().bright())
                     .append(" after ")
-                    .append(e.runtime.as_secs().to_string())
+                    .append(execution.runtime.as_secs().to_string())
                     .append("s")
+                    .append(style("\nErrors:\n").bold())
+                    .append(indent(
+                        accumulated_errors
+                            .as_ref()
+                            .unwrap_or(&"No specific errors provided".to_string()),
+                        1,
+                    ))
                     .append(style("\nStdout:\n").bold())
-                    .append(indent(e.stdout.trim(), 1))
+                    .append(indent(execution.stdout.trim(), 1))
                     .append(style("\nStderr:\n").bold())
-                    .append(indent(&color_diff(e.stderr.trim()), 1))
+                    .append(indent(&color_diff(execution.stderr.trim()), 1))
             )
         }
         ExecutionOutput::Timeout(e) => {

@@ -169,23 +169,23 @@ fn verify_compiler_built_executable(
     match compiler_output {
         ExecutionOutput::Success(ref finished_exec) => {
             if !output_binary_path.exists() {
-                let mut finished_exec = finished_exec.clone();
-                finished_exec
-                    .stderr
-                    .insert_str(0, "== ERROR ==\nNo output binary was created.\n\n");
-
                 return Box::new(Err(ExecuteInternalError::CompilerFailed {
-                    compiler_output: ExecutionOutput::Failure(finished_exec),
+                    compiler_output: ExecutionOutput::Failure {
+                        execution: finished_exec.clone(),
+                        accumulated_errors: Some(
+                            "== ERROR ==\nNo output binary was created.\n\n".to_string(),
+                        ),
+                    },
                 }));
             }
             if !output_binary_path.is_executable() {
-                let mut finished_exec = finished_exec.clone();
-                finished_exec
-                    .stderr
-                    .insert_str(0, "== ERROR ==\nOutput binary is not executable.\n\n");
-
                 return Box::new(Err(ExecuteInternalError::CompilerFailed {
-                    compiler_output: ExecutionOutput::Failure(finished_exec),
+                    compiler_output: ExecutionOutput::Failure {
+                        execution: finished_exec.clone(),
+                        accumulated_errors: Some(
+                            "== ERROR ==\nOutput binary is not executable.\n\n".to_string(),
+                        ),
+                    },
                 }));
             }
 

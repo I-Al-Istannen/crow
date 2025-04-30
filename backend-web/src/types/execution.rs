@@ -345,7 +345,7 @@ impl From<&ExecutionOutput> for ExecutionExitStatus {
             ExecutionOutput::Aborted(_) => Self::Aborted,
             ExecutionOutput::Error(_) => Self::Error,
             ExecutionOutput::Success(_) => Self::Success,
-            ExecutionOutput::Failure(_) => Self::Failure,
+            ExecutionOutput::Failure { .. } => Self::Failure,
             ExecutionOutput::Timeout(_) => Self::Timeout,
         }
     }

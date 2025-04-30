@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            execution_id,\n            stdout,\n            stderr,\n            error,\n            result as \"result!: ExecutionExitStatus\",\n            duration_ms as \"duration_ms!: u64\",\n            exit_code as \"exit_code?: i32\"\n        FROM ExecutionResults\n        WHERE execution_id = ?",
+  "query": "\n        SELECT\n            execution_id,\n            stdout,\n            stderr,\n            accumulated_errors,\n            error,\n            result as \"result!: ExecutionExitStatus\",\n            duration_ms as \"duration_ms!: u64\",\n            exit_code as \"exit_code?: i32\"\n        FROM ExecutionResults\n        WHERE execution_id = ?",
   "describe": {
     "columns": [
       {
@@ -19,23 +19,28 @@
         "type_info": "Text"
       },
       {
-        "name": "error",
+        "name": "accumulated_errors",
         "ordinal": 3,
         "type_info": "Text"
       },
       {
-        "name": "result!: ExecutionExitStatus",
+        "name": "error",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "duration_ms!: u64",
+        "name": "result!: ExecutionExitStatus",
         "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "duration_ms!: u64",
+        "ordinal": 6,
         "type_info": "Integer"
       },
       {
         "name": "exit_code?: i32",
-        "ordinal": 6,
+        "ordinal": 7,
         "type_info": "Integer"
       }
     ],
@@ -47,10 +52,11 @@
       false,
       false,
       true,
+      true,
       false,
       false,
       true
     ]
   },
-  "hash": "db5379fa6fed6d47cd913b2eb96c372cfa7d559950ee9adbd71558b804ce15ec"
+  "hash": "873b88762a701ae0cfaf8f7dc69c8c395bbb748979404fa0886a058261964992"
 }

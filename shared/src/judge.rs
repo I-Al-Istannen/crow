@@ -58,22 +58,21 @@ pub fn judge_output(
             runtime: execution.runtime,
         });
     }
-    let mut final_stderr = execution.stderr;
-    if !final_stderr.is_empty() {
-        final_stderr += "\n\n"
-    }
-    final_stderr += &problems
+    let problems = &problems
         .into_iter()
         .map(|it| it.to_string())
         .collect::<Vec<String>>()
         .join("\n\n");
 
-    ExecutionOutput::Failure(FinishedExecution {
-        stdout: execution.stdout,
-        stderr: final_stderr,
-        runtime: execution.runtime,
-        exit_status: execution.exit_status,
-    })
+    ExecutionOutput::Failure {
+        execution: FinishedExecution {
+            stdout: execution.stdout,
+            stderr: execution.stderr,
+            runtime: execution.runtime,
+            exit_status: execution.exit_status,
+        },
+        accumulated_errors: Some(problems.clone()),
+    }
 }
 
 fn judge_program_output(
@@ -164,7 +163,7 @@ fn judge_program_should_succeed(exit_status: ExitStatus) -> Option<JudgeProblem>
             message: format!(
                 "Program should have exited with success, exited with an unknown error: {exit_status:?}"
             ),
-            modifier_name: "ShouldSucceed".to_string()
+            modifier_name: "ShouldSucceed".to_string(),
         })
     }
 }

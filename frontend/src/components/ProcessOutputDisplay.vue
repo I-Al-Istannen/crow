@@ -110,6 +110,9 @@ function getBuildOutput(task: ExecutionOutput): {
       error: task.message,
     }
   }
+  if (task.type === 'Failure') {
+    return task.execution
+  }
   return task
 }
 </script>

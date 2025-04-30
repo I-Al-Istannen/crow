@@ -435,11 +435,14 @@ impl TaskContainer<Started> {
             match wait_result_to_command_result(&self.container_id, wait_result) {
                 Ok(res) => match res {
                     CommandResult::ProcessedFailed(output) => return Err(output),
-                    CommandResult::Unprocessed((status, exec)) => {
+                    CommandResult::Unprocessed((status, execution)) => {
                         if !status.success() {
-                            return Err(ExecutionOutput::Failure(exec));
+                            return Err(ExecutionOutput::Failure {
+                                execution,
+                                accumulated_errors: None,
+                            });
                         }
-                        (status, exec)
+                        (status, execution)
                     }
                 },
                 Err(e) => {

@@ -209,7 +209,11 @@ pub enum ExecutionOutput {
     Aborted(AbortedExecution),
     Error(InternalError),
     Success(FinishedExecution),
-    Failure(FinishedExecution),
+    #[serde(rename_all = "camelCase")]
+    Failure {
+        execution: FinishedExecution,
+        accumulated_errors: Option<String>,
+    },
     Timeout(FinishedExecution),
 }
 
@@ -220,7 +224,7 @@ impl ExecutionOutput {
 
     pub fn into_finished_execution(self) -> Option<FinishedExecution> {
         match self {
-            Self::Failure(finished) => Some(finished),
+            Self::Failure { execution, .. } => Some(execution),
             Self::Success(finished) => Some(finished),
             Self::Timeout(finished) => Some(finished),
             _ => None,
