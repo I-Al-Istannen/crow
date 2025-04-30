@@ -9,9 +9,17 @@
         <div v-if="status === 'CONNECTING'">Trying to connect to data stream...</div>
         <div v-if="status === 'CLOSED'">Connection lost. Will retry periodically...</div>
         <ol class="list-inside list-decimal">
-          <li>Your data is being transferred to a runner</li>
-          <li v-if="buildStatus !== null">The build has started</li>
-          <li v-if="buildStatus && buildStatus !== 'Started'">The build has finished</li>
+          <li>
+            Your data is being transferred to a runner<span v-if="buildStatus === null">{{
+              animatedWaitingDots
+            }}</span>
+          </li>
+          <li v-if="buildStatus !== null">
+            Building the compiler<span v-if="buildStatus === 'Started'">{{
+              animatedWaitingDots
+            }}</span>
+          </li>
+          <li v-if="buildStatus && buildStatus !== 'Started'">Build completed</li>
           <li v-if="testingStarted">Testing has started</li>
         </ol>
       </CardContent>
@@ -43,18 +51,34 @@ import {
   type TaskId,
 } from '@/types.ts'
 import { computed, ref } from 'vue'
+import { useIntervalFn, useWebSocket } from '@vueuse/core'
 import { BACKEND_URL } from '@/data/fetching.ts'
 import BuildOutputOverview from '@/components/BuildOutputOverview.vue'
 import TestOverviewMatrix from '@/components/TestOverviewMatrix.vue'
 import { storeToRefs } from 'pinia'
 import { toast } from 'vue-sonner'
 import { useUserStore } from '@/stores/user.ts'
-import { useWebSocket } from '@vueuse/core'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
 
 const buildStatus = ref<'Started' | FinishedExecution | null>(null)
 const testingStarted = ref(false)
 const tests = ref<(FinishedTest | ExecutingTest)[]>([])
+const animatedWaitingDotsCounter = ref(-3)
+const animatedWaitingDots = computed(() =>
+  '.'.repeat(3 - Math.abs(animatedWaitingDotsCounter.value)),
+)
+
+useIntervalFn(
+  () => {
+    if (animatedWaitingDotsCounter.value >= 3) {
+      animatedWaitingDotsCounter.value = -3
+    } else {
+      animatedWaitingDotsCounter.value++
+    }
+  },
+  500,
+  { immediate: true },
+)
 
 const props = defineProps<{
   taskId: TaskId
