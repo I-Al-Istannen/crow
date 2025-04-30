@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ssh compiler "cd setup/backend && docker compose pull && docker compose up -d"
+ssh compiler "cd setup/frontend && docker compose pull && docker compose up -d"
+
+ssh crow-executor@compiler 'bash -l -c "~/deploy"'
