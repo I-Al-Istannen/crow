@@ -4,8 +4,8 @@
     <span class="font-mono font-bold"> {{ formatDuration(buildOutput.runtime) }} </span>.
     <span v-if="buildOutput.exitStatus != null">
       {{ subject }} exited with status
-      <span class="font-mono font-bold">{{ buildOutput.exitStatus }} </span>.
-      <span v-if="buildOutput.exitStatus === 0">This is a good sign.</span>
+      <span class="font-mono font-bold">{{ buildOutput.exitStatus }}</span
+      >.
     </span>
     <span v-if="buildOutput.error !== undefined">
       Unfortunately, crow encountered an internal error.
