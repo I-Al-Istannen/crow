@@ -543,6 +543,7 @@ dependencies = [
  "dialoguer",
  "indexmap 2.9.0",
  "indicatif",
+ "jiff",
  "keyring",
  "markdown",
  "mdast_util_to_markdown",

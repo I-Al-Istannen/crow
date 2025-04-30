@@ -1,12 +1,15 @@
-use crate::context::{CliContext, CliContextError, RemoteTests, SetTestResponse};
+use crate::context::{CliContext, CliContextError, RemoteTests, SetTestResponse, TestCategory};
 use crate::error::{ContextSnafu, CrowClientError, UploadTestSnafu};
+use crate::formats::{details_from_markdown, FormatError};
 use crate::util::{infer_test_metadata_from_path, print_test_output};
 use clap::Args;
 use console::style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, FuzzySelect, Input, Select};
+use jiff::Timestamp;
 use shared::validate_test_id;
 use snafu::{location, IntoError, Location, NoneError, ResultExt, Snafu};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use tracing::{error, info};
 
@@ -31,16 +34,9 @@ pub enum UploadTestError {
         location: Location,
     },
     #[snafu(display("Error reading input file `{}` at {location}", path.display()))]
-    InputFileRead {
+    ReadTest {
         path: PathBuf,
-        source: std::io::Error,
-        #[snafu(implicit)]
-        location: Location,
-    },
-    #[snafu(display("Error reading output file `{}` at {location}", path.display()))]
-    OutputFileRead {
-        path: PathBuf,
-        source: std::io::Error,
+        source: FormatError,
         #[snafu(implicit)]
         location: Location,
     },
@@ -61,10 +57,8 @@ pub enum UploadTestError {
 
 #[derive(Args, Debug)]
 pub struct CliUploadTestArgs {
-    /// The test input file
-    input_file: PathBuf,
-    /// The test expected output file
-    output_file: PathBuf,
+    /// The test file
+    test: PathBuf,
     /// The test name
     #[clap(short, long)]
     name: Option<String>,
@@ -90,25 +84,14 @@ pub fn command_upload_test(
         return Err(NotInTeamSnafu.into_error(NoneError)).context(UploadTestSnafu);
     };
 
-    let input = std::fs::read_to_string(&args.input_file)
-        .context(InputFileReadSnafu {
-            path: args.input_file.to_path_buf(),
-        })
-        .context(UploadTestSnafu)?;
-    let output = std::fs::read_to_string(&args.output_file)
-        .context(OutputFileReadSnafu {
-            path: args.output_file.to_path_buf(),
-        })
-        .context(UploadTestSnafu)?;
-
     if let Some(true) = args.infer_metadata_from_input {
         info!(
             "Inferring metadata from input file `{}`",
-            args.input_file.display()
+            args.test.display()
         );
-        let (category, name) = infer_test_metadata_from_path(&args.input_file)
+        let (category, name) = infer_test_metadata_from_path(&args.test)
             .map_err(|msg| UploadTestError::MetadataInfer {
-                path: args.input_file.to_path_buf(),
+                path: args.test.to_path_buf(),
                 msg,
                 location: location!(),
             })
@@ -139,8 +122,14 @@ pub fn command_upload_test(
         Some(val) => val,
     };
 
+    let detail = details_from_markdown(&args.test)
+        .context(ReadTestSnafu {
+            path: args.test.to_path_buf(),
+        })
+        .context(UploadTestSnafu)?;
+
     let res = ctx
-        .upload_test(&name, &category, &input, &output, should_taste_test)
+        .upload_test(&name, &category, &detail, should_taste_test)
         .context(UploadingSnafu)
         .context(UploadTestSnafu)?;
 
@@ -149,18 +138,27 @@ pub fn command_upload_test(
             info!("Test uploaded {}", style("successfully").green().bright());
             true
         }
-        SetTestResponse::TastingFailed(test) => {
+        SetTestResponse::TastingFailed { output } => {
             error!("Test failed test tasting");
-            print_test_output(&test.output);
+            print_test_output(&output);
             false
         }
     })
 }
 
-fn prompt_test_category(categories: &[String]) -> Result<String, UploadTestError> {
+fn prompt_test_category(
+    categories: &HashMap<String, TestCategory>,
+) -> Result<String, UploadTestError> {
+    let categories = categories
+        .iter()
+        .filter(|(_, meta)| meta.starts_at.timestamp() < Timestamp::now())
+        .filter(|(_, meta)| meta.labs_end_at.timestamp() > Timestamp::now())
+        .map(|(name, _)| name)
+        .collect::<Vec<_>>();
+
     let selected = FuzzySelect::with_theme(&ColorfulTheme::default())
         .with_prompt("Select a category")
-        .items(categories)
+        .items(&categories)
         .interact_opt();
 
     let Ok(Some(selected)) = selected else {

@@ -45,6 +45,10 @@ pub fn color_diff<T: Display>(diff: T) -> String {
 }
 
 pub fn infer_test_metadata_from_path(path: &Path) -> Result<(String, String), String> {
+    let path = path
+        .canonicalize()
+        .map_err(|_| format!("Could not canonicalize {}", path.display()))?;
+
     let name = path
         .file_name()
         .ok_or("Path has no filename".to_string())?

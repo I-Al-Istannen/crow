@@ -79,10 +79,6 @@ pub fn from_markdown(
 
     let mut nodes = associate_to_headings(nodes_to_process)?;
 
-    let compiler_modifiers =
-        extract_modifiers(extract_heading(Keys::CompilerModifiers, &mut nodes)?)?;
-    let binary_modifiers = extract_modifiers(extract_heading(Keys::BinaryModifiers, &mut nodes)?)?;
-
     let mut meta = extract_key_values(extract_heading(Keys::Meta, &mut nodes)?, |_| true)?;
     let hash = extract_value(Keys::Hash, &mut meta)?;
     let creator_id = extract_value(Keys::Creator, &mut meta)?;
@@ -102,11 +98,28 @@ pub fn from_markdown(
         category,
         admin_authored,
     };
-    let test_detail = TestDetail {
+    let test_detail = details_from_markdown(path)?;
+
+    Ok((test, test_detail))
+}
+
+pub fn details_from_markdown(path: &Path) -> Result<TestDetail, FormatError> {
+    let file = std::fs::read_to_string(path).context(FileReadSnafu {
+        path: path.to_path_buf(),
+    })?;
+    let file = markdown::to_mdast(&file, &ParseOptions::default()).unwrap();
+    let nodes_to_process = file.children().unwrap_or(&Vec::new()).clone();
+
+    let mut nodes = associate_to_headings(nodes_to_process)?;
+
+    let compiler_modifiers =
+        extract_modifiers(extract_heading(Keys::CompilerModifiers, &mut nodes)?)?;
+    let binary_modifiers = extract_modifiers(extract_heading(Keys::BinaryModifiers, &mut nodes)?)?;
+
+    Ok(TestDetail {
         compiler_modifiers,
         binary_modifiers,
-    };
-    Ok((test, test_detail))
+    })
 }
 
 fn associate_to_headings(nodes: Vec<Node>) -> Result<IndexMap<String, Vec<Node>>, FormatError> {

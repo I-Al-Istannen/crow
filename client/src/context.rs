@@ -1,12 +1,15 @@
 use crate::auth::{display_login, BackendAuth};
 use indicatif::ProgressBar;
+use jiff::tz::TimeZone;
+use jiff::Zoned;
 use reqwest::blocking::{Client, Response};
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{StatusCode, Url};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use shared::{FinishedTest, TestModifier};
+use shared::{TestExecutionOutput, TestModifier};
 use snafu::{IntoError, Location, NoneError, ResultExt, Snafu};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -103,8 +106,7 @@ impl CliContext {
         &self,
         id: &str,
         category: &str,
-        input: &str,
-        expected: &str,
+        detail: &TestDetail,
         should_taste_test: bool,
     ) -> Result<SetTestResponse, CliContextError> {
         let url = Url::from_str(&format!("{}/tests/", self.backend_url))
@@ -129,9 +131,9 @@ impl CliContext {
                     .put(url)
                     .headers(self.get_headers())
                     .json(&serde_json::json!({
+                        "compilerModifiers": detail.compiler_modifiers,
+                        "binaryModifiers": detail.binary_modifiers,
                         "category": category,
-                        "input": input,
-                        "expectedOutput": expected,
                         "ignoreTestTasting": !should_taste_test,
                     }))
                     .send()
@@ -182,7 +184,25 @@ impl CliContext {
 #[serde(rename_all = "camelCase")]
 pub struct RemoteTests {
     pub tests: Vec<Test>,
-    pub categories: Vec<String>,
+    pub categories: HashMap<String, TestCategory>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TestCategory {
+    #[serde(deserialize_with = "zoned_as_millis")]
+    pub starts_at: Zoned,
+    #[serde(deserialize_with = "zoned_as_millis")]
+    pub labs_end_at: Zoned,
+    #[serde(deserialize_with = "zoned_as_millis")]
+    pub _tests_end_at: Zoned,
+}
+fn zoned_as_millis<'de, D>(deserializer: D) -> Result<Zoned, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let res = jiff::fmt::serde::timestamp::millisecond::required::deserialize(deserializer)?;
+    Ok(res.to_zoned(TimeZone::system()))
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -231,5 +251,5 @@ pub struct MyselfResponse {
 #[serde(tag = "type")]
 pub enum SetTestResponse {
     TestAdded(#[allow(dead_code)] serde_json::Value),
-    TastingFailed(Box<FinishedTest>),
+    TastingFailed { output: TestExecutionOutput },
 }

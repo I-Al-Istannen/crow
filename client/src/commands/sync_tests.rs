@@ -155,7 +155,8 @@ pub fn command_sync_tests(
     let remote = ctx.get_remote_tests().context(ContextSnafu)?;
     let local = get_local_tests(&test_dir).context(SyncTestsSnafu)?;
 
-    create_category_dirs(&test_dir, &remote.categories).context(SyncTestsSnafu)?;
+    create_category_dirs(&test_dir, &remote.categories.keys().collect::<Vec<_>>())
+        .context(SyncTestsSnafu)?;
 
     let remote_only: Vec<&Test> = get_remote_only_tests(&remote.tests, &local);
     if !remote_only.is_empty() {
@@ -388,8 +389,8 @@ fn parse_test(category: &str, test_file: &Path) -> Result<FullTest, SyncTestsErr
     Ok(FullTest { test, detail })
 }
 
-fn create_category_dirs(test_dir: &Path, categories: &[String]) -> Result<(), SyncTestsError> {
-    for category in categories {
+fn create_category_dirs(test_dir: &Path, categories: &[&String]) -> Result<(), SyncTestsError> {
+    for &category in categories {
         let path = test_dir.join(category);
         if !path.exists() {
             info!(
