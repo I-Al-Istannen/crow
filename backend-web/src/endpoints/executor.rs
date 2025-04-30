@@ -14,7 +14,7 @@ use shared::{
 };
 use snafu::{ensure, location, IntoError, Location, NoneError, Report, Snafu};
 use tokio_util::io::ReaderStream;
-use tracing::{info, instrument, warn};
+use tracing::{debug, instrument, warn};
 
 #[derive(Debug, Snafu)]
 pub enum ExecutorError {
@@ -110,7 +110,7 @@ pub async fn runner_update(
     let runner_id: RunnerId = auth.username().to_string().into();
 
     // TODO: Think about protocol errors more
-    info!(runner = %runner_id, update = ?update, "Runner update");
+    debug!(runner = %runner_id, update = ?update, "Runner update");
     state
         .executor
         .lock()
@@ -126,8 +126,6 @@ pub async fn runner_done(
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
     Json(task): Json<FinishedCompilerTask>,
 ) -> Result<()> {
-    println!("{}", serde_json::to_string(&task).unwrap());
-
     if state
         .executor
         .lock()
