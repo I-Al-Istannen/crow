@@ -104,6 +104,7 @@ function toSummary(task: FinishedCompilerTask): FinishedCompilerTaskSummary {
   const tests: FinishedTestSummary[] = task.tests.map((test) => ({
     output: toExecutionStatus(test.output),
     testId: test.testId,
+    provisionalForCategory: test.provisionalForCategory,
   }))
   return {
     type: 'RanTests',

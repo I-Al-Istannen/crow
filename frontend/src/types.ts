@@ -102,6 +102,7 @@ export const FinishedCompilerTaskSchema = z.discriminatedUnion('type', [
 // Out of order due to dependencies
 export const FinishedTestSummarySchema = z.object({
   testId: TestIdSchema,
+  provisionalForCategory: z.string().nullable(),
   output: ExecutionExitStatusSchema,
 })
 
