@@ -59,6 +59,12 @@ id = "foobars"
 display_name = "The foobar team"
 members = []
 
+# Specifies private SSH keys per team.
+[ssh.team_to_key]
+# This would be an ssh key for the "foobars" team.
+foobars = """
+"""
+
 [oidc]
 # The oidc client id. This is set by your OIDC provider.
 client_id = ""

@@ -108,10 +108,15 @@
               # https://discourse.nixos.org/t/dockertools-buildimage-and-user-writable-tmp/5397/9
               extraCommands = "mkdir -m 0777 tmp";
 
+              fakeRootCommands = ''
+                ${pkgs.dockerTools.shadowSetup}
+              '';
+              enableFakechroot = true;
+
               config = {
                 Entrypoint = [ "${backend}/bin/backend-web" ];
                 # The config uses the local timezone
-                Env = ["TZDIR=${pkgs.tzdata}/share/zoneinfo"];
+                Env = [ "TZDIR=${pkgs.tzdata}/share/zoneinfo" ];
 
                 Expose = {
                   "3000/tcp" = { };

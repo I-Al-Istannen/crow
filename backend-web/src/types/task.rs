@@ -7,7 +7,7 @@ use shared::{FinishedCompilerTask, FinishedTaskInfo, FinishedTest};
 pub struct FinishedTestSummary {
     pub test_id: TestId,
     pub output: ExecutionExitStatus,
-    pub provisional_for_category: Option<String>
+    pub provisional_for_category: Option<String>,
 }
 
 impl From<FinishedTest> for FinishedTestSummary {

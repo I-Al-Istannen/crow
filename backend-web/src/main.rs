@@ -117,7 +117,7 @@ async fn main() {
         config.execution,
         config.test,
         team_mapping,
-        LocalRepos::new(local_repo_path),
+        LocalRepos::new(local_repo_path, config.ssh),
         Oidc::build_new(config.oidc.clone()).await.unwrap(),
     );
 

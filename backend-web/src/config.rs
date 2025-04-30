@@ -14,6 +14,7 @@ pub struct Config {
     pub github: Option<GithubConfig>,
     pub test: TestConfig,
     pub oidc: OidcConfig,
+    pub ssh: Option<SshConfig>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -89,6 +90,11 @@ pub struct OidcConfig {
     pub issuer_url: String,
     pub redirect_url: String,
     pub scopes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct SshConfig {
+    pub team_to_key: HashMap<TeamId, String>,
 }
 
 fn parse_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>

@@ -1,3 +1,4 @@
+use crate::config::SshConfig;
 use crate::error::{HttpError, WebError};
 use crate::types::{Repo, TeamId};
 use axum::http::StatusCode;
@@ -148,11 +149,11 @@ pub struct LocalRepos {
 }
 
 impl LocalRepos {
-    pub fn new(path: PathBuf) -> Self {
+    pub fn new(path: PathBuf, ssh_config: Option<SshConfig>) -> Self {
         let (tx, rx) = mpsc::channel(100);
 
         // Start the repo updater in the background
-        tokio::spawn(repo_updater(rx));
+        tokio::spawn(repo_updater(rx, ssh_config));
 
         Self { path, updater: tx }
     }
@@ -211,19 +212,17 @@ impl LocalRepos {
     ) -> Result<String, GitError> {
         let path = self.get_repo_path(&repo.team);
 
-        let output = handle_exitcode(
-            Command::new("git")
-                .arg("rev-list")
-                .arg("--format=%s")
-                .arg("--max-count=1")
-                .arg(revision_id.to_string())
-                .current_dir(&path)
-                .output()
-                .await,
-        )
-        .context(LookupCommitRevSnafu {
-            revision: revision_id.to_string(),
-        })?;
+        let output = Command::new("git")
+            .arg("rev-list")
+            .arg("--format=%s")
+            .arg("--max-count=1")
+            .arg(revision_id.to_string())
+            .current_dir(&path)
+            .handle_exitcode()
+            .await
+            .context(LookupCommitRevSnafu {
+                revision: revision_id.to_string(),
+            })?;
 
         Ok(String::from_utf8_lossy(&output.stdout)
             .trim()
@@ -245,76 +244,66 @@ impl LocalRepos {
             revision: revision.clone(),
         })?;
 
-        handle_exitcode(
-            Command::new("git")
-                .arg("clone")
-                .arg("--recursive")
-                .arg("--recurse-submodules")
-                .arg(&path)
-                .arg(tempdir.path())
-                .output()
-                .await,
-        )
-        .context(NotClonedSnafu {
-            team: repo.team.clone(),
-        })?;
+        Command::new("git")
+            .arg("clone")
+            .arg("--recursive")
+            .arg("--recurse-submodules")
+            .arg(&path)
+            .arg(tempdir.path())
+            .handle_exitcode()
+            .await
+            .context(NotClonedSnafu {
+                team: repo.team.clone(),
+            })?;
 
-        handle_exitcode(
-            Command::new("git")
-                .arg("checkout")
-                .arg(revision.to_string())
-                .current_dir(tempdir.path())
-                .output()
-                .await,
-        )
-        .context(NotCheckedOutSnafu {
-            team: repo.team.clone(),
-            revision: revision.clone(),
-        })?;
+        Command::new("git")
+            .arg("checkout")
+            .arg(revision.to_string())
+            .current_dir(tempdir.path())
+            .handle_exitcode()
+            .await
+            .context(NotCheckedOutSnafu {
+                team: repo.team.clone(),
+                revision: revision.clone(),
+            })?;
 
-        handle_exitcode(
-            Command::new("git")
-                .arg("submodule")
-                .arg("update")
-                .arg("--force")
-                .arg("--init")
-                .arg("--recursive")
-                .current_dir(tempdir.path())
-                .output()
-                .await,
-        )
-        .context(SubmodulesNotUpdatedSnafu {
-            team: repo.team.clone(),
-            revision: revision.clone(),
-        })?;
+        Command::new("git")
+            .arg("submodule")
+            .arg("update")
+            .arg("--force")
+            .arg("--init")
+            .arg("--recursive")
+            .current_dir(tempdir.path())
+            .handle_exitcode()
+            .await
+            .context(SubmodulesNotUpdatedSnafu {
+                team: repo.team.clone(),
+                revision: revision.clone(),
+            })?;
 
-        handle_exitcode(
-            Command::new("git")
-                .arg("clean")
-                .arg("-fdx")
-                .arg(revision.to_string())
-                .current_dir(tempdir.path())
-                .output()
-                .await,
-        )
-        .context(NotCleanedSnafu {
-            team: repo.team.clone(),
-            revision: revision.clone(),
-        })?;
+        Command::new("git")
+            .arg("clean")
+            .arg("-fdx")
+            .arg(revision.to_string())
+            .current_dir(tempdir.path())
+            .handle_exitcode()
+            .await
+            .context(NotCleanedSnafu {
+                team: repo.team.clone(),
+                revision: revision.clone(),
+            })?;
 
-        handle_exitcode(
-            Command::new("tar")
-                .arg("cfa")
-                .arg(target)
-                .arg(".")
-                .current_dir(tempdir.path())
-                .output()
-                .await,
-        )
-        .context(NotTaredSnafu {
-            team: repo.team.clone(),
-            revision: revision.clone(),
-        })?;
+        Command::new("tar")
+            .arg("cfa")
+            .arg(target)
+            .arg(".")
+            .current_dir(tempdir.path())
+            .handle_exitcode()
+            .await
+            .context(NotTaredSnafu {
+                team: repo.team.clone(),
+                revision: revision.clone(),
+            })?;
 
         // Make it explicit that we clean up the tempdir here
         drop(tempdir);
@@ -327,42 +316,39 @@ impl LocalRepos {
     }
 }
 
-async fn clone_mirror(repo: &Repo, path: &Path) -> Result<(), GitError> {
-    handle_exitcode(
-        Command::new("git")
-            .arg("clone")
-            .arg("--mirror")
-            .arg(&repo.url)
-            .arg(path)
-            .env("GIT_TERMINAL_PROMPT", "0")
-            .output()
-            .await,
-    )
-    .context(NotClonedSnafu {
-        team: repo.team.clone(),
-    })?;
+async fn clone_mirror(repo: &Repo, path: &Path, ssh_key: Option<&String>) -> Result<(), GitError> {
+    Command::new("git")
+        .arg("clone")
+        .arg("--mirror")
+        .arg(&repo.url)
+        .arg(path)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .with_ssh_key(ssh_key)
+        .handle_exitcode()
+        .await
+        .context(NotClonedSnafu {
+            team: repo.team.clone(),
+        })?;
 
     Ok(())
 }
 
-async fn update_mirror(repo: &Repo, path: &Path) -> Result<(), GitError> {
+async fn update_mirror(repo: &Repo, path: &Path, ssh_key: Option<&String>) -> Result<(), GitError> {
     if !path.exists() {
-        return clone_mirror(repo, path).await;
+        return clone_mirror(repo, path, ssh_key).await;
     }
 
-    let current_url = handle_exitcode(
-        Command::new("git")
-            .arg("remote")
-            .arg("get-url")
-            .arg("origin")
-            .current_dir(path)
-            .output()
-            .await,
-    )
-    .context(UrlNotFetchedSnafu {
-        team: repo.team.clone(),
-        path: path.to_path_buf(),
-    })?;
+    let current_url = Command::new("git")
+        .arg("remote")
+        .arg("get-url")
+        .arg("origin")
+        .current_dir(path)
+        .handle_exitcode()
+        .await
+        .context(UrlNotFetchedSnafu {
+            team: repo.team.clone(),
+            path: path.to_path_buf(),
+        })?;
 
     let current_url = String::from_utf8_lossy(&current_url.stdout)
         .trim()
@@ -375,61 +361,43 @@ async fn update_mirror(repo: &Repo, path: &Path) -> Result<(), GitError> {
             new_url = %repo.url,
             "Updating repository URL (nuking repo)",
         );
-        handle_exitcode(Command::new("rm").arg("-rf").arg(path).output().await).context(
-            UrlNotChangedSnafu {
+        Command::new("rm")
+            .arg("-rf")
+            .arg(path)
+            .handle_exitcode()
+            .await
+            .context(UrlNotChangedSnafu {
                 url: repo.url.clone(),
                 team: repo.team.clone(),
                 path: path.to_path_buf(),
-            },
-        )?;
-        return clone_mirror(repo, path).await;
+            })?;
+        return clone_mirror(repo, path, ssh_key).await;
     }
 
-    handle_exitcode(
-        Command::new("git")
-            .arg("fetch")
-            .arg("--all")
-            .arg("--prune")
-            .current_dir(path)
-            .output()
-            .await,
-    )
-    .context(NotUpdatedSnafu {
-        team: repo.team.clone(),
-        path: path.to_path_buf(),
-    })?;
+    Command::new("git")
+        .arg("fetch")
+        .arg("--all")
+        .arg("--prune")
+        .current_dir(path)
+        .with_ssh_key(ssh_key)
+        .handle_exitcode()
+        .await
+        .context(NotUpdatedSnafu {
+            team: repo.team.clone(),
+            path: path.to_path_buf(),
+        })?;
 
     Ok(())
 }
 
-fn handle_exitcode(output: std::io::Result<Output>) -> std::io::Result<Output> {
-    let output = output?;
+async fn repo_updater(mut rx: Receiver<RepoUpdateRequest>, ssh_config: Option<SshConfig>) {
+    let team_to_key = ssh_config.map(|it| it.team_to_key).unwrap_or_default();
 
-    if output.status.success() {
-        return Ok(output);
-    }
-    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-
-    let mut response = "".to_string();
-    if let Some(code) = output.status.code() {
-        response.push_str(&format!("Exited with code {code}\n"));
-    }
-    if !stdout.trim().is_empty() {
-        response.push_str(&format!("stdout:\n{}\n", indent(stdout.trim(), 2)));
-    }
-    if !stderr.trim().is_empty() {
-        response.push_str(&format!("stderr:\n{}", indent(stderr.trim(), 2)));
-    }
-
-    Err(std::io::Error::new(std::io::ErrorKind::Other, response))
-}
-
-async fn repo_updater(mut rx: Receiver<RepoUpdateRequest>) {
     while let Some(request) = rx.recv().await {
         match request {
             RepoUpdateRequest::UpdateRepo { repo, path, done } => {
-                let res = update_mirror(&repo, &path).await;
+                let ssh_key = team_to_key.get(&repo.team);
+                let res = update_mirror(&repo, &path, ssh_key).await;
                 if let Err(e) = done.send(res) {
                     warn!(
                         error = ?e,
@@ -449,4 +417,86 @@ pub enum RepoUpdateRequest {
         path: PathBuf,
         done: sync::oneshot::Sender<Result<(), GitError>>,
     },
+}
+
+enum OptionalSsh<'a> {
+    WithoutSsh(&'a mut Command),
+    WithSsh {
+        command: &'a mut Command,
+        ssh_key: String,
+    },
+}
+
+trait HandleExitcode {
+    async fn handle_exitcode(self) -> std::io::Result<Output>;
+}
+
+impl HandleExitcode for OptionalSsh<'_> {
+    async fn handle_exitcode(self) -> std::io::Result<Output> {
+        match self {
+            OptionalSsh::WithoutSsh(command) => command.handle_exitcode().await,
+            OptionalSsh::WithSsh { command, ssh_key } => {
+                let file = tempfile::NamedTempFile::new()?;
+                tokio::fs::write(file.path(), ssh_key.as_bytes()).await?;
+                tokio::fs::set_permissions(
+                    file.path(),
+                    std::os::unix::fs::PermissionsExt::from_mode(0o600),
+                )
+                .await?;
+
+                command
+                    .env(
+                        "GIT_SSH_COMMAND",
+                        format!(
+                            "ssh -F /dev/null -o StrictHostKeyChecking=no -o UpdateHostKeys=no -i {}",
+                            file.path().display()
+                        ),
+                    )
+                    .handle_exitcode()
+                    .await
+            }
+        }
+    }
+}
+
+impl HandleExitcode for &mut Command {
+    async fn handle_exitcode(self) -> std::io::Result<Output> {
+        let output = self.output().await?;
+
+        if output.status.success() {
+            return Ok(output);
+        }
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+
+        let mut response = "".to_string();
+        if let Some(code) = output.status.code() {
+            response.push_str(&format!("Exited with code {code}\n"));
+        }
+        if !stdout.trim().is_empty() {
+            response.push_str(&format!("stdout:\n{}\n", indent(stdout.trim(), 2)));
+        }
+        if !stderr.trim().is_empty() {
+            response.push_str(&format!("stderr:\n{}", indent(stderr.trim(), 2)));
+        }
+
+        Err(std::io::Error::new(std::io::ErrorKind::Other, response))
+    }
+}
+
+trait WithSsh<'a> {
+    fn with_ssh_key(self, key: Option<&String>) -> OptionalSsh<'a>;
+}
+
+impl<'a> WithSsh<'a> for &'a mut Command {
+    fn with_ssh_key(self, key: Option<&String>) -> OptionalSsh<'a> {
+        if let Some(ssh_key) = key {
+            OptionalSsh::WithSsh {
+                command: self,
+                ssh_key: ssh_key.clone(),
+            }
+        } else {
+            OptionalSsh::WithoutSsh(self)
+        }
+    }
 }
