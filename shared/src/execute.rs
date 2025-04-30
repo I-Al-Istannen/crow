@@ -97,9 +97,7 @@ fn impl_execute_test(
             runtime: Duration::ZERO,
         })?,
     );
-    if should_run_binary {
-        compiler_commands.push(output_binary_run_path.clone());
-    }
+    compiler_commands.push(output_binary_run_path.clone());
 
     let start = Instant::now();
     let compiler_result = run_cmd(Path::new(&test.compile_command[0]), &compiler_commands)
