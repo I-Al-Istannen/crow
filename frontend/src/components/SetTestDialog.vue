@@ -217,7 +217,7 @@ const form = useForm({
         .string()
         .min(3, 'Please give the test a descriptive id')
         .max(40, 'That id is a bit long, don’t you think?')
-        .regex(/^[ a-zA-Z0-9_-]+$/, 'Only alphanumeric characters and spaces are allowed')
+        .regex(/^[ a-zA-Z0-9_()-]+$/, 'Only alphanumeric characters, spaces and `_-()` are allowed')
         .refine((id) => !idTaken(id), 'This test id already exists'),
       category: z
         .string()
