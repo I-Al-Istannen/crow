@@ -184,12 +184,51 @@ impl LocalRepos {
         revision: &str,
     ) -> Result<Option<RevisionId>, GitError> {
         let path = self.get_repo_path(&repo.team);
+
+        if let Some(revision) = self.get_revision_no_fetch(revision, &path).await? {
+            return Ok(Some(revision));
+        }
+
+        // Try fetching that specific revision from the remote if it does not exist for some reason
+        let (done_tx, done_rx) = sync::oneshot::channel();
+        self.updater
+            .send(RepoUpdateRequest::FetchRevision {
+                revision: revision.to_string(),
+                repo: repo.clone(),
+                path: path.clone(),
+                done: done_tx,
+            })
+            .await
+            .context(UpdaterSendSnafu {
+                team: repo.team.clone(),
+            })?;
+
+        done_rx.await.context(UpdaterWaitSnafu {
+            team: repo.team.clone(),
+        })?;
+
+        let res = self.get_revision_no_fetch(revision, &path).await?;
+        if res.is_some() {
+            info!(
+                url = %repo.url,
+                path = %path.display(),
+                team = %repo.team, "Revision fetch only succeeded after specific fetch. Why?"
+            )
+        }
+        Ok(res)
+    }
+
+    async fn get_revision_no_fetch(
+        &self,
+        revision: &str,
+        path: &Path,
+    ) -> Result<Option<RevisionId>, GitError> {
         let output = Command::new("git")
             .arg("rev-parse")
             .arg("--verify")
             .arg("--end-of-options")
             .arg(format!("{revision}^{{commit}}"))
-            .current_dir(&path)
+            .current_dir(path)
             .output()
             .await
             .context(LookupCommitRevSnafu {
@@ -407,6 +446,23 @@ async fn repo_updater(mut rx: Receiver<RepoUpdateRequest>, ssh_config: Option<Ss
                     );
                 }
             }
+            RepoUpdateRequest::FetchRevision {
+                repo,
+                revision,
+                path,
+                done,
+            } => {
+                let ssh_key = team_to_key.get(&repo.team);
+                let _ = Command::new("git")
+                    .arg("fetch")
+                    .arg("origin")
+                    .arg(&revision)
+                    .current_dir(&path)
+                    .with_ssh_key(ssh_key)
+                    .handle_exitcode()
+                    .await;
+                let _ = done.send(());
+            }
         }
     }
 }
@@ -416,6 +472,12 @@ pub enum RepoUpdateRequest {
         repo: Repo,
         path: PathBuf,
         done: sync::oneshot::Sender<Result<(), GitError>>,
+    },
+    FetchRevision {
+        revision: String,
+        repo: Repo,
+        path: PathBuf,
+        done: sync::oneshot::Sender<()>,
     },
 }
 
