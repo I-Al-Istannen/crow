@@ -87,6 +87,13 @@ pub(super) async fn sync_teams(
         .await
         .context(SqlxSnafu)?;
 
+    // Delete all existing teams as we will build them anew (if still relevant)
+    query!("UPDATE Users SET TEAM = null")
+        .execute(&mut *con)
+        .instrument(info_span!("sqlx_sync_teams_update_users"))
+        .await
+        .context(SqlxSnafu)?;
+
     for team in teams {
         query!(
             r#"

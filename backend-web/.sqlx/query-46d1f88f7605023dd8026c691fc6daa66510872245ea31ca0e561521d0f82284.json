@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE Users SET TEAM = null",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": []
+  },
+  "hash": "46d1f88f7605023dd8026c691fc6daa66510872245ea31ca0e561521d0f82284"
+}
