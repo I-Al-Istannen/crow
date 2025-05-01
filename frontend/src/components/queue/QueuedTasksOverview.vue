@@ -79,7 +79,7 @@ function getRunner(runners: Runner[], taskId: TaskId) {
 
 // Sadly table rows can not be wrapped in `<a>` tags, so we need to emulate links using JS...
 function openDetails(item: WorkItem, newTab: boolean) {
-  const data = { name: 'task-detail-detail', params: { taskId: item.id } }
+  const data = { name: 'task-detail', params: { taskId: item.id } }
   if (!newTab) {
     router.push(data)
   } else {
