@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT revision FROM ExternalRunRevisionMappings WHERE task_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "revision",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "380910b3c54708bf94ec1255aecc073dfcf3d6a7df6f7809a136ce51cd28bbea"
+}

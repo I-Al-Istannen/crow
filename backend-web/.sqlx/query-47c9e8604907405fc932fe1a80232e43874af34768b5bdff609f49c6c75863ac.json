@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM ExternalRunRevisionMappings WHERE task_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "47c9e8604907405fc932fe1a80232e43874af34768b5bdff609f49c6c75863ac"
+}

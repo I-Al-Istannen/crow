@@ -743,6 +743,12 @@ async fn finish_check(
         .await
         .context(OurBackendSnafu)?;
 
+    state
+        .db
+        .delete_external_run_revision_mapping(&task_id)
+        .await
+        .context(OurBackendSnafu)?;
+
     debug!(
         task_id = %task_id,
         check_run_id = %check_run_id,
@@ -875,10 +881,17 @@ async fn github_iteration(
 
         debug!(task_id = %task_id, repo_name = ?repo_name, "Creating check for task");
 
+        let actual_commit = state
+            .db
+            .fetch_external_run_revision_mapping(&task_id)
+            .await
+            .context(OurBackendSnafu)?;
+        let commitish = actual_commit.unwrap_or_else(|| work.revision.clone());
+
         // Transition: New queued run
         tx.send(EventForGithub::Queued(CheckCreateData {
             repo_name: repo_name.clone(),
-            commitish: work.revision.clone(),
+            commitish,
             task_id: task_id.clone(),
             details_url: format!("{}/task-detail/{}", config.frontend_url, task_id),
         }))

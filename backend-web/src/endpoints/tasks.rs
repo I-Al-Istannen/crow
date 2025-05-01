@@ -33,13 +33,7 @@ pub async fn integration_request_revision(
 
     info!(revision = %revision, team = %team_id, "Integration requested revision run");
 
-    queue_task(
-        state,
-        &revision,
-        team_id,
-        payload.map(|it| it.0.commit_message),
-    )
-    .await
+    queue_task(state, &revision, team_id, payload.map(|it| it.0)).await
 }
 
 #[instrument(skip_all)]
@@ -95,7 +89,7 @@ async fn queue_task(
     state: AppState,
     revision: &str,
     team: TeamId,
-    commit_message: Option<String>,
+    overrides: Option<IntegrationRequestRevisionPayload>,
 ) -> Result<Response> {
     // Update repo to ensure revision is present
     let repo = state.db.get_repo(&team).await?;
@@ -106,7 +100,7 @@ async fn queue_task(
             location!(),
         ));
     };
-    let commit_message = match commit_message {
+    let commit_message = match overrides.as_ref().map(|it| it.commit_message.clone()) {
         Some(message) => message,
         None => {
             state
@@ -125,6 +119,15 @@ async fn queue_task(
         insert_time: SystemTime::now(),
     };
     state.db.queue_task(task.clone()).await?;
+
+    if let Some(overrides) = overrides {
+        if let Some(commit) = overrides.checked_commit {
+            state
+                .db
+                .add_external_run_revision_mapping(&task_id, &commit)
+                .await?;
+        }
+    }
 
     Ok(Json(json!({ "taskId": task_id })).into_response())
 }
@@ -219,6 +222,7 @@ pub struct QueueResponse {
 #[serde(rename_all = "camelCase")]
 pub struct IntegrationRequestRevisionPayload {
     pub commit_message: String,
+    pub checked_commit: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

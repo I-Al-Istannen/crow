@@ -2,8 +2,9 @@ use crate::error::{Result, SqlxSnafu};
 use crate::types::{CreatedExternalRun, ExternalRunId, ExternalRunStatus, TaskId};
 use snafu::ResultExt;
 use sqlx::{query, query_as, SqliteConnection};
+use tracing::{info_span, Instrument};
 
-pub(crate) async fn add_external_run(
+pub(super) async fn add_external_run(
     con: &mut SqliteConnection,
     run: &CreatedExternalRun,
 ) -> Result<()> {
@@ -31,7 +32,7 @@ pub(crate) async fn add_external_run(
     Ok(())
 }
 
-pub(crate) async fn update_external_run_status(
+pub(super) async fn update_external_run_status(
     con: &mut SqliteConnection,
     run_id: &ExternalRunId,
     status: ExternalRunStatus,
@@ -49,7 +50,7 @@ pub(crate) async fn update_external_run_status(
     Ok(res.rows_affected() > 0)
 }
 
-pub(crate) async fn get_external_runs(
+pub(super) async fn get_external_runs(
     con: &mut SqliteConnection,
     platform: &str,
 ) -> Result<Vec<CreatedExternalRun>> {
@@ -73,7 +74,7 @@ pub(crate) async fn get_external_runs(
     .context(SqlxSnafu)
 }
 
-pub(crate) async fn delete_external_run(
+pub(super) async fn delete_external_run(
     con: &mut SqliteConnection,
     run_id: &ExternalRunId,
 ) -> Result<bool> {
@@ -84,4 +85,60 @@ pub(crate) async fn delete_external_run(
         .context(SqlxSnafu)?;
 
     Ok(res.rows_affected() > 0)
+}
+
+pub(super) async fn add_external_run_revision_mapping(
+    con: &mut SqliteConnection,
+    task_id: &TaskId,
+    to_revision: &str,
+) -> Result<()> {
+    query!(
+        r#"
+        INSERT INTO ExternalRunRevisionMappings
+            (task_id, revision)
+        VALUES
+            (?, ?)
+        ON CONFLICT DO UPDATE SET
+            revision = excluded.revision
+        "#,
+        task_id,
+        to_revision
+    )
+    .execute(con)
+    .instrument(info_span!("sqlx_add_external_run_revision_mapping"))
+    .await
+    .context(SqlxSnafu)?;
+
+    Ok(())
+}
+
+pub(super) async fn fetch_external_run_revision_mapping(
+    con: &mut SqliteConnection,
+    task_id: &TaskId,
+) -> Result<Option<String>> {
+    query!(
+        "SELECT revision FROM ExternalRunRevisionMappings WHERE task_id = ?",
+        task_id
+    )
+    .map(|it| it.revision)
+    .fetch_optional(con)
+    .instrument(info_span!("sqlx_fetch_external_run_revision_mapping"))
+    .await
+    .context(SqlxSnafu)
+}
+
+pub(super) async fn delete_external_run_revision_mapping(
+    con: &mut SqliteConnection,
+    task_id: &TaskId,
+) -> Result<()> {
+    query!(
+        "DELETE FROM ExternalRunRevisionMappings WHERE task_id = ?",
+        task_id
+    )
+    .execute(con)
+    .instrument(info_span!("sqlx_delete_external_run_revision_mapping"))
+    .await
+    .context(SqlxSnafu)?;
+
+    Ok(())
 }

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO ExternalRunRevisionMappings\n            (task_id, revision)\n        VALUES\n            (?, ?)\n        ON CONFLICT DO UPDATE SET\n            revision = excluded.revision\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "7b6b4ca22c71df4034158f548022d36c685323b6841c756b0d3b4b6485180429"
+}

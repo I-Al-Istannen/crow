@@ -107,6 +107,14 @@ CREATE TABLE ExternalRuns
     PRIMARY KEY (run_id, platform)
 );
 
+CREATE TABLE ExternalRunRevisionMappings
+(
+    task_id  VARCHAR(36) NOT NULL,
+    revision VARCHAR(40) NOT NULL,
+
+    PRIMARY KEY (task_id)
+);
+
 CREATE TABLE ManuallySubmittedTasks
 (
     team_id     VARCHAR(36) NOT NULL REFERENCES Teams (id) ON DELETE CASCADE ON UPDATE CASCADE,

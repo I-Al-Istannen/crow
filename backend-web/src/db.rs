@@ -290,4 +290,39 @@ impl Database {
         let pool = self.write_lock().await;
         external::delete_external_run(&mut *pool.acquire().await.context(SqlxSnafu)?, run_id).await
     }
+
+    pub async fn add_external_run_revision_mapping(
+        &self,
+        task_id: &TaskId,
+        revision: &str,
+    ) -> Result<()> {
+        let pool = self.write_lock().await;
+        external::add_external_run_revision_mapping(
+            &mut *pool.acquire().await.context(SqlxSnafu)?,
+            task_id,
+            revision,
+        )
+        .await
+    }
+
+    pub async fn fetch_external_run_revision_mapping(
+        &self,
+        task_id: &TaskId,
+    ) -> Result<Option<String>> {
+        let pool = self.read_lock().await;
+        external::fetch_external_run_revision_mapping(
+            &mut *pool.acquire().await.context(SqlxSnafu)?,
+            task_id,
+        )
+        .await
+    }
+
+    pub async fn delete_external_run_revision_mapping(&self, task_id: &TaskId) -> Result<()> {
+        let pool = self.write_lock().await;
+        external::delete_external_run_revision_mapping(
+            &mut *pool.acquire().await.context(SqlxSnafu)?,
+            task_id,
+        )
+        .await
+    }
 }
