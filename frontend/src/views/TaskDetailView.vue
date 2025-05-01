@@ -13,7 +13,10 @@
     <Card v-else>
       <CardHeader class="pb-2">
         <CardTitle>
-          <span v-if="queuedTask">{{ queuedTask.commitMessage }}</span>
+          <div v-if="queuedTask" class="flex items-center">
+            <span>{{ queuedTask.commitMessage }}</span>
+            <TaskExternalLinkIcon class="ml-2" :revision="queuedTask.revision" />
+          </div>
           <span v-else>Task detail</span>
         </CardTitle>
         <CardDescription>
@@ -60,6 +63,7 @@ import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
 import FinishedTask from '@/components/task-detail/FinishedTask.vue'
 import PageContainer from '@/components/PageContainer.vue'
 import RunningTask from '@/components/task-detail/RunningTask.vue'
+import TaskExternalLinkIcon from '@/components/task-detail/TaskExternalLinkIcon.vue'
 import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user.ts'

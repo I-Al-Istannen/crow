@@ -1,0 +1,28 @@
+<template>
+  <a
+    v-if="commitUrl"
+    :href="commitUrl"
+    target="_blank"
+    rel="noopener noreferrer nofollow"
+    @click.prevent="openUrl(commitUrl)"
+  >
+    <LucideExternalLink class="inline h-4 w-4" />
+  </a>
+</template>
+
+<script setup lang="ts">
+import { LucideExternalLink } from 'lucide-vue-next'
+import { toRefs } from 'vue'
+import { useCommitUrl } from '@/lib/utils.ts'
+
+const props = defineProps<{
+  revision: string
+}>()
+const { revision } = toRefs(props)
+
+const { commitUrl } = useCommitUrl(revision)
+
+function openUrl(url: string) {
+  window.open(url, '_blank')
+}
+</script>

@@ -2,7 +2,10 @@
   <Card>
     <CardHeader class="pb-2">
       <CardTitle>
-        <span v-if="taskSummary">{{ taskSummary.info.commitMessage }}</span>
+        <div v-if="taskSummary" class="flex items-center">
+          <span>{{ taskSummary.info.commitMessage }}</span>
+          <TaskExternalLinkIcon class="ml-2" :revision="taskSummary.info.revisionId" />
+        </div>
         <span v-else>Task summary</span>
       </CardTitle>
       <CardDescription>
@@ -60,6 +63,7 @@ import { computed, ref } from 'vue'
 import BuildOutputOverview from '@/components/task-detail/BuildOutputOverview.vue'
 import { Button } from '@/components/ui/button'
 import FinishedTestDetailDialog from '@/components/test-view/FinishedTestDetailDialog.vue'
+import TaskExternalLinkIcon from '@/components/task-detail/TaskExternalLinkIcon.vue'
 import TaskQuickOverview from '@/components/task-overview/TaskQuickOverview.vue'
 import TestOverviewMatrix from '@/components/task-detail/TestOverviewMatrix.vue'
 import TestOverviewTable from '@/components/task-detail/TestOverviewTable.vue'

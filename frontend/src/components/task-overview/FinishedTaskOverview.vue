@@ -6,7 +6,16 @@
     >
       <div class="flex flex-col justify-center">
         <div class="mb-1 flex items-center gap-1 flex-wrap mr-1">
-          <span class="text-muted-foreground">{{ task.info.revisionId.substring(0, 8) }}: </span>
+          <a
+            v-if="commitUrl"
+            :href="commitUrl"
+            target="_blank"
+            class="text-muted-foreground hover:underline"
+            @click.prevent="openUrl(commitUrl)"
+          >
+            {{ task.info.revisionId.substring(0, 8) }}:
+          </a>
+          <span v-else>{{ task.info.revisionId.substring(0, 8) }}: </span>
           <span class="font-medium">{{ task.info.commitMessage }}</span>
           <AutoSelectedGradedMarker :task-id="task.info.taskId" />
           <ManuallyOverrideDialog :task-id="task.info.taskId" />
@@ -26,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { formatDurationBetween, formatTime } from '@/lib/utils.ts'
+import { formatDurationBetween, formatTime, useCommitUrl } from '@/lib/utils.ts'
 import AutoSelectedGradedMarker from '@/components/task-overview/AutoSelectedGradedMarker.vue'
 import type { FinishedCompilerTaskSummary } from '@/types.ts'
 import ManuallyOverrideDialog from '@/components/task-overview/ManuallyOverrideDialog.vue'
@@ -37,4 +46,10 @@ const props = defineProps<{
   task: FinishedCompilerTaskSummary
 }>()
 const { task } = toRefs(props)
+
+const { commitUrl } = useCommitUrl(task.value.info.revisionId)
+
+function openUrl(commitUrl: string) {
+  window.open(commitUrl, '_blank')
+}
 </script>

@@ -1,5 +1,10 @@
 import { type ClassValue, clsx } from 'clsx'
+import { computed, toRef } from 'vue'
+import { type MaybeRefOrGetter } from '@vueuse/core'
+import { queryRepo } from '@/data/network.ts'
+import { storeToRefs } from 'pinia'
 import { twMerge } from 'tailwind-merge'
+import { useUserStore } from '@/stores/user.ts'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -79,4 +84,26 @@ export function statusColor(
       // text-blue-500
       return prefix + '-blue-500'
   }
+}
+
+export function useCommitUrl(commitGet: MaybeRefOrGetter<string>) {
+  const commit = toRef(commitGet)
+  const { team } = storeToRefs(useUserStore())
+  const { data: repo } = queryRepo(computed(() => team.value?.id))
+
+  const commitUrl = computed(() => {
+    const url = repo.value?.url
+    if (!url) {
+      return undefined
+    }
+
+    const match = url.match(/github\.com[/:](?<user>[^/\n]+)\/(?<repo>[^/\n]+)(\.git)?/)
+    if (!match || !match.groups) {
+      return undefined
+    }
+
+    return `https://github.com/${match.groups.user}/${match.groups.repo}/commit/${commit.value}`
+  })
+
+  return { commitUrl }
 }
