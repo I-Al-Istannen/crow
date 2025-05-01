@@ -10,13 +10,13 @@ use axum::response::{IntoResponse, Response};
 use axum_extra::headers::authorization::Bearer;
 use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use shared::FinishedCompilerTask;
 use snafu::location;
 use std::collections::HashMap;
 use std::time::SystemTime;
-use tracing::instrument;
+use tracing::{info, instrument};
 use uuid::Uuid;
 
 #[instrument(skip_all)]
@@ -24,13 +24,22 @@ pub async fn integration_request_revision(
     State(state): State<AppState>,
     TypedHeader(Authorization(auth)): TypedHeader<Authorization<Bearer>>,
     Path(revision): Path<String>,
+    payload: Option<Json<IntegrationRequestRevisionPayload>>,
 ) -> Result<Response> {
     let token = auth.token().to_string().into();
     let Some(team_id) = state.db.fetch_team_by_integration_token(&token).await? else {
         return Err(WebError::invalid_credentials(location!()));
     };
 
-    queue_task(state, &revision, team_id).await
+    info!(revision = %revision, team = %team_id, "Integration requested revision run");
+
+    queue_task(
+        state,
+        &revision,
+        team_id,
+        payload.map(|it| it.0.commit_message),
+    )
+    .await
 }
 
 #[instrument(skip_all)]
@@ -79,20 +88,30 @@ pub async fn request_revision(
     claims: Claims,
     Path(revision): Path<String>,
 ) -> Result<Response> {
-    queue_task(state, &revision, claims.team).await
+    queue_task(state, &revision, claims.team, None).await
 }
 
-async fn queue_task(state: AppState, revision: &str, team: TeamId) -> Result<Response> {
+async fn queue_task(
+    state: AppState,
+    revision: &str,
+    team: TeamId,
+    commit_message: Option<String>,
+) -> Result<Response> {
     // Update repo to ensure revision is present
     let repo = state.db.get_repo(&team).await?;
     state.local_repos.update_repo(&repo).await?;
     let Some(revision) = state.local_repos.get_revision(&repo, revision).await? else {
         return Err(WebError::not_found(location!()));
     };
-    let commit_message = state
-        .local_repos
-        .get_revision_message(&repo, &revision)
-        .await?;
+    let commit_message = match commit_message {
+        Some(message) => message,
+        None => {
+            state
+                .local_repos
+                .get_revision_message(&repo, &revision)
+                .await?
+        }
+    };
 
     let task_id: TaskId = Uuid::new_v4().to_string().into();
     let task = WorkItem {
@@ -191,6 +210,12 @@ pub async fn executor_info(
 pub struct QueueResponse {
     pub queue: Vec<WorkItem>,
     pub runners: Vec<RunnerForFrontend>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IntegrationRequestRevisionPayload {
+    pub commit_message: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
