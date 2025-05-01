@@ -13,7 +13,7 @@ use sync::mpsc;
 use tokio::process::Command;
 use tokio::sync;
 use tokio::sync::mpsc::Receiver;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 #[derive(Debug, Snafu)]
 pub enum GitError {
@@ -453,7 +453,7 @@ async fn repo_updater(mut rx: Receiver<RepoUpdateRequest>, ssh_config: Option<Ss
                 done,
             } => {
                 let ssh_key = team_to_key.get(&repo.team);
-                let _ = Command::new("git")
+                let res = Command::new("git")
                     .arg("fetch")
                     .arg("origin")
                     .arg(&revision)
@@ -461,6 +461,16 @@ async fn repo_updater(mut rx: Receiver<RepoUpdateRequest>, ssh_config: Option<Ss
                     .with_ssh_key(ssh_key)
                     .handle_exitcode()
                     .await;
+
+                if let Err(e) = res {
+                    debug!(
+                        error = ?e,
+                        team = %repo.team,
+                        path = %path.display(),
+                        revision = %revision,
+                        "Failed to fetch revision"
+                    );
+                }
                 let _ = done.send(());
             }
         }
