@@ -55,8 +55,8 @@ pub fn infer_test_metadata_from_path(path: &Path) -> Result<(String, String), St
         .to_str()
         .ok_or("File name is no valid string".to_string())?;
     let name = name
-        .strip_suffix(".crow-test")
-        .ok_or("File has no `.crow-test` suffix".to_string())?
+        .strip_suffix(".crow-test.md")
+        .ok_or("File has no `.crow-test.md` suffix".to_string())?
         .to_string();
 
     let category = path

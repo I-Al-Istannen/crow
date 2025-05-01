@@ -64,44 +64,6 @@ enum CliCommand {
     UploadTest(CliUploadTestArgs),
 }
 
-// [x] Authentication dance at the beginning
-//   - If not authenticated => Print url to <frontend>/cli-auth
-//     - If already authed => Show JWT, else normal login stuff
-//     - Remember auth token in keyring (or ~/.config/crow-client/config.toml)
-//   - We are authenticated
-
-// crow-client sync-tests --test-dir <test folder>
-//   - [x] Auth
-//   - [x] Download new tests
-//     - [x] List all local files:
-//         <foo.crow-test>
-//     - [x] Fetch remote test list:
-//       - test id
-//       - hash of input/output
-//     - [x] Download remote-only files:
-//       - create <foo.crow-test>
-//     - [x] Keep track in git to allow user to decide what to do
-//     - [-] Prompt whether to update local test
-//       - show unified diff (?)
-//     - [-] Prompt user to delete tests that do not exist in remote
-//     - [-] CLI args for: prefer-local, prefer-remote, prompt
-//  - [x] Wish user a good day
-
-// [x] crow-client upload-test <input file> <output file> [--name <name>] [--category <category>]
-//   - [x] Prompt for name/category if not given
-//   - [ ] Execute test against reference compiler
-//   - [ ] If failed
-//     - [ ] Warn user, prompt for continuing upload
-//   - [x] Upload test
-
-// [x] crow-client run-test --test-dir <test dir> --test <test id> --run <compiler run path>
-//   - Runs a single test against your local compiler run binary
-//   - Shows you the diff on failure
-
-// [x] crow-client run-tests --test-dir <test dir> --run <compiler run path>
-//   - Executes all tests
-//   - Sequentially (we do not implement the whole executor virtualization stuff)
-
 fn main() -> ExitCode {
     // Maybe: https://fasterthanli.me/articles/request-coalescing-in-async-rust#a-bit-of-tracing
     tracing_subscriber::registry()

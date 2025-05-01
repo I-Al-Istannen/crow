@@ -178,7 +178,7 @@ fn verify_test_dir(args: &CliRunTestArgs) -> Result<(), RunTestError> {
 }
 
 fn find_test(test_dir: &Path, test_id: &str) -> Result<FullTest, RunTestError> {
-    let target_file_name = format!("{}.crow-test", test_id);
+    let target_file_name = format!("{}.crow-test.md", test_id);
     let mut test_file = None;
 
     for file in WalkDir::new(test_dir).max_depth(2) {

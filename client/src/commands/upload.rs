@@ -69,7 +69,7 @@ pub struct CliUploadTestArgs {
     #[clap(long)]
     taste_test: Option<bool>,
     /// Whether to silently infer the name and category from the input file name:
-    ///   `<category>/<nam>.crow-test`
+    ///   `<category>/<name>.crow-test.md`
     #[clap(long)]
     infer_metadata_from_input: Option<bool>,
 }

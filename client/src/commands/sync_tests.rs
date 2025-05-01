@@ -310,8 +310,7 @@ pub fn get_local_tests(test_dir: &Path) -> Result<Vec<FullTest>, SyncTestsError>
         if !entry.path().is_file() {
             continue;
         }
-        let extension = entry.path().extension().and_then(|it| it.to_str());
-        if extension != Some("crow-test") {
+        if !entry.path().to_string_lossy().ends_with(".crow-test.md") {
             continue;
         }
         let test_path = entry.path();
@@ -423,7 +422,7 @@ fn download_remote_test(
             test_id: test.id.clone(),
         })?;
 
-    let test_path = test_dir.join(format!("{}.crow-test", test.id));
+    let test_path = test_dir.join(format!("{}.crow-test.md", test.id));
 
     std::fs::write(test_path, to_markdown(test, &detail)).context(WriteTestSnafu {
         test_id: test.id.clone(),
@@ -511,7 +510,11 @@ fn delete_local_only_tests(test_dir: &Path, remote_tests: &[Test]) -> Result<boo
             continue;
         }
 
-        if !entry.file_name().to_string_lossy().contains(".crow-test") {
+        if !entry
+            .file_name()
+            .to_string_lossy()
+            .ends_with(".crow-test.md")
+        {
             debug!("Skipping non-test file: {}", entry.path().display());
             continue;
         }

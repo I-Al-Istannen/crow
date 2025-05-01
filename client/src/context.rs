@@ -219,7 +219,7 @@ pub struct Test {
 impl Test {
     pub fn path(&self, root: &Path) -> PathBuf {
         root.join(&self.category)
-            .join(format!("{}.crow-test", self.id))
+            .join(format!("{}.crow-test.md", self.id))
     }
 
     pub fn local_file_paths(&self, root: &Path) -> Vec<PathBuf> {
