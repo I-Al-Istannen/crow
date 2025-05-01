@@ -10,7 +10,10 @@
           to submit a commit of your repository to the queue. Optionally, you can set the content
           type to <code :class="cls">application/json</code> and provide a commit message in the
           body, like so <code :class="cls">{ "commitMessage": "msg"}</code>. This message will be
-          used instead of the commit message then.
+          used instead of the commit message then.<br />
+          As GitHub sadly has some UI bugs when you use the PR merge head as the status check
+          target, you can also provide the commit to attach the GitHub status check to using the
+          <code :class="cls">checkedCommit</code> field in the body.
         </li>
         <li>
           <code :class="cls">GET /integration/token/task/:task_id</code>
@@ -39,7 +42,8 @@
         <br />
         <br />
         Here is a sample curl command for queueing a task with the message
-        <code :class="cls">"Foo"</code>:<br />
+        <code :class="cls">"Foo"</code> and attaching the GitHub run status to
+        <code :class="cls">revision2</code>:<br />
         <code :class="cls" class="select-all">{{ curlQueueMessage }}</code>
       </p>
     </div>
@@ -71,6 +75,6 @@ const curlQueueMessage = computed(
   () =>
     `curl -X PUT --header 'Authorization: Bearer ${teamIntegrationToken.value}'` +
     `  --header 'Content-Type: application/json' ${BACKEND_URL}/integration/token/queue/rev/:revision` +
-    ` --data '{ "commitMessage": "Foo" }'`,
+    ` --data '{ "commitMessage": "Foo", "checkedCommit": "revision2" }'`,
 )
 </script>
