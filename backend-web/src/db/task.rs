@@ -515,9 +515,12 @@ pub(super) async fn get_top_task_per_team(
             PASS_BY_TASK.task_id as "task_id!: TaskId",
             MAX(PASS_BY_TASK.passed_count) as passes
         FROM (
-            SELECT TestResults.task_id, COUNT(1) as passed_count
+            SELECT TestResults.task_id, COUNT(DISTINCT test_id) as passed_count
             FROM TestResults
-            JOIN ExecutionResults ER ON ER.execution_id = TestResults.binary_exec_id
+            JOIN ExecutionResults ER ON (
+                 ER.execution_id = TestResults.binary_exec_id
+              OR ER.execution_id = TestResults.compiler_exec_id
+            )
             WHERE ER.result = ?
             GROUP BY TestResults.task_id
         ) PASS_BY_TASK
@@ -659,9 +662,12 @@ async fn get_top_task_for_team_and_category(
         SELECT
             PASS_BY_TASK.task_id as "task_id!: TaskId"
         FROM (
-            SELECT TestResults.task_id, COUNT(1) as passed_count
+            SELECT TestResults.task_id, COUNT(DISTINCT test_id) as passed_count
             FROM TestResults
-            JOIN ExecutionResults ER ON ER.execution_id = TestResults.binary_exec_id
+            JOIN ExecutionResults ER ON (
+                 ER.execution_id = TestResults.binary_exec_id
+              OR ER.execution_id = TestResults.compiler_exec_id
+            )
             JOIN Tests ON Tests.id = TestResults.test_id
             WHERE ER.result = ? AND Tests.category = ? AND Tests.provisional_for_category IS NULL
             GROUP BY TestResults.task_id
