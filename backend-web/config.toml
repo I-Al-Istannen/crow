@@ -119,6 +119,7 @@ jobs:
           set -euo pipefail
           export MESSAGE="$(echo "$COMMIT_MESSAGE")"
           echo "MESSAGE=$MESSAGE" >> $GITHUB_ENV
+          echo "GH_COMMIT=$GITHUB_SHA" >> $GITHUB_ENV
           echo "Found message"
           echo "$MESSAGE"
         env:
@@ -129,6 +130,7 @@ jobs:
           set -euo pipefail
           export MESSAGE="#$PR_NUMBER: $(git log --format=%B -n 1 "$LAST_COMMIT")"
           echo "MESSAGE=$MESSAGE" >> $GITHUB_ENV
+          echo "GH_COMMIT=$LAST_COMMIT" >> $GITHUB_ENV
           echo "Found message"
           echo "$MESSAGE"
         env:
@@ -137,12 +139,12 @@ jobs:
       - name: Triggering crow
         run: |
           set -euo pipefail
-          echo "Queueing $GITHUB_SHA"
-          curl --fail \
-               -X PUT \
-               --header 'Authorization: Bearer ${{ secrets.CROW_INTEGRATION_TOKEN }}' \
-               --header 'Content-Type: application/json' \
-               --data "$(echo "$MESSAGE" | jq -R -s '{ commitMessage: . }')" \
+          echo "Queueing $GITHUB_SHA for $GH_COMMIT"
+          curl --fail \\
+               -X PUT \\
+               --header 'Authorization: Bearer ${{ secrets.CROW_INTEGRATION_TOKEN }}' \\
+               --header 'Content-Type: application/json' \\
+               --data "$(echo "$MESSAGE" | jq -R -s "{ commitMessage: ., checkedCommit: \\"$GH_COMMIT\\" }")" \\
                https://compiler.vads.kastel.kit.edu/api/integration/token/queue/rev/"$GITHUB_SHA"
       - name: Explaining a bit
         run: |
