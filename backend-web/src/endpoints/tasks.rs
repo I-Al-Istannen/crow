@@ -101,7 +101,10 @@ async fn queue_task(
     let repo = state.db.get_repo(&team).await?;
     state.local_repos.update_repo(&repo).await?;
     let Some(revision) = state.local_repos.get_revision(&repo, revision).await? else {
-        return Err(WebError::not_found(location!()));
+        return Err(WebError::named_not_found(
+            format!("Revision `{revision}`"),
+            location!(),
+        ));
     };
     let commit_message = match commit_message {
         Some(message) => message,
