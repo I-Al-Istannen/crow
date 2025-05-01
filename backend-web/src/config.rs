@@ -53,6 +53,7 @@ pub struct GithubConfig {
     pub app_id: u64,
     pub app_name: String,
     pub app_private_key: String,
+    pub frontend_url: String,
     #[serde(deserialize_with = "parse_duration")]
     pub status_check_interval: Duration,
     #[serde(deserialize_with = "parse_duration")]

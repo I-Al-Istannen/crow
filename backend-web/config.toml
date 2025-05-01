@@ -85,6 +85,8 @@ app_id = 12345678
 # The GitHub app private key. This is provided by GitHub.
 app_private_key = """
 """
+# The URL for the crow frontend, used to redirect to the crow task status in the commit status.
+frontend_url = "http://localhost:5173"
 # The interval between which to check for new running/finished tasks and sync them to GitHub
 status_check_interval = "10s"
 # crow will PR a workflow template to repositories if it does not exist or is not up to date.

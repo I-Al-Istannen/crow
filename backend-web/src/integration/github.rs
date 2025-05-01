@@ -786,6 +786,7 @@ async fn drain_github_events(
 async fn github_iteration(
     tx: &mpsc::Sender<EventForGithub>,
     state: &AppState,
+    config: &GithubConfig,
 ) -> Result<(), GitHubError> {
     let repos = state
         .db
@@ -879,7 +880,7 @@ async fn github_iteration(
             repo_name: repo_name.clone(),
             commitish: work.revision.clone(),
             task_id: task_id.clone(),
-            details_url: format!("http://localhost:5173/task-detail/{}", task_id),
+            details_url: format!("{}/task-detail/{}", config.frontend_url, task_id),
         }))
         .await
         .context(SendToEventChannelSnafu)?;
@@ -984,11 +985,11 @@ pub async fn run_github_app(config: GithubConfig, state: AppState) -> Result<(),
     ));
 
     loop {
-        debug!("Starting github status iteration");
+        debug!("Starting GitHub status iteration");
 
-        let res = github_iteration(&tx, &state).await;
+        let res = github_iteration(&tx, &state, &config).await;
         if let Err(e) = res {
-            warn!(error = %Report::from_error(e), "Failed to perform github status iteration");
+            warn!(error = %Report::from_error(e), "Failed to perform GitHub status iteration");
         }
 
         tokio::time::sleep(config.status_check_interval).await;
