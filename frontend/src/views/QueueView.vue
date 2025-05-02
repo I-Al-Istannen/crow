@@ -23,7 +23,7 @@
               <div
                 class="p-2 leading-none tracking-tight flex flex-row gap-2 items-center"
                 :class="['rounded-xl', 'border', 'bg-card', 'text-card-foreground']"
-                v-for="runner in queueResponse.runners"
+                v-for="runner in sortedRunners"
                 :key="runner.id"
               >
                 <Tooltip v-if="runner.testTaster">
@@ -99,6 +99,21 @@ const nextRefetchTime = computed(() => {
     return '0s'
   }
   return formatDuration(delta)
+})
+
+const sortedRunners = computed(() => {
+  if (!queueResponse.value) {
+    return []
+  }
+  return queueResponse.value.runners.slice().sort((a, b) => {
+    if (a.testTaster && !b.testTaster) {
+      return 1
+    }
+    if (!a.testTaster && b.testTaster) {
+      return -1
+    }
+    return a.id.localeCompare(b.id)
+  })
 })
 
 watch(isFetching, (val) => {
