@@ -1,10 +1,12 @@
 use derive_more::Display;
+use file_guard::os::unix::FileGuardExt;
+use file_guard::Lock;
 use shared::indent;
-use snafu::{IntoError, Location, NoneError, ResultExt, Snafu};
-use std::fs::File;
+use snafu::{location, IntoError, Location, NoneError, ResultExt, Snafu};
+use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-use tracing::debug;
+use tracing::{debug, info, warn};
 
 #[derive(Debug, Snafu)]
 pub enum DockerError {
@@ -31,6 +33,26 @@ pub enum DockerError {
         cache: PathBuf,
         target: PathBuf,
         source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not create lock file `{}` at {location}", path.display()))]
+    LockFileCreate {
+        path: PathBuf,
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not create lock file `{}` at {location}", path.display()))]
+    LockFileAcquire {
+        path: PathBuf,
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Could not acquire lock file `{}` at {location}",path.display()))]
+    LockFileAcquireTriesExceeded {
+        path: PathBuf,
         #[snafu(implicit)]
         location: Location,
     },
@@ -152,6 +174,22 @@ fn export_image_cached(
 ) -> Result<(), DockerError> {
     let image_id = get_docker_image_id(image_name)?;
     let cached_path = cache_folder.as_ref().join(&image_id);
+    let lockfile_path = cache_folder.as_ref().join(".lock");
+
+    let mut file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(&lockfile_path)
+        .context(LockFileCreateSnafu {
+            path: lockfile_path.clone(),
+        })?;
+
+    let mut guard =
+        file_guard::lock(&mut file, Lock::Shared, 0, 1).context(LockFileAcquireSnafu {
+            path: lockfile_path.to_path_buf(),
+        })?;
 
     if cached_path.exists() {
         debug!(
@@ -171,9 +209,38 @@ fn export_image_cached(
         "Exporting image to cache"
     );
 
+    for i in 0..10 {
+        if let Err(e) = guard.try_upgrade() {
+            if e.kind() == std::io::ErrorKind::WouldBlock {
+                info!("Waiting for lock to be released. Iteration {}/10", i + 1);
+                std::thread::sleep(std::time::Duration::from_secs(5));
+                continue;
+            } else {
+                return Err(e).context(LockFileAcquireSnafu {
+                    path: lockfile_path.to_path_buf(),
+                });
+            }
+        } else {
+            break;
+        }
+    }
+
+    if !guard.is_exclusive() {
+        warn!("Lock is not exclusive, acquire failed");
+        return Err(DockerError::LockFileAcquireTriesExceeded {
+            path: lockfile_path.to_path_buf(),
+            location: location!(),
+        });
+    }
+
     export_image_to_dir(image_name, &cached_path)?;
 
-    copy_image_from_cache(target_folder.as_ref().to_path_buf(), cached_path.clone())
+    copy_image_from_cache(target_folder.as_ref().to_path_buf(), cached_path.clone())?;
+
+    // Release file lock
+    drop(guard);
+
+    Ok(())
 }
 
 fn export_image_to_dir(image_name: &ImageId, target_folder: &Path) -> Result<(), DockerError> {

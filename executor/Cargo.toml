@@ -20,6 +20,7 @@ shared = { path = "../shared" }
 reqwest = { version = "0.12.9", features = ["blocking", "json", "rustls-tls"], default-features = false }
 ctrlc = { version = "3.4.5", features = ["termination"] }
 users = "0.11.0"
+file-guard = "0.2.0"
 
 [lints]
 workspace = true
