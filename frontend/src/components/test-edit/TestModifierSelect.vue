@@ -71,6 +71,7 @@
           class="font-mono whitespace-pre overflow-scroll max-h-[100dvh]"
           rows="10"
           :placeholder="argPlaceholderText"
+          :readonly="readonly || false"
         />
         <PopoverArrow class="fill-white stroke-gray-200" />
       </PopoverContent>
