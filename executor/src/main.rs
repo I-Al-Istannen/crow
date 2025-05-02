@@ -5,6 +5,7 @@
 
 use crate::containers::{ContainerCreateError, TestRunError, WaitForContainerError};
 use crate::mode_executor::{run_executor, CliExecutorArgs};
+use crate::mode_shim::{run_shim, CliShimArgs};
 use clap::builder::styling::AnsiColor;
 use clap::builder::Styles;
 use clap::{Parser, Subcommand};
@@ -16,6 +17,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 mod containers;
 mod docker;
 mod mode_executor;
+mod mode_shim;
 mod task_executor;
 
 #[derive(Debug, Snafu)]
@@ -58,6 +60,19 @@ pub enum AnyError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display("Shim error `{msg}` at {location}"))]
+    Shim {
+        msg: String,
+        #[snafu(implicit)]
+        location: Location,
+    },
+    #[snafu(display("Shim error `{msg}` at {location}"))]
+    ShimWithSource {
+        msg: String,
+        source: Box<dyn std::error::Error + Send + Sync>,
+        #[snafu(implicit)]
+        location: Location,
+    },
 }
 
 // noinspection DuplicatedCode
@@ -83,6 +98,8 @@ struct CliArgs {
 enum CliCommand {
     /// Runs the executor fetching tasks from the server and executing them.
     Executor(CliExecutorArgs),
+    /// Runs the executor in-container shim translating killed-by-signal
+    Shim(CliShimArgs),
 }
 
 struct Endpoints {
@@ -125,6 +142,7 @@ fn main() -> Report<AnyError> {
 
         match args.subcommand {
             CliCommand::Executor(args) => run_executor(args),
+            CliCommand::Shim(args) => run_shim(args),
         }
     })
 }

@@ -1,3 +1,4 @@
+use crate::exit::CrowExitStatus;
 use crate::judge::judge_output;
 use crate::{
     CompilerTest, ExecutionOutput, FinishedExecution, InternalError, TestExecutionOutput,
@@ -7,7 +8,7 @@ use is_executable::IsExecutable;
 use snafu::{Report, ResultExt, Snafu};
 use std::error::Error;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus};
+use std::process::Command;
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Snafu)]
@@ -60,7 +61,7 @@ pub enum CommandResult {
     /// The command failed and was already cleaned up into an [ExecutionOutput]
     ProcessedFailed(ExecutionOutput),
     /// The command was not processed yet, and we have the raw output
-    Unprocessed((ExitStatus, FinishedExecution)),
+    Unprocessed((CrowExitStatus, FinishedExecution)),
 }
 
 pub fn execute_test(
@@ -233,7 +234,7 @@ pub fn execute_locally(
             .map_err(Box::new)?;
 
         Ok(CommandResult::Unprocessed((
-            output.status,
+            output.status.into(),
             FinishedExecution {
                 stdout: String::from_utf8_lossy(&output.stdout).to_string(),
                 stderr: String::from_utf8_lossy(&output.stderr).to_string(),

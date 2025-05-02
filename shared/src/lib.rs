@@ -6,6 +6,7 @@ use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 
 pub mod execute;
+pub mod exit;
 pub mod judge;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -2,6 +2,7 @@ use crate::docker::{export_image_unpacked, DockerError, ImageId};
 use derive_more::{Display, From};
 use serde::Deserialize;
 use shared::execute::CommandResult;
+use shared::exit::CrowExitStatus;
 use shared::{
     AbortedExecution, CompilerTest, ExecutionOutput, FinishedExecution, InternalError,
     TestExecutionOutput,
@@ -18,6 +19,9 @@ use std::{fs, io, thread};
 use tempfile::{TempDir, TempPath};
 use tracing::{debug, error, warn};
 use uuid::Uuid;
+
+pub const CROW_SIGNAL_SHIM_MAGIC: &str = "crow-internal_KILLED_BY_SIGNAL: ";
+const CROW_SHIM_IN_CONTAINER_PATH: &str = "crow-shim";
 
 #[derive(Snafu, Debug)]
 pub enum RunConfigError {
@@ -216,7 +220,7 @@ pub enum TestRunError {
         "Underlying build container failed with {exit_status}, can not run tests at {location}"
     ))]
     BaseNotBuilt {
-        exit_status: ExitStatus,
+        exit_status: CrowExitStatus,
         #[snafu(implicit)]
         location: Location,
     },
@@ -317,7 +321,7 @@ pub struct Started {
 pub struct Built {
     pub stdout: String,
     pub stderr: String,
-    pub exit_status: ExitStatus,
+    pub exit_status: CrowExitStatus,
     pub runtime: Duration,
 }
 
@@ -508,6 +512,12 @@ impl TaskContainer<Built> {
                 .context(CreationSnafu)?;
         }
         let output_binary_path = container_root.join("out.🦆");
+
+        fs::copy(
+            std::env::current_exe().context(FindOwnExecutableSnafu)?,
+            container_root.join(CROW_SHIM_IN_CONTAINER_PATH),
+        )
+        .context(CopyExecutorToContainerSnafu)?;
 
         let res = shared::execute::execute_test(
             test,
@@ -768,7 +778,12 @@ fn run_test_command(
     aborted: Arc<AtomicBool>,
     timeout: Duration,
 ) -> Result<CommandResult, TestRunError> {
-    let mut full_command = vec![path.to_str().expect("path was Unicode").to_string()];
+    let mut full_command = vec![
+        format!("/{CROW_SHIM_IN_CONTAINER_PATH}"),
+        "shim".to_string(),
+        "--".to_string(),
+        path.to_str().expect("path was Unicode").to_string(),
+    ];
     full_command.extend_from_slice(cmd);
 
     ContainerConfig::OverlayRootfs
@@ -794,7 +809,7 @@ fn wait_result_to_command_result(
     container_id: &ContainerId,
     res: Result<(String, String, ExitStatus, Duration), WaitForContainerError>,
 ) -> Result<CommandResult, TestRunError> {
-    let (stdout, stderr, exit_status, runtime) = match res {
+    let (stdout, mut stderr, exit_status, runtime) = match res {
         Err(e) => {
             if let Some(output) = execution_output_from_wait_error(&e) {
                 return Ok(CommandResult::ProcessedFailed(output));
@@ -803,6 +818,7 @@ fn wait_result_to_command_result(
         }
         Ok(res) => res,
     };
+    let mut exit_status: CrowExitStatus = exit_status.into();
 
     if !exit_status.success()
         && stderr.trim().lines().count() == 1
@@ -817,6 +833,22 @@ fn wait_result_to_command_result(
             message: stderr.trim(),
         }
         .into_error(NoneError));
+    }
+
+    if let Some(last_line) = stderr.trim().lines().last() {
+        if let Some(rest) = last_line.strip_prefix(CROW_SIGNAL_SHIM_MAGIC) {
+            if let Ok(signal) = rest.trim().parse::<i32>() {
+                exit_status = CrowExitStatus::WithSignal {
+                    exit_status: exit_status.inner(),
+                    signal,
+                };
+
+                // Remove our internal marker from stderr
+                let mut lines = stderr.lines().collect::<Vec<_>>();
+                lines.pop();
+                stderr = lines.join("\n");
+            }
+        }
     }
 
     Ok(CommandResult::Unprocessed((

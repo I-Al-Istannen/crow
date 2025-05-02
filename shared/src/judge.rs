@@ -1,11 +1,10 @@
+use crate::exit::CrowExitStatus;
 use crate::{
     CompilerFailReason, CrashSignal, ExecutionOutput, FinishedExecution, TestModifier,
     TestModifierExt,
 };
 use similar::{DiffableStr, TextDiff};
 use std::fmt::{Display, Formatter};
-use std::os::unix::process::ExitStatusExt;
-use std::process::ExitStatus;
 
 struct JudgeProblem {
     message: String,
@@ -21,7 +20,7 @@ impl Display for JudgeProblem {
 
 pub fn judge_output(
     modifiers: &[TestModifier],
-    exit_status: ExitStatus,
+    exit_status: CrowExitStatus,
     execution: FinishedExecution,
 ) -> ExecutionOutput {
     let mut problems = Vec::new();
@@ -117,7 +116,7 @@ fn judge_program_output(
 }
 
 fn judge_program_should_crash(
-    exit_status: ExitStatus,
+    exit_status: CrowExitStatus,
     signal: CrashSignal,
 ) -> Option<JudgeProblem> {
     if let Some(signal_num) = exit_status.signal() {
@@ -149,7 +148,7 @@ fn judge_program_should_crash(
     }
 }
 
-fn judge_program_should_succeed(exit_status: ExitStatus) -> Option<JudgeProblem> {
+fn judge_program_should_succeed(exit_status: CrowExitStatus) -> Option<JudgeProblem> {
     if exit_status.success() {
         return None;
     }
@@ -169,7 +168,7 @@ fn judge_program_should_succeed(exit_status: ExitStatus) -> Option<JudgeProblem>
 }
 
 fn judge_program_should_fail(
-    exit_status: ExitStatus,
+    exit_status: CrowExitStatus,
     expected: CompilerFailReason,
 ) -> Option<JudgeProblem> {
     let Some(code) = exit_status.code() else {
