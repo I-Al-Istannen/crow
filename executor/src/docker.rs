@@ -6,6 +6,7 @@ use snafu::{location, IntoError, Location, NoneError, ResultExt, Snafu};
 use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+use std::time::Instant;
 use tracing::{info, warn};
 
 #[derive(Debug, Snafu)]
@@ -192,6 +193,8 @@ fn export_image_cached(
         })?;
 
     if cached_path.exists() {
+        let now = Instant::now();
+
         info!(
             image_name = %image_name,
             image_id = %image_id,
@@ -199,6 +202,12 @@ fn export_image_cached(
             "Reusing image from cache"
         );
         copy_image_from_cache(target_folder.as_ref().to_path_buf(), cached_path)?;
+        info!(
+            image_name = %image_name,
+            image_id = %image_id,
+            duration_s = %now.elapsed().as_secs(),
+            "Image copied from cache"
+        );
 
         return Ok(());
     }
@@ -233,9 +242,23 @@ fn export_image_cached(
         });
     }
 
+    let now = Instant::now();
     export_image_to_dir(image_name, &cached_path)?;
+    info!(
+        image_name = %image_name,
+        image_id = %image_id,
+        duration_s = %now.elapsed().as_secs(),
+        "Image exported to cache"
+    );
 
+    let now = Instant::now();
     copy_image_from_cache(target_folder.as_ref().to_path_buf(), cached_path.clone())?;
+    info!(
+        image_name = %image_name,
+        image_id = %image_id,
+        duration_s = %now.elapsed().as_secs(),
+        "Image copied from cache"
+    );
 
     // Release file lock
     drop(guard);
