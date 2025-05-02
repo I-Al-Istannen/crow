@@ -9,6 +9,7 @@
           :test="testTastingError"
           of-whom="reference"
           v-model:dialog-open="failedTastingDialogOpen"
+          hide-test-content
         />
         <FinishedTestcaseSummaryIcon
           :test="testTastingError"
