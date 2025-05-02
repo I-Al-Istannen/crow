@@ -2,7 +2,7 @@ use crate::containers::{
     execution_output_from_wait_error, Built, ContainerCreateError, IntegrateSourceError,
     TaskContainer, TestRunError,
 };
-use crate::docker::ImageId;
+use crate::docker::{Docker, ImageId};
 use rayon::ThreadPool;
 use shared::{
     CompilerTask, CompilerTest, ExecutionOutput, FinishedCompilerTask, FinishedExecution,
@@ -52,7 +52,11 @@ pub struct ExecutingTask<'a> {
     pub message_channel: mpsc::Sender<RunnerUpdate>,
 }
 
-pub fn execute_task(task: ExecutingTask<'_>, source_tar: TempPath) -> FinishedCompilerTask {
+pub fn execute_task(
+    task: ExecutingTask<'_>,
+    source_tar: TempPath,
+    docker: &Docker,
+) -> FinishedCompilerTask {
     let task_id = task.inner.task_id.clone();
     let team_id = task.inner.team_id.clone();
     let revision_id = task.inner.revision_id.clone();
@@ -61,7 +65,7 @@ pub fn execute_task(task: ExecutingTask<'_>, source_tar: TempPath) -> FinishedCo
     let start_monotonic = Instant::now();
     let message_channel = task.message_channel.clone();
 
-    let res = match execute_task_impl(task, source_tar) {
+    let res = match execute_task_impl(task, source_tar, docker) {
         Ok(res) => res,
         Err(e) => task_run_error_to_task(
             start,
@@ -81,6 +85,7 @@ pub fn execute_task(task: ExecutingTask<'_>, source_tar: TempPath) -> FinishedCo
 fn execute_task_impl(
     task: ExecutingTask<'_>,
     source_tar: TempPath,
+    docker: &Docker,
 ) -> Result<FinishedCompilerTask, TaskRunError> {
     let start = SystemTime::now();
     let start_monotonic = Instant::now();
@@ -89,7 +94,7 @@ fn execute_task_impl(
     let aborted = task.aborted;
     let message_channel = task.message_channel;
     let task = task.inner;
-    let container = TaskContainer::new(&ImageId(task.image), &task.build_command)
+    let container = TaskContainer::new(&ImageId(task.image), &task.build_command, docker)
         .context(ContainerCreateSnafu)?;
 
     container
@@ -271,6 +276,7 @@ pub fn run_test(
     test: CompilerTest,
     shutdown_requested: Arc<AtomicBool>,
     base_container: Rc<RefCell<Option<TaskContainer<Built>>>>,
+    docker: &Docker,
 ) -> TestExecutionOutput {
     let test_id = test.test_id.clone();
     let start = Instant::now();
@@ -280,6 +286,7 @@ pub fn run_test(
         test,
         shutdown_requested,
         base_container,
+        docker,
     );
 
     match res {
@@ -309,11 +316,12 @@ fn run_test_impl(
     test: CompilerTest,
     shutdown_requested: Arc<AtomicBool>,
     base_container: Rc<RefCell<Option<TaskContainer<Built>>>>,
+    docker: &Docker,
 ) -> Result<TestExecutionOutput, TaskRunError> {
     if base_container.borrow().is_none() {
         info!("Creating reference compiler container");
         // We have nothing really to do here, so we just use `true` as the builder.
-        let container = TaskContainer::new(image_id, &["true".to_string()])
+        let container = TaskContainer::new(image_id, &["true".to_string()], docker)
             .context(ContainerCreateSnafu)?
             .run()
             .context(ContainerRunSnafu)?;

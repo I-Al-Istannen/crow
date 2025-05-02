@@ -1,4 +1,4 @@
-use crate::docker::{export_image_unpacked, DockerError, ImageId};
+use crate::docker::{Docker, DockerError, ImageId};
 use derive_more::{Display, From};
 use serde::Deserialize;
 use shared::execute::CommandResult;
@@ -339,13 +339,16 @@ impl TaskContainer<()> {
     pub fn new(
         image: &ImageId,
         args: &[String],
+        docker: &Docker,
     ) -> Result<TaskContainer<Created>, ContainerCreateError> {
         let workdir = TempDir::new().context(TempDirCreationSnafu)?;
         let path_rootfs = workdir.path().join("rootfs");
 
         // We modify the rootfs during the build process (as these changes are replicated into each
         // container), so we need to copy it.
-        export_image_unpacked(image, &path_rootfs).context(ImageCopySnafu)?;
+        docker
+            .export_image_unpacked(image, &path_rootfs)
+            .context(ImageCopySnafu)?;
 
         ContainerConfig::WritableRootfs
             .apply_to_workdir(&path_rootfs, workdir.path(), args, false)

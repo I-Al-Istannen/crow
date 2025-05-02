@@ -1,5 +1,5 @@
 use crate::containers::{Built, TaskContainer};
-use crate::docker::ImageId;
+use crate::docker::{Docker, ImageId};
 use crate::mode_executor::CliExecutorArgs;
 use crate::{task_executor, AnyError, Endpoints, ReqwestSnafu, NO_TASK_BACKOFF};
 use reqwest::blocking::Client;
@@ -14,12 +14,14 @@ use tracing::{debug, info, warn};
 
 pub struct TestTastingState {
     pub container: Rc<RefCell<Option<TaskContainer<Built>>>>,
+    docker: Docker,
 }
 
 impl TestTastingState {
-    pub fn new() -> Self {
+    pub fn new(docker: Docker) -> Self {
         Self {
             container: Rc::new(RefCell::new(None)),
+            docker,
         }
     }
 }
@@ -101,6 +103,7 @@ impl super::Iteration for TestTastingState {
             task.test,
             shutdown_requested.clone(),
             self.container.clone(),
+            &self.docker,
         );
         let res = RunnerWorkTasteTestDone {
             output: res,

@@ -1,3 +1,4 @@
+use crate::docker::Docker;
 use crate::mode_executor::{backoff, start_update_listener, CliExecutorArgs};
 use crate::task_executor::{execute_task, ExecutingTask};
 use crate::{AnyError, Endpoints, ReqwestSnafu, TempFileSnafu, NO_TASK_BACKOFF};
@@ -12,10 +13,11 @@ use tracing::{debug, info, warn};
 
 pub struct TestCompilerState {
     thread_pool: ThreadPool,
+    docker: Docker,
 }
 
 impl TestCompilerState {
-    pub fn new() -> Result<Self, AnyError> {
+    pub fn new(docker: Docker) -> Result<Self, AnyError> {
         let thread_pool = match ThreadPoolBuilder::new().build() {
             Err(e) => {
                 return Err(AnyError::ThreadPoolBuild {
@@ -25,7 +27,11 @@ impl TestCompilerState {
             }
             Ok(result) => result,
         };
-        Ok(Self { thread_pool })
+
+        Ok(Self {
+            thread_pool,
+            docker,
+        })
     }
 }
 
@@ -113,7 +119,7 @@ impl super::Iteration for TestCompilerState {
             message_channel: tx,
         };
         start_update_listener(args, endpoints, rx);
-        let res = execute_task(task, source_tar.into_temp_path());
+        let res = execute_task(task, source_tar.into_temp_path(), &self.docker);
 
         info!(id = task_id, res = ?res, "Task finished");
         client

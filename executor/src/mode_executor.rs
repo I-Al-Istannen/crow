@@ -1,8 +1,10 @@
+use crate::docker::Docker;
 use crate::{AnyError, Endpoints, ReqwestSnafu};
 use clap::Args;
 use reqwest::blocking::{Client, ClientBuilder};
 use shared::{RunnerInfo, RunnerUpdate};
-use snafu::{Report, ResultExt};
+use snafu::{location, Report, ResultExt};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Receiver;
 use std::sync::Arc;
@@ -37,6 +39,9 @@ pub struct CliExecutorArgs {
     /// to validate against it
     #[clap(long, default_value = "false")]
     pub test_taster: bool,
+    /// The directory to cache docker images in. If not set, no cache will be used.
+    #[clap(long)]
+    pub image_cache_dir: Option<PathBuf>,
 }
 
 pub fn run_executor(args: CliExecutorArgs) -> Result<(), AnyError> {
@@ -49,11 +54,20 @@ pub fn run_executor(args: CliExecutorArgs) -> Result<(), AnyError> {
     start_periodic_pings(&endpoints, &args);
 
     let client = ClientBuilder::new().build().context(ReqwestSnafu)?;
+    let docker = match Docker::new(args.image_cache_dir.clone()) {
+        Ok(docker) => docker,
+        Err(e) => {
+            return Err(AnyError::Docker {
+                source: e,
+                location: location!(),
+            })
+        }
+    };
 
     let mut iteration: Box<dyn Iteration> = if args.test_taster {
-        Box::new(test_tasting::TestTastingState::new())
+        Box::new(test_tasting::TestTastingState::new(docker))
     } else {
-        Box::new(test_compiler::TestCompilerState::new()?)
+        Box::new(test_compiler::TestCompilerState::new(docker)?)
     };
 
     while !shutdown_requested.load(Ordering::Relaxed) {

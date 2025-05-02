@@ -73,6 +73,12 @@ pub enum AnyError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display("Error communicating with docker at {location}"))]
+    Docker {
+        source: docker::DockerError,
+        #[snafu(implicit)]
+        location: Location,
+    },
 }
 
 // noinspection DuplicatedCode
