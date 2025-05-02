@@ -1,30 +1,38 @@
 <template>
   <div class="flex items-center gap-1 p-1 rounded-md justify-start">
-    <LucideGripVertical class="h-5 flex-shrink-0 drag-handle cursor-grab" />
-    <Select
+    <LucideGripVertical v-if="!readonly" class="h-5 flex-shrink-0 drag-handle cursor-grab" />
+    <SelectOrReadonly
+      :readonly="readonly || false"
+      :label="modifierLabel(modifierType)"
       :model-value="modifierType"
       @update:model-value="update($event as string, stringArg, crashArg, failArg)"
-      required
+      :class="[readonly ? 'ml-2' : '']"
     >
       <SelectTrigger class="max-w-[20ch] py-0 h-7 flex-shrink-1 md:flex-shrink-0 min-w-1">
         <SelectValue placeholder="Select a modifier" />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          <SelectItem value="ProgramArgumentFile">Argument File</SelectItem>
-          <SelectItem value="ProgramArgument">Argument String</SelectItem>
+          <SelectItem value="ProgramArgumentFile">
+            {{ modifierLabel('ProgramArgumentFile') }}
+          </SelectItem>
+          <SelectItem value="ProgramArgument">{{ modifierLabel('ProgramArgument') }}</SelectItem>
         </SelectGroup>
         <SelectGroup>
-          <SelectItem value="ProgramInput">Program input</SelectItem>
-          <SelectItem value="ExpectedOutput">Expected output</SelectItem>
+          <SelectItem value="ProgramInput">{{ modifierLabel('ProgramInput') }}</SelectItem>
+          <SelectItem value="ExpectedOutput">{{ modifierLabel('ExpectedOutput') }}</SelectItem>
         </SelectGroup>
         <SelectGroup>
-          <SelectItem v-if="showCrash" value="ShouldCrash">Should crash</SelectItem>
-          <SelectItem v-if="showFail" value="ShouldFail">Should fail</SelectItem>
-          <SelectItem value="ShouldSucceed">Should succeed</SelectItem>
+          <SelectItem v-if="showCrash" value="ShouldCrash">
+            {{ modifierLabel('ShouldCrash') }}
+          </SelectItem>
+          <SelectItem v-if="showFail" value="ShouldFail">
+            {{ modifierLabel('ShouldFail') }}
+          </SelectItem>
+          <SelectItem value="ShouldSucceed">{{ modifierLabel('ShouldSucceed') }}</SelectItem>
         </SelectGroup>
       </SelectContent>
-    </Select>
+    </SelectOrReadonly>
     <Input
       type="text"
       :placeholder="argPlaceholderText"
@@ -53,9 +61,11 @@
         <PopoverArrow class="fill-white stroke-gray-200" />
       </PopoverContent>
     </Popover>
-    <Select
+    <SelectOrReadonly
       v-if="hasCrashArg"
+      :readonly="readonly || false"
       :model-value="crashArg"
+      :label="crashSignalLabel(crashArg)"
       @update:model-value="update(modifierType, stringArg, $event as CrashSignal, failArg)"
       required
     >
@@ -64,14 +74,20 @@
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          <SelectItem value="FloatingPointException">Floating point exception</SelectItem>
-          <SelectItem value="SegmentationFault">Segmentation fault</SelectItem>
+          <SelectItem value="FloatingPointException">
+            {{ crashSignalLabel('FloatingPointException') }}
+          </SelectItem>
+          <SelectItem value="SegmentationFault">
+            {{ crashSignalLabel('SegmentationFault') }}
+          </SelectItem>
         </SelectGroup>
       </SelectContent>
-    </Select>
-    <Select
+    </SelectOrReadonly>
+    <SelectOrReadonly
       v-if="hasFailArg"
       :model-value="failArg"
+      :readonly="readonly || false"
+      :label="compilerFailReasonLabel(failArg)"
       @update:model-value="update(modifierType, stringArg, crashArg, $event as CompilerFailReason)"
       required
     >
@@ -80,11 +96,13 @@
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          <SelectItem value="Parsing">Parsing</SelectItem>
-          <SelectItem value="SemanticAnalysis">Semantic analysis</SelectItem>
+          <SelectItem value="Parsing">{{ compilerFailReasonLabel('Parsing') }}</SelectItem>
+          <SelectItem value="SemanticAnalysis">
+            {{ compilerFailReasonLabel('SemanticAnalysis') }}
+          </SelectItem>
         </SelectGroup>
       </SelectContent>
-    </Select>
+    </SelectOrReadonly>
   </div>
 </template>
 
@@ -92,7 +110,6 @@
 import type { CompilerFailReason, CrashSignal, TestModifier } from '@/types.ts'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
-  Select,
   SelectContent,
   SelectGroup,
   SelectItem,
@@ -104,12 +121,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LucideGripVertical } from 'lucide-vue-next'
 import { PopoverArrow } from 'reka-ui'
+import SelectOrReadonly from '@/components/SelectOrReadonly.vue'
 import { Textarea } from '@/components/ui/textarea'
 
 const modifier = defineModel<TestModifier>('modifier', { required: true })
 
 const props = defineProps<{
   modifierTarget: 'compiler' | 'binary'
+  readonly?: boolean
 }>()
 const { modifierTarget } = toRefs(props)
 
@@ -206,4 +225,41 @@ const argPlaceholderText = computed(() => {
       return ''
   }
 })
+
+function modifierLabel(value: TestModifier['type']) {
+  if (value === 'ProgramArgumentFile') {
+    return 'Argument file'
+  } else if (value === 'ProgramArgument') {
+    return 'Argument string'
+  } else if (value === 'ProgramInput') {
+    return 'Program input'
+  } else if (value === 'ExpectedOutput') {
+    return 'Expected output'
+  } else if (value === 'ShouldCrash') {
+    return 'Should crash'
+  } else if (value === 'ShouldFail') {
+    return 'Should fail'
+  } else if (value === 'ShouldSucceed') {
+    return 'Should succeed'
+  }
+  return 'Unknown: ' + value
+}
+
+function crashSignalLabel(value: CrashSignal): string {
+  if (value === 'FloatingPointException') {
+    return 'Floating point exception'
+  } else if (value == 'SegmentationFault') {
+    return 'Segmentation fault'
+  }
+  return 'Unknown: ' + value
+}
+
+function compilerFailReasonLabel(value: CompilerFailReason): string {
+  if (value === 'Parsing') {
+    return 'Parsing'
+  } else if (value == 'SemanticAnalysis') {
+    return 'Semantic analysis'
+  }
+  return 'Unknown: ' + value
+}
 </script>
