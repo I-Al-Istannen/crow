@@ -22,11 +22,11 @@
             <SelectItem value="ExpectedOutput">{{ modifierLabel('ExpectedOutput') }}</SelectItem>
           </SelectGroup>
           <SelectGroup>
-            <SelectItem v-if="showCrash" value="ShouldCrash">
-              {{ modifierLabel('ShouldCrash') }}
-            </SelectItem>
             <SelectItem v-if="showCrash" value="ExitCode">
               {{ modifierLabel('ExitCode') }}
+            </SelectItem>
+            <SelectItem v-if="showCrash" value="ShouldCrash">
+              {{ modifierLabel('ShouldCrash') }}
             </SelectItem>
             <SelectItem v-if="showFail" value="ShouldFail">
               {{ modifierLabel('ShouldFail') }}
