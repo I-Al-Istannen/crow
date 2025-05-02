@@ -103,7 +103,7 @@ impl CrashSignal {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum TestModifier {
-    ExitCode { code: u32 },
+    ExitCode { code: u8 },
     ExpectedOutput { output: String },
     ProgramArgument { arg: String },
     ProgramArgumentFile { contents: String },

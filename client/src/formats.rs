@@ -323,7 +323,7 @@ fn modifier_from_string(type_: &str, value: Option<String>) -> Result<TestModifi
         "ExitCode" => {
             let value = require_value("ExitCode", value)?;
             TestModifier::ExitCode {
-                code: value.parse::<u32>().map_err(|e| {
+                code: value.parse::<u8>().map_err(|e| {
                     MalformedModifierSnafu {
                         message: format!("Could not parse exit code: {e}"),
                     }

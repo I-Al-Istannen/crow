@@ -34,7 +34,7 @@ pub fn judge_output(
 
     for modifier in modifiers {
         let problem = match modifier {
-            TestModifier::ExitCode { code } => judge_program_exit_status(exit_status, *code),
+            TestModifier::ExitCode { code } => judge_program_exit_status(exit_status, *code as u32),
             TestModifier::ShouldCrash { signal } => {
                 judge_program_should_crash(exit_status, *signal)
             }
