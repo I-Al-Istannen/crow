@@ -151,7 +151,7 @@ pub fn command_run_test(args: CliRunTestArgs) -> Result<bool, CrowClientError> {
         },
         tempdir.path(),
         &tempdir.path().join("out.🦆"),
-        "./out.🦆".to_string(), // execute_locally will make this absolute when needed
+        tempdir.path(),
         execute::execute_locally(tempdir.path().to_path_buf()),
     );
 

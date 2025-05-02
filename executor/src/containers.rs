@@ -526,7 +526,7 @@ impl TaskContainer<Built> {
             test,
             &container_root,
             &output_binary_path,
-            "/out.🦆".to_string(),
+            Path::new("/"),
             |path, cmd| {
                 let res = run_test_command(
                     path,

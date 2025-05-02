@@ -68,14 +68,14 @@ pub fn execute_test(
     test: &CompilerTest,
     working_dir: &Path,
     output_binary_host_path: &Path,
-    output_binary_run_path: String,
+    parent_dir_in_container: &Path,
     run_cmd: impl FnMut(&Path, &[String]) -> Result<CommandResult, Box<dyn Error + Sync + Send>>,
 ) -> TestExecutionOutput {
     impl_execute_test(
         test,
         working_dir,
         output_binary_host_path,
-        output_binary_run_path,
+        parent_dir_in_container,
         run_cmd,
     )
     .unwrap_or_else(From::from)
@@ -86,19 +86,29 @@ fn impl_execute_test(
     test: &CompilerTest,
     working_dir: &Path,
     output_binary_host_path: &Path,
-    output_binary_run_path: String,
+    parent_dir_in_container: &Path,
     mut run_cmd: impl FnMut(&Path, &[String]) -> Result<CommandResult, Box<dyn Error + Sync + Send>>,
 ) -> Result<TestExecutionOutput, ExecuteInternalError> {
     let should_run_binary = !test.binary_modifiers.is_empty();
+    let output_binary_run_path = parent_dir_in_container.join(
+        output_binary_host_path
+            .file_name()
+            .expect("Output binary should have a name"),
+    );
 
     // Run the compiler
     let mut compiler_commands = test.compile_command[1..].to_vec();
     compiler_commands.extend(
-        gather_arguments(&test.compiler_modifiers, working_dir).context(CompilerSnafu {
+        gather_arguments(
+            &test.compiler_modifiers,
+            working_dir,
+            parent_dir_in_container,
+        )
+        .context(CompilerSnafu {
             runtime: Duration::ZERO,
         })?,
     );
-    compiler_commands.push(output_binary_run_path.clone());
+    compiler_commands.push(output_binary_run_path.display().to_string());
 
     let start = Instant::now();
     let compiler_result = run_cmd(Path::new(&test.compile_command[0]), &compiler_commands)
@@ -132,10 +142,12 @@ fn impl_execute_test(
     // Run the test
     let mut run_commands = test.binary_arguments.to_vec();
     run_commands.extend(
-        gather_arguments(&test.binary_modifiers, working_dir).context(BinarySnafu {
-            runtime: Duration::ZERO,
-            compiler_output: compiler_output.clone(),
-        })?,
+        gather_arguments(&test.binary_modifiers, working_dir, parent_dir_in_container).context(
+            BinarySnafu {
+                runtime: Duration::ZERO,
+                compiler_output: compiler_output.clone(),
+            },
+        )?,
     );
     let binary_result =
         run_cmd(Path::new(&output_binary_run_path), &run_commands).context(BinarySnafu {
@@ -201,6 +213,7 @@ fn verify_compiler_built_executable(
 fn gather_arguments(
     modifiers: &[TestModifier],
     work_dir: &Path,
+    parent_dir_in_container: &Path,
 ) -> Result<Vec<String>, Box<dyn Error + Sync + Send>> {
     let mut args = Vec::new();
 
@@ -211,7 +224,12 @@ fn gather_arguments(
             TestModifier::ProgramArgumentFile { contents } => {
                 let file_name = format!("file_{file_counter}");
                 std::fs::write(work_dir.join(&file_name), contents)?;
-                args.push(file_name);
+                args.push(
+                    parent_dir_in_container
+                        .join(file_name)
+                        .display()
+                        .to_string(),
+                );
 
                 file_counter += 1;
             }
