@@ -5,6 +5,8 @@
     naersk.url = "github:nix-community/naersk";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     naersk.inputs.nixpkgs.follows = "nixpkgs";
+    fenix.url = "github:nix-community/fenix";
+    fenix.inputs.nixpkgs.follows = "nixpkgs";
     gitignore.url = "github:hercules-ci/gitignore.nix";
     gitignore.inputs.nixpkgs.follows = "nixpkgs";
   };
@@ -15,6 +17,7 @@
       gitignore,
       nixpkgs,
       naersk,
+      fenix,
     }:
     let
       forAllSystems = nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed;
@@ -48,6 +51,30 @@
               pkgs.pkg-config
             ];
           };
+          toolchain =
+            with fenix.packages.${system};
+            combine [
+              stable.rustc
+              stable.cargo
+              targets.x86_64-unknown-linux-musl.stable.rust-std
+            ];
+
+          naersk-static = naersk.lib.${system}.override {
+            cargo = toolchain;
+            rustc = toolchain;
+          };
+          executor-naersk-static = naersk-static.buildPackage {
+            inherit (backend-naersk) version src;
+            CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
+            CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
+            cargoBuildOptions =
+              x:
+              x
+              ++ [
+                "-p"
+                "executor"
+              ];
+          };
         in
         rec {
           backend = pkgs.runCommand "backend-web" { } ''
@@ -57,6 +84,10 @@
           executor = pkgs.runCommand "executor" { } ''
             mkdir -p $out/bin
             cp ${backend-naersk}/bin/executor $out/bin
+          '';
+          executor-static = pkgs.runCommand "executor" { } ''
+            mkdir -p $out/bin
+            cp ${executor-naersk-static}/bin/executor $out/bin
           '';
           client = pkgs.runCommand "client" { } ''
             mkdir -p $out/bin

@@ -17,7 +17,7 @@ tracing = { version = "0.1.41", features = ["log"] }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 uuid = { version = "1.11.0", features = ["v4"] }
 shared = { path = "../shared" }
-reqwest = { version = "0.12.9", features = ["blocking", "json"] }
+reqwest = { version = "0.12.9", features = ["blocking", "json", "rustls-tls"], default-features = false }
 ctrlc = { version = "3.4.5", features = ["termination"] }
 users = "0.11.0"
 
