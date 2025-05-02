@@ -6,7 +6,7 @@ use snafu::{location, IntoError, Location, NoneError, ResultExt, Snafu};
 use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
-use tracing::{debug, info, warn};
+use tracing::{info, warn};
 
 #[derive(Debug, Snafu)]
 pub enum DockerError {
@@ -192,7 +192,7 @@ fn export_image_cached(
         })?;
 
     if cached_path.exists() {
-        debug!(
+        info!(
             image_name = %image_name,
             image_id = %image_id,
             cache_path = %cached_path.display(),
@@ -202,7 +202,7 @@ fn export_image_cached(
 
         return Ok(());
     }
-    debug!(
+    info!(
         image_name = %image_name,
         image_id = %image_id,
         cache_path = %cached_path.display(),
