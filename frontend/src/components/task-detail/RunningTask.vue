@@ -19,8 +19,14 @@
               animatedWaitingDots
             }}</span>
           </li>
-          <li v-if="buildStatus && buildStatus !== 'Started'">Build completed</li>
-          <li v-if="testingStarted">Testing has started</li>
+          <li v-if="buildStatus && buildStatus !== 'Started'">
+            <!-- Space for prettier to wrap and not un-indent this once -->
+            Build completed
+          </li>
+          <li v-if="testingStarted">
+            <!-- Space for prettier to wrap and not un-indent this once -->
+            Testing has started
+          </li>
         </ol>
       </CardContent>
     </Card>
