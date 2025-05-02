@@ -25,8 +25,15 @@
           subject="Execution"
         />
         <div v-if="!(hideTestContent === true)">
-          <span class="font-semibold">Test content</span>
-          <TestDetail class="mt-2" :test-id="test.testId" />
+          <span class="font-semibold">Executed Test</span>
+          <Accordion type="multiple" class="ml-2">
+            <AccordionItem value="test-details">
+              <AccordionTrigger>Expand to view full test</AccordionTrigger>
+              <AccordionContent>
+                <TestDetail :test-id="test.testId" />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </div>
     </DialogContent>
@@ -34,6 +41,12 @@
 </template>
 
 <script setup lang="ts">
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
 import {
   Dialog,
   DialogContent,
