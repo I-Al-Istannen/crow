@@ -22,7 +22,12 @@
     </CardContent>
   </Card>
 
-  <FinishedTestDetailDialog :test="clickedTest" of-whom="yours" v-model:dialog-open="dialogOpen" />
+  <FinishedTestDetailDialog
+    :test="clickedTest"
+    of-whom="yours"
+    v-model:dialog-open="dialogOpen"
+    :outdated="outdatedTests.includes(clickedTest?.testId || '')"
+  />
   <BuildOutputOverview :task-or-output="task" v-if="task" />
 
   <Card v-if="tests && task">

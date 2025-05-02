@@ -25,12 +25,16 @@
           subject="Execution"
         />
         <div v-if="!(hideTestContent === true)">
-          <span class="font-semibold">Executed Test</span>
+          <span class="font-semibold"> Executed Test </span>
           <Accordion type="multiple" class="ml-2">
             <AccordionItem value="test-details">
               <AccordionTrigger>Expand to view full test</AccordionTrigger>
               <AccordionContent>
-                <TestDetail :test-id="test.testId" />
+                <TestDetail v-if="!outdated" :test-id="test.testId" />
+                <span v-else class="ml-1 text-muted-foreground">
+                  This test has since been updated and no longer reflects what was ran. Therefore, I
+                  can't show you the test details. I am sorry.
+                </span>
               </AccordionContent>
             </AccordionItem>
           </Accordion>
@@ -66,6 +70,7 @@ const props = defineProps<{
   test?: FinishedTest
   ofWhom: 'reference' | 'yours'
   hideTestContent?: boolean
+  outdated?: boolean
 }>()
 
 const { test, ofWhom, hideTestContent } = toRefs(props)
