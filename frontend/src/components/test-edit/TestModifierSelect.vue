@@ -47,9 +47,12 @@
     <SlotOrReadonly :readonly="readonly || false" :label="intArg + ''" v-if="hasIntArg">
       <Input
         type="number"
+        min="0"
+        max="255"
         :model-value="intArg"
         @update:model-value="update(modifierType, stringArg, $event as number, crashArg, failArg)"
         class="py-0 h-7 min-w-1"
+        :class="[intArg > 255 || intArg < 0 ? 'ring-1 !ring-destructive' : '']"
       />
     </SlotOrReadonly>
     <Popover v-if="hasLongStringArg">
