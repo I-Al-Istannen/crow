@@ -229,6 +229,7 @@ export const CompilerFailReasonSchema = z.union([
 ])
 
 export const TestModifierSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('ExitCode'), code: z.number() }),
   z.object({ type: z.literal('ExpectedOutput'), output: z.string() }),
   z.object({ type: z.literal('ProgramArgument'), arg: z.string() }),
   z.object({ type: z.literal('ProgramArgumentFile'), contents: z.string() }),

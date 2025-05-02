@@ -5,7 +5,7 @@
       :readonly="readonly || false"
       :label="modifierLabel(modifierType)"
       :model-value="modifierType"
-      @update:model-value="update($event as string, stringArg, crashArg, failArg)"
+      @update:model-value="update($event as string, stringArg, intArg, crashArg, failArg)"
       :class="[readonly ? 'ml-2' : '']"
     >
       <SelectTrigger class="max-w-[20ch] py-0 h-7 flex-shrink-1 md:flex-shrink-0 min-w-1">
@@ -26,6 +26,9 @@
           <SelectItem v-if="showCrash" value="ShouldCrash">
             {{ modifierLabel('ShouldCrash') }}
           </SelectItem>
+          <SelectItem v-if="showCrash" value="ExitCode">
+            {{ modifierLabel('ExitCode') }}
+          </SelectItem>
           <SelectItem v-if="showFail" value="ShouldFail">
             {{ modifierLabel('ShouldFail') }}
           </SelectItem>
@@ -37,9 +40,18 @@
       type="text"
       :placeholder="argPlaceholderText"
       :model-value="stringArg"
-      @update:model-value="update(modifierType, $event as string, crashArg, failArg)"
+      @update:model-value="update(modifierType, $event as string, intArg, crashArg, failArg)"
       v-if="hasShortStringArg"
       class="py-0 h-7 min-w-1 text-ellipsis"
+    />
+    <InputOrReadonly
+      type="number"
+      :model-value="intArg"
+      :label="intArg + ''"
+      :readonly="readonly || false"
+      @update:model-value="update(modifierType, stringArg, $event as number, crashArg, failArg)"
+      v-if="hasIntArg"
+      class="py-0 h-7 min-w-1"
     />
     <Popover v-if="hasLongStringArg">
       <PopoverTrigger class="h-7 w-full" as-child>
@@ -53,7 +65,7 @@
       <PopoverContent class="w-[90dvw] sm:w-[70dvw] max-w-[120ch]">
         <Textarea
           :model-value="stringArg"
-          @update:model-value="update(modifierType, $event as string, crashArg, failArg)"
+          @update:model-value="update(modifierType, $event as string, intArg, crashArg, failArg)"
           class="font-mono whitespace-pre overflow-scroll max-h-[100dvh]"
           rows="10"
           :placeholder="argPlaceholderText"
@@ -66,7 +78,7 @@
       :readonly="readonly || false"
       :model-value="crashArg"
       :label="crashSignalLabel(crashArg)"
-      @update:model-value="update(modifierType, stringArg, $event as CrashSignal, failArg)"
+      @update:model-value="update(modifierType, stringArg, intArg, $event as CrashSignal, failArg)"
       required
     >
       <SelectTrigger class="py-0 h-7 min-w-1">
@@ -88,7 +100,9 @@
       :model-value="failArg"
       :readonly="readonly || false"
       :label="compilerFailReasonLabel(failArg)"
-      @update:model-value="update(modifierType, stringArg, crashArg, $event as CompilerFailReason)"
+      @update:model-value="
+        update(modifierType, stringArg, intArg, crashArg, $event as CompilerFailReason)
+      "
       required
     >
       <SelectTrigger class="py-0 h-7 min-w-1">
@@ -119,6 +133,7 @@ import {
 import { computed, toRefs } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import InputOrReadonly from '@/components/InputOrReadonly.vue'
 import { LucideGripVertical } from 'lucide-vue-next'
 import { PopoverArrow } from 'reka-ui'
 import SelectOrReadonly from '@/components/SelectOrReadonly.vue'
@@ -154,6 +169,14 @@ const stringArg = computed(() => {
       return ''
   }
 })
+const intArg = computed(() => {
+  switch (modifier.value.type) {
+    case 'ExitCode':
+      return modifier.value.code
+    default:
+      return 0
+  }
+})
 const crashArg = computed(() => {
   switch (modifier.value.type) {
     case 'ShouldCrash':
@@ -177,12 +200,14 @@ const hasLongStringArg = computed(
     modifier.value.type === 'ProgramInput' ||
     modifier.value.type === 'ProgramArgumentFile',
 )
+const hasIntArg = computed(() => modifier.value.type === 'ExitCode')
 const hasCrashArg = computed(() => modifier.value.type === 'ShouldCrash')
 const hasFailArg = computed(() => modifier.value.type === 'ShouldFail')
 
 function update(
   type: string,
   stringVal: string,
+  intVal: number,
   crashVal: CrashSignal,
   failVal: CompilerFailReason,
 ) {
@@ -198,6 +223,9 @@ function update(
       break
     case 'ProgramInput':
       modifier.value = { type, input: stringVal }
+      break
+    case 'ExitCode':
+      modifier.value = { type, code: intVal }
       break
     case 'ShouldCrash':
       modifier.value = { type, signal: crashVal }
@@ -221,6 +249,8 @@ const argPlaceholderText = computed(() => {
       return 'Input...'
     case 'ExpectedOutput':
       return 'Output...'
+    case 'ExitCode':
+      return 'Exit code...'
     default:
       return ''
   }
@@ -237,6 +267,8 @@ function modifierLabel(value: TestModifier['type']) {
     return 'Expected output'
   } else if (value === 'ShouldCrash') {
     return 'Should crash'
+  } else if (value === 'ExitCode') {
+    return 'Exit code'
   } else if (value === 'ShouldFail') {
     return 'Should fail'
   } else if (value === 'ShouldSucceed') {

@@ -34,6 +34,7 @@ pub fn judge_output(
 
     for modifier in modifiers {
         let problem = match modifier {
+            TestModifier::ExitCode { code } => judge_program_exit_status(exit_status, *code),
             TestModifier::ShouldCrash { signal } => {
                 judge_program_should_crash(exit_status, *signal)
             }
@@ -113,6 +114,28 @@ fn judge_program_output(
         message: stderr_result,
         modifier_name: "ExpectedOutput".to_string(),
     })
+}
+
+fn judge_program_exit_status(
+    exit_status: CrowExitStatus,
+    expected_code: u32,
+) -> Option<JudgeProblem> {
+    match exit_status.code() {
+        None => Some(JudgeProblem {
+            message: "The program had no exit status".to_string(),
+            modifier_name: "ExitCode".to_string(),
+        }),
+        Some(val) => {
+            if val != expected_code as i32 {
+                Some(JudgeProblem {
+                    message: format!("Program exited with {val}, expected was {expected_code}."),
+                    modifier_name: "ExitCode".to_string(),
+                })
+            } else {
+                None
+            }
+        }
+    }
 }
 
 fn judge_program_should_crash(

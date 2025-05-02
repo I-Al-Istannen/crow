@@ -285,6 +285,7 @@ fn modifier_to_markdown(modifier: &TestModifier) -> Vec<Node> {
 
 fn modifier_arg_to_string(modifier: &TestModifier) -> Option<String> {
     match modifier {
+        TestModifier::ExitCode { code } => Some(code.to_string()),
         TestModifier::ExpectedOutput { output } => Some(output.to_string()),
         TestModifier::ProgramArgument { arg } => Some(arg.to_string()),
         TestModifier::ProgramArgumentFile { contents } => Some(contents.to_string()),
@@ -319,6 +320,17 @@ fn write_heading_value(heading: &str, depth: u8, value: Option<String>) -> Vec<N
 
 fn modifier_from_string(type_: &str, value: Option<String>) -> Result<TestModifier, FormatError> {
     let res = match type_ {
+        "ExitCode" => {
+            let value = require_value("ExitCode", value)?;
+            TestModifier::ExitCode {
+                code: value.parse::<u32>().map_err(|e| {
+                    MalformedModifierSnafu {
+                        message: format!("Could not parse exit code: {e}"),
+                    }
+                    .into_error(NoneError)
+                })?,
+            }
+        }
         "ExpectedOutput" => TestModifier::ExpectedOutput {
             output: require_value("ExpectedOutput", value)?,
         },
@@ -388,6 +400,8 @@ fn parse_fail_reason(val: &str) -> Result<CompilerFailReason, FormatError> {
 }
 
 fn modifier_requires_argument(modifier: &str) -> bool {
-    let no_arg = matches!(modifier, "ShouldSucceed");
-    !no_arg
+    matches!(
+        modifier,
+        "ExitCode" | "ExpectedOutput" | "ProgramArgument" | "ProgramArgumentFile" | "ProgramInput"
+    )
 }
