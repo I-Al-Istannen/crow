@@ -1,41 +1,41 @@
 <template>
   <div class="flex items-center gap-1 p-1 rounded-md justify-start">
     <LucideGripVertical v-if="!readonly" class="h-5 flex-shrink-0 drag-handle cursor-grab" />
-    <SelectOrReadonly
-      :readonly="readonly || false"
-      :label="modifierLabel(modifierType)"
-      :model-value="modifierType"
-      @update:model-value="update($event as string, stringArg, intArg, crashArg, failArg)"
-      :class="[readonly ? 'ml-2' : '']"
-    >
-      <SelectTrigger class="max-w-[20ch] py-0 h-7 flex-shrink-1 md:flex-shrink-0 min-w-1">
-        <SelectValue placeholder="Select a modifier" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          <SelectItem value="ProgramArgumentFile">
-            {{ modifierLabel('ProgramArgumentFile') }}
-          </SelectItem>
-          <SelectItem value="ProgramArgument">{{ modifierLabel('ProgramArgument') }}</SelectItem>
-        </SelectGroup>
-        <SelectGroup>
-          <SelectItem value="ProgramInput">{{ modifierLabel('ProgramInput') }}</SelectItem>
-          <SelectItem value="ExpectedOutput">{{ modifierLabel('ExpectedOutput') }}</SelectItem>
-        </SelectGroup>
-        <SelectGroup>
-          <SelectItem v-if="showCrash" value="ShouldCrash">
-            {{ modifierLabel('ShouldCrash') }}
-          </SelectItem>
-          <SelectItem v-if="showCrash" value="ExitCode">
-            {{ modifierLabel('ExitCode') }}
-          </SelectItem>
-          <SelectItem v-if="showFail" value="ShouldFail">
-            {{ modifierLabel('ShouldFail') }}
-          </SelectItem>
-          <SelectItem value="ShouldSucceed">{{ modifierLabel('ShouldSucceed') }}</SelectItem>
-        </SelectGroup>
-      </SelectContent>
-    </SelectOrReadonly>
+    <SlotOrReadonly :readonly="readonly || false" :label="modifierLabel(modifierType)">
+      <Select
+        :model-value="modifierType"
+        @update:model-value="update($event as string, stringArg, intArg, crashArg, failArg)"
+        :class="[readonly ? 'ml-2' : '']"
+      >
+        <SelectTrigger class="max-w-[20ch] py-0 h-7 flex-shrink-1 md:flex-shrink-0 min-w-1">
+          <SelectValue placeholder="Select a modifier" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem value="ProgramArgumentFile">
+              {{ modifierLabel('ProgramArgumentFile') }}
+            </SelectItem>
+            <SelectItem value="ProgramArgument">{{ modifierLabel('ProgramArgument') }}</SelectItem>
+          </SelectGroup>
+          <SelectGroup>
+            <SelectItem value="ProgramInput">{{ modifierLabel('ProgramInput') }}</SelectItem>
+            <SelectItem value="ExpectedOutput">{{ modifierLabel('ExpectedOutput') }}</SelectItem>
+          </SelectGroup>
+          <SelectGroup>
+            <SelectItem v-if="showCrash" value="ShouldCrash">
+              {{ modifierLabel('ShouldCrash') }}
+            </SelectItem>
+            <SelectItem v-if="showCrash" value="ExitCode">
+              {{ modifierLabel('ExitCode') }}
+            </SelectItem>
+            <SelectItem v-if="showFail" value="ShouldFail">
+              {{ modifierLabel('ShouldFail') }}
+            </SelectItem>
+            <SelectItem value="ShouldSucceed">{{ modifierLabel('ShouldSucceed') }}</SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    </SlotOrReadonly>
     <Input
       type="text"
       :placeholder="argPlaceholderText"
@@ -44,15 +44,14 @@
       v-if="hasShortStringArg"
       class="py-0 h-7 min-w-1 text-ellipsis"
     />
-    <InputOrReadonly
-      type="number"
-      :model-value="intArg"
-      :label="intArg + ''"
-      :readonly="readonly || false"
-      @update:model-value="update(modifierType, stringArg, $event as number, crashArg, failArg)"
-      v-if="hasIntArg"
-      class="py-0 h-7 min-w-1"
-    />
+    <SlotOrReadonly :readonly="readonly || false" :label="intArg + ''" v-if="hasIntArg">
+      <Input
+        type="number"
+        :model-value="intArg"
+        @update:model-value="update(modifierType, stringArg, $event as number, crashArg, failArg)"
+        class="py-0 h-7 min-w-1"
+      />
+    </SlotOrReadonly>
     <Popover v-if="hasLongStringArg">
       <PopoverTrigger class="h-7 w-full" as-child>
         <Button class="bg-transparent min-w-1 justify-start" variant="outline">
@@ -73,50 +72,58 @@
         <PopoverArrow class="fill-white stroke-gray-200" />
       </PopoverContent>
     </Popover>
-    <SelectOrReadonly
-      v-if="hasCrashArg"
+    <SlotOrReadonly
       :readonly="readonly || false"
-      :model-value="crashArg"
       :label="crashSignalLabel(crashArg)"
-      @update:model-value="update(modifierType, stringArg, intArg, $event as CrashSignal, failArg)"
-      required
+      v-if="hasCrashArg"
     >
-      <SelectTrigger class="py-0 h-7 min-w-1">
-        <SelectValue placeholder="Select a crash argument" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          <SelectItem value="FloatingPointException">
-            {{ crashSignalLabel('FloatingPointException') }}
-          </SelectItem>
-          <SelectItem value="SegmentationFault">
-            {{ crashSignalLabel('SegmentationFault') }}
-          </SelectItem>
-        </SelectGroup>
-      </SelectContent>
-    </SelectOrReadonly>
-    <SelectOrReadonly
-      v-if="hasFailArg"
-      :model-value="failArg"
+      <Select
+        :model-value="crashArg"
+        @update:model-value="
+          update(modifierType, stringArg, intArg, $event as CrashSignal, failArg)
+        "
+        required
+      >
+        <SelectTrigger class="py-0 h-7 min-w-1">
+          <SelectValue placeholder="Select a crash argument" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem value="FloatingPointException">
+              {{ crashSignalLabel('FloatingPointException') }}
+            </SelectItem>
+            <SelectItem value="SegmentationFault">
+              {{ crashSignalLabel('SegmentationFault') }}
+            </SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    </SlotOrReadonly>
+    <SlotOrReadonly
       :readonly="readonly || false"
       :label="compilerFailReasonLabel(failArg)"
-      @update:model-value="
-        update(modifierType, stringArg, intArg, crashArg, $event as CompilerFailReason)
-      "
-      required
+      v-if="hasFailArg"
     >
-      <SelectTrigger class="py-0 h-7 min-w-1">
-        <SelectValue placeholder="Select a failure reason" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectGroup>
-          <SelectItem value="Parsing">{{ compilerFailReasonLabel('Parsing') }}</SelectItem>
-          <SelectItem value="SemanticAnalysis">
-            {{ compilerFailReasonLabel('SemanticAnalysis') }}
-          </SelectItem>
-        </SelectGroup>
-      </SelectContent>
-    </SelectOrReadonly>
+      <Select
+        :model-value="failArg"
+        @update:model-value="
+          update(modifierType, stringArg, intArg, crashArg, $event as CompilerFailReason)
+        "
+        required
+      >
+        <SelectTrigger class="py-0 h-7 min-w-1">
+          <SelectValue placeholder="Select a failure reason" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectItem value="Parsing">{{ compilerFailReasonLabel('Parsing') }}</SelectItem>
+            <SelectItem value="SemanticAnalysis">
+              {{ compilerFailReasonLabel('SemanticAnalysis') }}
+            </SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    </SlotOrReadonly>
   </div>
 </template>
 
@@ -124,6 +131,7 @@
 import type { CompilerFailReason, CrashSignal, TestModifier } from '@/types.ts'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
+  Select,
   SelectContent,
   SelectGroup,
   SelectItem,
@@ -133,10 +141,9 @@ import {
 import { computed, toRefs } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import InputOrReadonly from '@/components/InputOrReadonly.vue'
 import { LucideGripVertical } from 'lucide-vue-next'
 import { PopoverArrow } from 'reka-ui'
-import SelectOrReadonly from '@/components/SelectOrReadonly.vue'
+import SlotOrReadonly from '@/components/SlotOrReadonly.vue'
 import { Textarea } from '@/components/ui/textarea'
 
 const modifier = defineModel<TestModifier>('modifier', { required: true })
