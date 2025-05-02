@@ -400,8 +400,5 @@ fn parse_fail_reason(val: &str) -> Result<CompilerFailReason, FormatError> {
 }
 
 fn modifier_requires_argument(modifier: &str) -> bool {
-    matches!(
-        modifier,
-        "ExitCode" | "ExpectedOutput" | "ProgramArgument" | "ProgramArgumentFile" | "ProgramInput"
-    )
+    modifier != "ShouldSucceed"
 }
