@@ -24,6 +24,10 @@
           :of-whom="ofWhom"
           subject="Execution"
         />
+        <div v-if="!(hideTestContent === true)">
+          <span class="font-semibold">Test content</span>
+          <TestDetail class="mt-2" :test-id="test.testId" />
+        </div>
       </div>
     </DialogContent>
   </Dialog>
@@ -40,6 +44,7 @@ import {
 import { type FinishedTest, toBinaryOutput, toCompilerOutput, toExecutionStatus } from '@/types.ts'
 import { computed, toRefs } from 'vue'
 import ProcessOutputDisplay from '@/components/test-view/ProcessOutputDisplay.vue'
+import TestDetail from '@/components/test-view/TestDetail.vue'
 import { statusColor } from '@/lib/utils.ts'
 
 const dialogOpen = defineModel<boolean>('dialogOpen')
@@ -47,9 +52,10 @@ const dialogOpen = defineModel<boolean>('dialogOpen')
 const props = defineProps<{
   test?: FinishedTest
   ofWhom: 'reference' | 'yours'
+  hideTestContent?: boolean
 }>()
 
-const { test, ofWhom } = toRefs(props)
+const { test, ofWhom, hideTestContent } = toRefs(props)
 
 const compilerOutput = computed(() =>
   test.value ? toCompilerOutput(test.value.output) : undefined,

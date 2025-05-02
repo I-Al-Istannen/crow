@@ -89,6 +89,7 @@
                   :test="clickedTest"
                   of-whom="reference"
                   v-model:dialog-open="failedTastingDialogOpen"
+                  hide-test-content
                 />
                 <FinishedTestcaseSummaryIcon
                   v-if="failedTestTasting !== null"
