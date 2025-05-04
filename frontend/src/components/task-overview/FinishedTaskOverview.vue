@@ -22,7 +22,9 @@
         </div>
         <TaskQuickOverview class="text-sm" :task="task" />
       </div>
-      <div class="text-sm text-muted-foreground flex flex-col justify-center items-end">
+      <div
+        class="text-sm text-muted-foreground flex flex-col justify-center items-end self-stretch"
+      >
         <span>
           {{ formatTime(task.info.start) }}
         </span>
