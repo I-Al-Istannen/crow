@@ -19,7 +19,7 @@
         />
         <div v-if="queueResponse">
           <TooltipProvider>
-            <div class="flex gap-2 flex-wrap">
+            <div class="flex gap-2 flex-wrap mb-4">
               <div
                 class="p-2 leading-none tracking-tight flex flex-row gap-2 items-center"
                 :class="['rounded-xl', 'border', 'bg-card', 'text-card-foreground']"
@@ -45,7 +45,7 @@
                     </span>
                     <span class="sm:ml-4 text-sm text-muted-foreground">
                       pinged
-                      <span class="min-w-[3ch] inline-block">
+                      <span class="min-w-[3ch] inline-block text-end">
                         {{ formatApproxDuration(currentTime, runner.lastSeen.getTime()) }}
                       </span>
                       ago
@@ -62,7 +62,11 @@
               </div>
             </div>
           </TooltipProvider>
-          <QueuedTasksOverview :queue="queueResponse.queue" :runners="queueResponse.runners" />
+          <QueuedTasksOverview
+            :queue="queueResponse.queue"
+            :runners="queueResponse.runners"
+            :current-time="currentTime"
+          />
         </div>
       </CardContent>
     </Card>

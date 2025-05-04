@@ -61,17 +61,15 @@ import {
 import { formatApproxDuration, formatTime } from '@/lib/utils.ts'
 import { toRefs } from 'vue'
 import { useRouter } from 'vue-router'
-import { useTimestamp } from '@vueuse/core'
 
 const props = defineProps<{
   queue: WorkItem[]
   runners: Runner[]
+  currentTime: number
 }>()
-const { queue, runners } = toRefs(props)
+const { queue, runners, currentTime } = toRefs(props)
 
 const router = useRouter()
-
-const currentTime = useTimestamp({ interval: 2500 })
 
 function getRunner(runners: Runner[], taskId: TaskId) {
   return runners.find((it) => it.workingOn?.type === 'Testing' && it.workingOn?.id === taskId)
