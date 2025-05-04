@@ -27,7 +27,7 @@ use axum_prometheus::{GenericMetricLayer, Handle, PrometheusMetricLayerBuilder};
 use clap::builder::styling::AnsiColor;
 use clap::builder::Styles;
 use clap::Parser;
-use snafu::{location, Report};
+use snafu::{location, Report, ResultExt, Whatever};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -85,6 +85,16 @@ async fn main() {
         )
         .init();
 
+    if let Err(e) = main_impl().await {
+        error!(
+            error = %Report::from_error(e),
+            "Error in main"
+        );
+        std::process::exit(1);
+    }
+}
+
+async fn main_impl() -> Result<(), Whatever> {
     let args = Args::parse();
     let config_file = args.config_file;
     if !config_file.exists() || !config_file.is_file() {
@@ -93,12 +103,16 @@ async fn main() {
     }
 
     let config: Config =
-        toml::from_str(&fs::read_to_string(config_file).expect("File not readable"))
-            .expect("Config file is valid");
+        toml::from_str(&fs::read_to_string(config_file).whatever_context("File not readable")?)
+            .whatever_context("Invalid config")?;
 
-    let db = Database::new(&config.database_path).await.unwrap();
+    let db = Database::new(&config.database_path)
+        .await
+        .whatever_context("Database error")?;
 
-    db.sync_teams(&config.teams).await.unwrap();
+    db.sync_teams(&config.teams)
+        .await
+        .whatever_context("Error syncing teams")?;
     let team_mapping: HashMap<UserId, TeamId> = config
         .teams
         .into_iter()
@@ -118,7 +132,9 @@ async fn main() {
         config.test,
         team_mapping,
         LocalRepos::new(local_repo_path, config.ssh),
-        Oidc::build_new(config.oidc.clone()).await.unwrap(),
+        Oidc::build_new(config.oidc.clone())
+            .await
+            .whatever_context("OIDC error")?,
     );
 
     if let Some(github_config) = config.github.clone() {
@@ -141,7 +157,10 @@ async fn main() {
     let main = main_server(state, prometheus_layer);
     let server = metrics_server(metric_handle);
 
-    tokio::join!(main, server);
+    let (a, b) = tokio::join!(main, server);
+
+    a?;
+    b
 }
 
 #[instrument(skip_all)]
@@ -149,7 +168,7 @@ async fn main() {
 async fn main_server(
     state: AppState,
     prometheus_layer: GenericMetricLayer<'static, PrometheusHandle, Handle>,
-) {
+) -> Result<(), Whatever> {
     let authed_admin = middleware::from_fn_with_state(
         state.clone(),
         |claims: Claims, request: Request, next: Next| async move {
@@ -246,7 +265,9 @@ async fn main_server(
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
+        .await
+        .whatever_context("Failed to bind to port 3000")?;
     tracing::info!("listening on {}", listener.local_addr().unwrap());
 
     axum::serve(
@@ -255,12 +276,14 @@ async fn main_server(
     )
     .with_graceful_shutdown(async { graceful_shutdown().await }.instrument(Span::current()))
     .await
-    .unwrap()
+    .whatever_context("Failed to start server")
 }
 
 #[instrument(skip_all)]
-async fn metrics_server(metric_handle: PrometheusHandle) {
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:4317").await.unwrap();
+async fn metrics_server(metric_handle: PrometheusHandle) -> Result<(), Whatever> {
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:4317")
+        .await
+        .whatever_context("Failed to bind to port 4317")?;
     tracing::info!("listening on {}", listener.local_addr().unwrap());
 
     axum::serve(
@@ -271,7 +294,7 @@ async fn metrics_server(metric_handle: PrometheusHandle) {
     )
     .with_graceful_shutdown(async { graceful_shutdown().await }.instrument(Span::current()))
     .await
-    .unwrap()
+    .whatever_context("Failed to start metrics server")
 }
 
 async fn graceful_shutdown() {
