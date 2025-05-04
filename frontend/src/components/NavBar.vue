@@ -2,10 +2,12 @@
   <nav class="px-2 py-3 border-b border-border bg-background">
     <div class="container flex items-center justify-between max-w-7xl max-sm:px-0">
       <div class="flex md:space-x-6 flex-grow">
-        <div class="flex items-center justify-center flex-shrink-0">
-          <img src="/src/crow1337.svg" alt="logo" class="h-[24px] flex-shrink-0" />
-          <span class="ml-2 font-semibold max-md:hidden">crow</span>
-        </div>
+        <router-link :to="{ name: 'home' }">
+          <div class="flex items-center justify-center flex-shrink-0">
+            <img src="/src/crow1337.svg" alt="logo" class="h-[24px] flex-shrink-0" />
+            <span class="ml-2 font-semibold max-md:hidden">crow</span>
+          </div>
+        </router-link>
 
         <NavigationMenu v-if="accountReady" class="w-full max-sm:max-w-full">
           <NavigationMenuList class="w-full">
