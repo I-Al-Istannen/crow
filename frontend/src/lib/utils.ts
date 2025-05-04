@@ -49,6 +49,25 @@ export function formatApproxDuration(currentTime: number, insertTime: number) {
   return formatDuration(Math.floor(delta / 1000) * 1000)
 }
 
+export function formatBusyDuration(currentTime: number, insertTime: number) {
+  const millis = Math.max(currentTime - insertTime, 0)
+  if (millis < 10 * 1000) {
+    return `${Math.floor(millis / 1000)}s`
+  }
+
+  const seconds = Math.floor(millis / 1000)
+  if (seconds < 60) {
+    return `> ${Math.floor(seconds / 10) * 10}s`
+  }
+
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) {
+    return `> ${Math.floor(minutes)}m`
+  }
+
+  return `Since ${new Date(insertTime).toLocaleString()}`
+}
+
 export function statusColor(
   status: 'Success' | 'Failure' | 'Error' | 'Timeout' | 'Aborted' | 'Queued' | 'Started',
   prefix: string,

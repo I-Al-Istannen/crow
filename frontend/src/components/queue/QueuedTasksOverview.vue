@@ -34,7 +34,7 @@
           {{ formatTime(item.insertTime) }}
         </TableCell>
         <TableCell>
-          {{ formatApproxDuration(currentTime, item.insertTime.getTime()) }}
+          {{ formatBusyDuration(currentTime, item.insertTime.getTime()) }}
         </TableCell>
         <TableCell>
           <span v-if="getRunner(runners, item.id)">{{ getRunner(runners, item.id)!.id }}</span>
@@ -58,7 +58,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { formatApproxDuration, formatTime } from '@/lib/utils.ts'
+import { formatBusyDuration, formatTime } from '@/lib/utils.ts'
 import { toRefs } from 'vue'
 import { useRouter } from 'vue-router'
 
