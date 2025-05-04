@@ -11,18 +11,24 @@
           <SelectValue placeholder="Select a modifier" />
         </SelectTrigger>
         <SelectContent>
-          <SelectGroup>
-            <SelectItem value="ProgramArgumentFile">
+          <SelectGroup v-if="showArgFile || showArgString">
+            <SelectItem value="ProgramArgumentFile" v-if="showArgFile">
               {{ modifierLabel('ProgramArgumentFile') }}
             </SelectItem>
-            <SelectItem value="ProgramArgument">{{ modifierLabel('ProgramArgument') }}</SelectItem>
+            <SelectItem value="ProgramArgument" v-if="showArgString">
+              {{ modifierLabel('ProgramArgument') }}
+            </SelectItem>
+          </SelectGroup>
+          <SelectGroup v-if="showInput || showOutput">
+            <SelectItem value="ProgramInput" v-if="showInput">
+              {{ modifierLabel('ProgramInput') }}
+            </SelectItem>
+            <SelectItem value="ExpectedOutput" v-if="showOutput">
+              {{ modifierLabel('ExpectedOutput') }}
+            </SelectItem>
           </SelectGroup>
           <SelectGroup>
-            <SelectItem value="ProgramInput">{{ modifierLabel('ProgramInput') }}</SelectItem>
-            <SelectItem value="ExpectedOutput">{{ modifierLabel('ExpectedOutput') }}</SelectItem>
-          </SelectGroup>
-          <SelectGroup>
-            <SelectItem v-if="showCrash" value="ExitCode">
+            <SelectItem v-if="showExit" value="ExitCode">
               {{ modifierLabel('ExitCode') }}
             </SelectItem>
             <SelectItem v-if="showCrash" value="ShouldCrash">
@@ -147,7 +153,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LucideGripVertical } from 'lucide-vue-next'
 import { PopoverArrow } from 'reka-ui'
-import SlotOrReadonly from '@/components/SlotOrReadonly.vue'
+import SlotOrReadonly from '@/components/test-edit/SlotOrReadonly.vue'
 import { Textarea } from '@/components/ui/textarea'
 
 const modifier = defineModel<TestModifier>('modifier', { required: true })
@@ -163,6 +169,21 @@ const showFail = computed(() => {
 })
 const showCrash = computed(() => {
   return modifierTarget.value === 'binary' || modifier.value.type === 'ShouldCrash'
+})
+const showArgString = computed(() => {
+  return modifierTarget.value === 'compiler' || modifier.value.type === 'ProgramArgument'
+})
+const showArgFile = computed(() => {
+  return modifierTarget.value === 'compiler' || modifier.value.type === 'ProgramArgumentFile'
+})
+const showInput = computed(() => {
+  return modifierTarget.value === 'binary' || modifier.value.type === 'ProgramInput'
+})
+const showOutput = computed(() => {
+  return modifierTarget.value === 'binary' || modifier.value.type === 'ExpectedOutput'
+})
+const showExit = computed(() => {
+  return modifierTarget.value === 'binary' || modifier.value.type === 'ExitCode'
 })
 
 const modifierType = computed(() => modifier.value?.type ?? 'ShouldSucceed')
