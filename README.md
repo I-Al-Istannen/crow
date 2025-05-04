@@ -49,9 +49,13 @@ We provide a Nix flake that builds every individual component, as well as docker
 
 **Build** binaries
   - `nix build github:I-Al-Istannen/crow#backend`
+    - Or `cargo build --release --bin backend-web`
   - `nix build github:I-Al-Istannen/crow#frontend`
   - `nix build github:I-Al-Istannen/crow#executor`
+    - Or `cargo build --release --bin executor`
+  - `nix build github:I-Al-Istannen/crow#frontend`
   - `nix build github:I-Al-Istannen/crow#client`
+    - Or `cargo build --release --bin client`
 
 **Execute**
   - `backend config.toml` <small>[sample config](https://github.com/I-Al-Istannen/crow/blob/master/backend-web/config.toml)</small>
