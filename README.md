@@ -25,6 +25,16 @@ using the website or CLI tool, and test their compilers against them.
 
 ## Screenshots
 
+<div style="display: flex; flex-wrap: wrap; gap: 2px;">
+  <img src="assets/crow-home.png"         style="border: 1px solid #1b1f230d" width="400" >
+  <img src="assets/crow-repo.png"         style="border: 1px solid #1b1f230d" width="400" >
+  <img src="assets/crow-test-page.png"    style="border: 1px solid #1b1f230d" width="400" >
+  <img src="assets/crow-test-edit.png"    style="border: 1px solid #1b1f230d" width="400" >
+  <img src="assets/crow-queue.png"        style="border: 1px solid #1b1f230d" width="400" >
+  <img src="assets/crow-running-task.png" style="border: 1px solid #1b1f230d" width="400" >
+  <img src="assets/crow-task-detail.png"  style="border: 1px solid #1b1f230d" width="400" >
+</div>
+
 ## Setup
 We provide a Nix flake that builds every individual component, as well as docker images.
 
