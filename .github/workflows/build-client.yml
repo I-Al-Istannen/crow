@@ -1,0 +1,35 @@
+name: "Build and upload client"
+on:
+  push:
+jobs:
+  build-client:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+    - uses: actions/checkout@v4
+    - run: rustup update stable
+    - name: Install dbus
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get install -y libdbus-1-dev
+    - uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - run: cargo build --bin client --release
+    - name: Rename binary
+      run: |
+        mv target/release/client target/release/crow-client
+    - name: Upload binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: crow-client-${{ matrix.os }}
+        path: target/release/crow-client

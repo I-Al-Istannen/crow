@@ -13,7 +13,7 @@ using the website or CLI tool, and test their compilers against them.
 - `crow` executes tests in parallel inside lightweight, isolated containers
 - `crow` offers a flexible test syntax using arguments, exit codes, as well as
   in- and outputs
-- `crow` offers a GitHub app syncing test results with GitHub commit status
+- `crow` offers a GitHub app, syncing test results with GitHub commit status
 - `crow` automatically installs secrets using the GitHub App
 - `crow` automatically suggests workflows testing every commit using the GitHub
   App
