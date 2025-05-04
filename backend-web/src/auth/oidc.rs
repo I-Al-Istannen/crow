@@ -147,30 +147,31 @@ pub struct OidcAuthRedirect {
     pub url: String,
 }
 
+type OidcClient = Client<
+    EmptyAdditionalClaims,
+    CoreAuthDisplay,
+    CoreGenderClaim,
+    CoreJweContentEncryptionAlgorithm,
+    CoreJsonWebKey,
+    CoreAuthPrompt,
+    StandardErrorResponse<BasicErrorResponseType>,
+    CoreTokenResponse,
+    CoreTokenIntrospectionResponse,
+    StandardRevocableToken,
+    BasicRevocationErrorResponse,
+    EndpointSet,
+    EndpointNotSet,
+    EndpointNotSet,
+    EndpointNotSet,
+    EndpointMaybeSet,
+    EndpointMaybeSet,
+>;
+
 #[derive(Clone)]
 pub struct Oidc {
     http_client: reqwest::Client,
     oidc_config: OidcConfig,
-    #[allow(clippy::type_complexity)]
-    oidc_client: Client<
-        EmptyAdditionalClaims,
-        CoreAuthDisplay,
-        CoreGenderClaim,
-        CoreJweContentEncryptionAlgorithm,
-        CoreJsonWebKey,
-        CoreAuthPrompt,
-        StandardErrorResponse<BasicErrorResponseType>,
-        CoreTokenResponse,
-        CoreTokenIntrospectionResponse,
-        StandardRevocableToken,
-        BasicRevocationErrorResponse,
-        EndpointSet,
-        EndpointNotSet,
-        EndpointNotSet,
-        EndpointNotSet,
-        EndpointMaybeSet,
-        EndpointMaybeSet,
-    >,
+    oidc_client: OidcClient,
     pending_auths: Arc<Mutex<HashMap<OidcFlowId, PendingAuthentication>>>,
 }
 
