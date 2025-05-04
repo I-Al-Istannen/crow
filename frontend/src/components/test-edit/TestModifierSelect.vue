@@ -1,7 +1,14 @@
 <template>
-  <div class="flex items-center gap-1 p-1 rounded-md justify-start">
+  <div
+    class="flex max-sm:flex-wrap items-center gap-1 p-1 rounded-md justify-start"
+    :class="[readonly ? 'ml-3' : '']"
+  >
     <LucideGripVertical v-if="!readonly" class="h-5 flex-shrink-0 drag-handle cursor-grab" />
-    <SlotOrReadonly :readonly="readonly || false" :label="modifierLabel(modifierType)">
+    <SlotOrReadonly
+      :readonly="readonly || false"
+      :label="modifierLabel(modifierType)"
+      :class="[readonly ? 'w-[15ch]' : '']"
+    >
       <Select
         :model-value="modifierType"
         @update:model-value="update($event as string, stringArg, intArg, crashArg, failArg)"
