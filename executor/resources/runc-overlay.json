@@ -12,7 +12,7 @@
             "TERM=xterm",
             "LANG=en_US.UTF-8"
         ],
-        "cwd": "/",
+        "cwd": "/work",
         "capabilities": {
             "bounding": [
                 "CAP_AUDIT_WRITE",
