@@ -38,6 +38,9 @@
                 extraRules = ''
                   /frontend/
                   /.github/
+                  /assets
+                  /README.md
+                  /deploy
                 '';
               };
               src = ./.;
