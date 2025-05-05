@@ -85,7 +85,7 @@ fn main() -> ExitCode {
         let frontend_url = &args.frontend_url;
 
         match args.subcommand {
-            CliCommand::Login => command_login(client, backend_url),
+            CliCommand::Login => command_login(client, backend_url, frontend_url),
             CliCommand::SyncTests(args) => {
                 command_sync_tests(args, get_context(backend_url, frontend_url, client)?)
             }

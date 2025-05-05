@@ -1,5 +1,6 @@
 use crate::auth::{store_auth, validate_token, LoginResult};
 use crate::error::{AuthSnafu, Result};
+use crate::util::st;
 use console::style;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Password;
@@ -7,7 +8,19 @@ use reqwest::blocking::Client;
 use snafu::ResultExt;
 use tracing::{error, info};
 
-pub fn command_login(client: Client, backend_url: &str) -> Result<bool> {
+pub fn command_login(client: Client, backend_url: &str, frontend_url: &str) -> Result<bool> {
+    info!(
+        "{}",
+        st(style("Grab your token from "))
+            .append(
+                style(format!("{frontend_url}/cli-auth"))
+                    .bright()
+                    .bold()
+                    .cyan()
+            )
+            .append(" and then paste it here.")
+    );
+
     loop {
         if login_iteration(&client, backend_url)? {
             break;
