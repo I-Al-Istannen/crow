@@ -22,9 +22,12 @@ use clap::builder::Styles;
 use clap::{Parser, Subcommand};
 use console::style;
 use reqwest::blocking::Client;
-use snafu::{Report, ResultExt};
+use snafu::{ensure_whatever, OptionExt, Report, ResultExt, Whatever};
+use std::fs::File;
+use std::io::Write;
 use std::process::ExitCode;
-use tracing::{error, info};
+use std::time::SystemTime;
+use tracing::{debug, error, info, warn};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -77,6 +80,10 @@ fn main() -> ExitCode {
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
         )
         .init();
+
+    if let Err(e) = check_updates() {
+        println!("{}", Report::from_error(e));
+    }
 
     let res = Report::capture_into_result(|| {
         let args = CliArgs::parse();
@@ -139,4 +146,97 @@ fn get_context(backend_url: &str, frontend_url: &str, client: Client) -> Result<
         backend_url.to_string(),
         frontend_url.to_string(),
     ))
+}
+
+fn check_updates() -> std::result::Result<(), Whatever> {
+    if !should_perform_update_check()? {
+        debug!("Skipping update check");
+        return Ok(());
+    }
+
+    info!("Checking for updates...");
+
+    let my_version = semver::Version::parse(clap::crate_version!())
+        .whatever_context("Could not parse own version")?;
+
+    let client = Client::new();
+
+    let remote_version = client
+        .get("https://api.github.com/repos/I-Al-Istannen/crow/releases/latest")
+        .header("User-Agent", "crow-client")
+        .header("Accept", "application/vnd.github.v3+json")
+        .send()
+        .whatever_context("Could not fetch latest version from GitHub")?
+        .json::<serde_json::Value>()
+        .whatever_context("Could not parse GitHub version response")?;
+
+    let remote_version = remote_version
+        .get("tag_name")
+        .whatever_context("Could not find tag_name")?
+        .as_str()
+        .whatever_context("tag_name is not a string")?;
+    let remote_version = remote_version.strip_prefix('v').unwrap_or(remote_version);
+
+    let remote_version = semver::Version::parse(remote_version)
+        .whatever_context("Could not parse remote version")?;
+
+    if remote_version > my_version {
+        println!();
+        warn!(
+            "{}",
+            st("A new version of crow is available: ")
+                .append(style(format!("{remote_version}")).green().bold())
+                .append(". You are using ")
+                .append(style(format!("{my_version}")).red().bold())
+                .append(". Please update!")
+        );
+        println!();
+    } else {
+        info!(
+            "{}",
+            st("You are using the latest version of crow: ")
+                .append(style(format!("{my_version}")).green())
+        );
+    }
+
+    Ok(())
+}
+
+fn should_perform_update_check() -> std::result::Result<bool, Whatever> {
+    let temp_dir = tempfile::env::temp_dir();
+    ensure_whatever!(
+        temp_dir.exists(),
+        "Temp dir does not exist, skipping update check"
+    );
+
+    let update_file = temp_dir.join("crow-client-last-update-check");
+    let file_existed = update_file.exists();
+    let last_modified = std::fs::metadata(&update_file)
+        .map(|it| it.modified())
+        .unwrap_or(Ok(SystemTime::UNIX_EPOCH));
+
+    let time_is_over = match last_modified {
+        Ok(last_modified) => match last_modified.elapsed() {
+            Err(e) => {
+                info!(source = %Report::from_error(e), "Could not get last modified time, performing update check");
+                true
+            }
+            Ok(elapsed) => elapsed.as_secs() > 60 * 60,
+        },
+        Err(e) => {
+            info!(source = %Report::from_error(e), "Could not get last modified time, performing update check");
+            true
+        }
+    };
+
+    if file_existed && !time_is_over {
+        return Ok(false);
+    }
+
+    File::create(&update_file)
+        .whatever_context("Could not create update tracking file")?
+        .write_all("Hello there :)".as_bytes())
+        .whatever_context("Could not write to update tracking file")?;
+
+    Ok(true)
 }

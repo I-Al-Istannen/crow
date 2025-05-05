@@ -327,7 +327,7 @@ dependencies = [
 
 [[package]]
 name = "backend-web"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "axum 0.7.9",
  "axum-extra",
@@ -536,7 +536,7 @@ checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 
 [[package]]
 name = "client"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap",
  "console",
@@ -548,6 +548,7 @@ dependencies = [
  "markdown",
  "mdast_util_to_markdown",
  "reqwest",
+ "semver",
  "serde",
  "serde_json",
  "sha2",
@@ -1067,7 +1068,7 @@ dependencies = [
 
 [[package]]
 name = "executor"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap",
  "ctrlc",
@@ -3256,9 +3257,9 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.24"
+version = "1.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3cb6eb87a131f756572d7fb904f6e7b68633f09cca868c5df1c4b8d1a694bbba"
+checksum = "56e6fa9c48d24d85fb3de5ad847117517440f6beceb7798af16b4a87d616b8d0"
 
 [[package]]
 name = "serde"
@@ -3405,7 +3406,7 @@ dependencies = [
 
 [[package]]
 name = "shared"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "derive_more",
  "is_executable",
