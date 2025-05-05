@@ -2,7 +2,7 @@
   <div class="flex gap-2 w-full flex-wrap">
     <Input
       @update:model-value="table.setGlobalFilter($event)"
-      placeholder="Filter..."
+      placeholder="Search..."
       class="max-w-[30ch]"
     />
     <span class="flex-grow" />
