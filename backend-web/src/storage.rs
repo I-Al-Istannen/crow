@@ -505,8 +505,16 @@ trait HandleExitcode {
 
 impl HandleExitcode for OptionalSsh<'_> {
     async fn handle_exitcode(self) -> std::io::Result<Output> {
+        // We need to disable TOFU as we are not interactive *and* not persistent.
+        let base_ssh_command = "ssh -F /dev/null -o StrictHostKeyChecking=no -o UpdateHostKeys=no";
+
         match self {
-            OptionalSsh::WithoutSsh(command) => command.handle_exitcode().await,
+            OptionalSsh::WithoutSsh(command) => {
+                command
+                    .env("GIT_SSH_COMMAND", base_ssh_command)
+                    .handle_exitcode()
+                    .await
+            }
             OptionalSsh::WithSsh { command, ssh_key } => {
                 let file = tempfile::NamedTempFile::new()?;
                 tokio::fs::write(file.path(), ssh_key.as_bytes()).await?;
@@ -519,10 +527,7 @@ impl HandleExitcode for OptionalSsh<'_> {
                 command
                     .env(
                         "GIT_SSH_COMMAND",
-                        format!(
-                            "ssh -F /dev/null -o StrictHostKeyChecking=no -o UpdateHostKeys=no -i {}",
-                            file.path().display()
-                        ),
+                        format!("{base_ssh_command} -i {}", file.path().display()),
                     )
                     .handle_exitcode()
                     .await
