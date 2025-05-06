@@ -34,13 +34,16 @@ pub async fn set_test(
     Json(payload): Json<AddTestPayload>,
 ) -> Result<Json<SetTestResponse>> {
     let db = &state.db;
+    let mut owner = claims.team.clone();
+    let mut admin_authored = claims.is_admin();
 
-    if !claims.is_admin() {
-        if let Some(existing) = db.fetch_test(&test_id).await? {
-            if existing.owner != claims.team {
-                return Err(WebError::unauthorized(location!()));
-            }
+    if let Some(existing) = db.fetch_test(&test_id).await? {
+        if existing.owner != claims.team && !claims.is_admin() {
+            return Err(WebError::unauthorized(location!()));
         }
+        // Even if an admin edits a test, this stays the same
+        owner = existing.owner;
+        admin_authored = existing.admin_authored;
     }
 
     let Some(category_meta) = state.test_config.categories.get(&payload.category) else {
@@ -66,8 +69,8 @@ pub async fn set_test(
 
     let test = Test {
         id: test_id,
-        owner: claims.team.clone(),
-        admin_authored: claims.is_admin(),
+        owner,
+        admin_authored,
         category: payload.category,
         compiler_modifiers: payload.compiler_modifiers,
         binary_modifiers: payload.binary_modifiers,
