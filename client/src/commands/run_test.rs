@@ -26,6 +26,16 @@ pub enum RunTestError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display(
+        "The compiler run binary `{}` could not be turned into an absolute path at {location}",
+        path.display())
+    )]
+    AbsolutizeCompiler {
+        path: PathBuf,
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
     #[snafu(display("Could not walk the test directory at {location}"))]
     DirWalk {
         source: walkdir::Error,
@@ -138,6 +148,13 @@ pub fn command_run_test(args: CliRunTestArgs) -> Result<bool, CrowClientError> {
     let test = find_test(&args.test_dir, &args.test_id).context(RunTestSnafu)?;
 
     let tempdir = tempfile::tempdir().context(TempdirSnafu)?;
+    let compiler_run_path = args
+        .compiler_run
+        .canonicalize()
+        .context(AbsolutizeCompilerSnafu {
+            path: args.compiler_run.clone(),
+        })
+        .context(RunTestSnafu)?;
 
     let res = execute_test(
         &CompilerTest {
@@ -145,14 +162,14 @@ pub fn command_run_test(args: CliRunTestArgs) -> Result<bool, CrowClientError> {
             timeout: Duration::from_secs(60 * 10), // 10 minutes
             compiler_modifiers: test.detail.compiler_modifiers,
             binary_modifiers: test.detail.binary_modifiers,
-            compile_command: vec![args.compiler_run.display().to_string()],
+            compile_command: vec![compiler_run_path.as_os_str().to_string_lossy().to_string()],
             binary_arguments: vec![],
             provisional_for_category: None,
         },
         tempdir.path(),
         &tempdir.path().join("out.🦆"),
         tempdir.path(),
-        execute::execute_locally(tempdir.path().to_path_buf()),
+        execute::execute_locally,
     );
 
     print_test_output(&res);

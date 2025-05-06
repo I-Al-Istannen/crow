@@ -7,7 +7,7 @@ use crate::{
 use is_executable::IsExecutable;
 use snafu::{Report, ResultExt, Snafu};
 use std::error::Error;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 use std::time::{Duration, Instant};
 
@@ -241,23 +241,19 @@ fn gather_arguments(
 }
 
 pub fn execute_locally(
-    workdir: PathBuf,
-) -> impl Fn(&Path, &[String]) -> Result<CommandResult, Box<dyn Error + Sync + Send>> {
-    move |path, cmd| {
-        let start = Instant::now();
-        let output = Command::new(workdir.join(path))
-            .args(cmd)
-            .output()
-            .map_err(Box::new)?;
+    path: &Path,
+    cmd: &[String],
+) -> Result<CommandResult, Box<dyn Error + Sync + Send>> {
+    let start = Instant::now();
+    let output = Command::new(path).args(cmd).output().map_err(Box::new)?;
 
-        Ok(CommandResult::Unprocessed((
-            output.status.into(),
-            FinishedExecution {
-                stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-                stderr: String::from_utf8_lossy(&output.stderr).to_string(),
-                runtime: start.elapsed(),
-                exit_status: output.status.code(),
-            },
-        )))
-    }
+    Ok(CommandResult::Unprocessed((
+        output.status.into(),
+        FinishedExecution {
+            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+            runtime: start.elapsed(),
+            exit_status: output.status.code(),
+        },
+    )))
 }
