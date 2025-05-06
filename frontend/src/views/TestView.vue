@@ -23,9 +23,10 @@
           :is-loading="isLoading"
           :failure-count="failureCount"
           :failure-reason="failureReason"
+          class="mb-6"
         />
         <div v-if="allTests">
-          <TooltipProvider>
+          <TooltipProvider v-if="allTests.length > 0">
             <Input type="text" placeholder="Search..." class="shadow-none" v-model="searchText" />
             <Accordion type="multiple" v-model="expandedTests">
               <TestListEntry v-for="test in displayedTests" :key="test.id" :test="test">
