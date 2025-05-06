@@ -247,7 +247,6 @@ pub fn execute_locally(
         let start = Instant::now();
         let output = Command::new(workdir.join(path))
             .args(cmd)
-            .current_dir(&workdir)
             .output()
             .map_err(Box::new)?;
 
