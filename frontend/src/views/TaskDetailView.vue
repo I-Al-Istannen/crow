@@ -17,7 +17,11 @@
             <span>
               {{ queuedTask.commitMessage.split('\n')[0] }}
             </span>
-            <TaskExternalLinkIcon class="ml-2" :revision="queuedTask.revision" />
+            <TaskExternalLinkIcon
+              class="ml-2"
+              :revision="queuedTask.revision"
+              :teamId="queuedTask.team"
+            />
           </div>
           <span v-else>Task detail</span>
         </CardTitle>

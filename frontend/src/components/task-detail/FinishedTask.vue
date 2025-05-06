@@ -4,7 +4,11 @@
       <CardTitle>
         <div v-if="taskSummary" class="flex items-center">
           <span>{{ taskSummary.info.commitMessage.split('\n')[0] }}</span>
-          <TaskExternalLinkIcon class="ml-2" :revision="taskSummary.info.revisionId" />
+          <TaskExternalLinkIcon
+            class="ml-2"
+            :revision="taskSummary.info.revisionId"
+            :teamId="taskSummary.info.teamId"
+          />
         </div>
         <span v-else>Task summary</span>
       </CardTitle>

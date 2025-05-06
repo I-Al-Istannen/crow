@@ -23,7 +23,7 @@
       <div class="flex flex-col justify-center max-w-full flex-wrap">
         <div class="mb-1 flex items-center gap-1 flex-wrap mr-1 max-w-full">
           <a
-            v-if="commitUrl"
+            v-if="commitUrl && task.info.teamId == team?.id"
             :href="commitUrl"
             target="_blank"
             class="text-muted-foreground hover:underline"
@@ -31,7 +31,9 @@
           >
             {{ task.info.revisionId.substring(0, 8) }}:
           </a>
-          <span v-else>{{ task.info.revisionId.substring(0, 8) }}: </span>
+          <span v-else class="text-muted-foreground"
+            >{{ task.info.revisionId.substring(0, 8) }}:
+          </span>
           <span class="font-medium text-ellipsis overflow-hidden text-nowrap max-w-[50ch]">
             {{ task.info.commitMessage }}
           </span>
@@ -62,12 +64,15 @@ import type { FinishedCompilerTaskSummary } from '@/types.ts'
 import ManuallyOverrideDialog from '@/components/task-overview/ManuallyOverrideDialog.vue'
 import TaskQuickOverview from '@/components/task-overview/TaskQuickOverview.vue'
 import { clsx } from 'clsx'
+import { storeToRefs } from 'pinia'
 import { toRefs } from 'vue'
+import { useUserStore } from '@/stores/user.ts'
 
 const props = defineProps<{
   task: FinishedCompilerTaskSummary
 }>()
 const { task } = toRefs(props)
+const { team } = storeToRefs(useUserStore())
 
 const { commitUrl } = useCommitUrl(task.value.info.revisionId)
 
