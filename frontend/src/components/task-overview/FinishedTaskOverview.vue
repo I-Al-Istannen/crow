@@ -1,11 +1,27 @@
 <template>
   <router-link :to="{ name: 'task-detail', params: { taskId: task.info.taskId } }" class="block">
     <div
-      class="leading-none tracking-tight flex items-start justify-between p-2 hover:bg-accent hover:text-accent-foreground group"
-      :class="['rounded-xl', 'border', 'bg-card', 'text-card-foreground']"
+      :class="
+        clsx(
+          'leading-tight',
+          'tracking-tight',
+          'flex',
+          'flex-wrap',
+          'items-start',
+          'justify-end',
+          'p-2',
+          'hover:bg-accent',
+          'hover:text-accent-foreground',
+          'group',
+          'rounded-xl',
+          'border',
+          'bg-card',
+          'text-card-foreground',
+        )
+      "
     >
-      <div class="flex flex-col justify-center">
-        <div class="mb-1 flex items-center gap-1 flex-wrap mr-1">
+      <div class="flex flex-col justify-center max-w-full flex-wrap">
+        <div class="mb-1 flex items-center gap-1 flex-wrap mr-1 max-w-full">
           <a
             v-if="commitUrl"
             :href="commitUrl"
@@ -24,6 +40,7 @@
         </div>
         <TaskQuickOverview class="text-sm" :task="task" />
       </div>
+      <div class="flex-grow" />
       <div
         class="text-sm text-muted-foreground flex flex-col justify-center items-end self-stretch"
       >
@@ -44,6 +61,7 @@ import AutoSelectedGradedMarker from '@/components/task-overview/AutoSelectedGra
 import type { FinishedCompilerTaskSummary } from '@/types.ts'
 import ManuallyOverrideDialog from '@/components/task-overview/ManuallyOverrideDialog.vue'
 import TaskQuickOverview from '@/components/task-overview/TaskQuickOverview.vue'
+import { clsx } from 'clsx'
 import { toRefs } from 'vue'
 
 const props = defineProps<{
