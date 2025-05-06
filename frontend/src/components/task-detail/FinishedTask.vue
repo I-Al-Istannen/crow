@@ -3,7 +3,7 @@
     <CardHeader class="pb-2">
       <CardTitle>
         <div v-if="taskSummary" class="flex items-center">
-          <span>{{ taskSummary.info.commitMessage }}</span>
+          <span>{{ taskSummary.info.commitMessage.split('\n')[0] }}</span>
           <TaskExternalLinkIcon class="ml-2" :revision="taskSummary.info.revisionId" />
         </div>
         <span v-else>Task summary</span>

@@ -22,7 +22,7 @@
           {{ index + 1 }}
         </TableCell>
         <TableCell>
-          {{ item.commitMessage.substring(0, 60) }}
+          {{ item.commitMessage.substring(0, 60) }}{{ item.commitMessage.length > 60 ? '…' : '' }}
         </TableCell>
         <TableCell>
           {{ item.revision.substring(0, 8) }}

@@ -16,7 +16,9 @@
             {{ task.info.revisionId.substring(0, 8) }}:
           </a>
           <span v-else>{{ task.info.revisionId.substring(0, 8) }}: </span>
-          <span class="font-medium">{{ task.info.commitMessage }}</span>
+          <span class="font-medium text-ellipsis overflow-hidden text-nowrap max-w-[50ch]">
+            {{ task.info.commitMessage }}
+          </span>
           <AutoSelectedGradedMarker :task-id="task.info.taskId" />
           <ManuallyOverrideDialog :task-id="task.info.taskId" />
         </div>

@@ -14,7 +14,9 @@
       <CardHeader class="pb-2">
         <CardTitle>
           <div v-if="queuedTask" class="flex items-center">
-            <span>{{ queuedTask.commitMessage }}</span>
+            <span>
+              {{ queuedTask.commitMessage.split('\n')[0] }}
+            </span>
             <TaskExternalLinkIcon class="ml-2" :revision="queuedTask.revision" />
           </div>
           <span v-else>Task detail</span>
