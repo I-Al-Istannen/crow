@@ -120,6 +120,22 @@ export const FinishedCompilerTaskSummarySchema = z.discriminatedUnion('type', [
   }),
 ])
 
+export const ApiFinishedCompilerTaskSummarySchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('BuildFailed'),
+    info: FinishedTaskInfoSchema,
+    status: ExecutionExitStatusSchema,
+    teamName: z.string(),
+  }),
+  z.object({
+    type: z.literal('RanTests'),
+    info: FinishedTaskInfoSchema,
+    tests: z.array(FinishedTestSummarySchema),
+    outdated: z.array(TestIdSchema),
+    teamName: z.string(),
+  }),
+])
+
 export const FinalSelectedTaskSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('AutomaticallySelected'),
@@ -299,6 +315,7 @@ export type ExecutionExitStatus = z.infer<typeof ExecutionExitStatusSchema>
 export type ExecutionOutput = z.infer<typeof ExecutionOutputSchema>
 export type FinishedCompilerTask = z.infer<typeof FinishedCompilerTaskSchema>
 export type FinishedCompilerTaskSummary = z.infer<typeof FinishedCompilerTaskSummarySchema>
+export type ApiFinishedCompilerTaskSummary = z.infer<typeof ApiFinishedCompilerTaskSummarySchema>
 export type FinishedExecution = z.infer<typeof FinishedExecutionSchema>
 export type FinishedTaskInfo = z.infer<typeof FinishedTaskInfoSchema>
 export type FinishedTest = z.infer<typeof FinishedTestSchema>

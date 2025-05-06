@@ -12,7 +12,7 @@
       />
       <div v-if="topTasks" class="space-y-2 -mt-2">
         <div v-for="[team, task] in sortedTeams" :key="team" class="flex flex-col">
-          <span class="font-medium mb-1">{{ team }}:</span>
+          <span class="font-medium mb-1">{{ task.teamName }}:</span>
           <FinishedTaskOverview :task="task" class="ml-2" />
         </div>
       </div>

@@ -1,4 +1,6 @@
 import {
+  type ApiFinishedCompilerTaskSummary,
+  ApiFinishedCompilerTaskSummarySchema,
   type FinalSelectedTask,
   FinalSelectedTaskSchema,
   type FinishedCompilerTask,
@@ -372,11 +374,11 @@ export function queryIntegrationStatus(_teamId: MaybeRefOrGetter<TeamId | undefi
   })
 }
 
-export async function fetchTopTaskPerTeam(): Promise<Map<TeamId, FinishedCompilerTaskSummary>> {
+export async function fetchTopTaskPerTeam(): Promise<Map<TeamId, ApiFinishedCompilerTaskSummary>> {
   const response = await fetchWithAuth('/top-tasks')
   const result = new Map()
   for (const [k, v] of Object.entries(await response.json())) {
-    result.set(TeamIdSchema.parse(k), FinishedCompilerTaskSummarySchema.parse(v))
+    result.set(TeamIdSchema.parse(k), ApiFinishedCompilerTaskSummarySchema.parse(v))
   }
   return result
 }
