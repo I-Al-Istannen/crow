@@ -10,6 +10,15 @@
             v-bind="componentField"
           />
         </FormControl>
+        <div v-if="showSshWarning" class="pl-2 text-xs text-orange-500 flex items-center">
+          <div>
+            <LucideTriangleAlert class="size-4 mr-2" />
+          </div>
+          <div>
+            Using an SSH URL (instead of https) likely requires SSH keys to be set up and should
+            only be needed for private repositories. Please contact us, if you want that :)
+          </div>
+        </div>
         <FormDescription>The URL to your repository</FormDescription>
         <FormMessage />
       </FormItem>
@@ -33,10 +42,10 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
+import { LoaderCircle, LucideTriangleAlert } from 'lucide-vue-next'
 import { computed, toRefs, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { LoaderCircle } from 'lucide-vue-next'
 import type { Repo } from '@/types.ts'
 import { mutateRepo } from '@/data/network.ts'
 import { storeToRefs } from 'pinia'
@@ -76,6 +85,8 @@ watch(repo, () => {
     },
   })
 })
+
+const showSshWarning = computed(() => form.values.repoUrl?.includes('@'))
 
 const onSubmit = form.handleSubmit(async (values) => {
   if (!teamId.value) {
