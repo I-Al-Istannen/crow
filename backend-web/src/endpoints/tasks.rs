@@ -198,8 +198,25 @@ pub async fn get_task(
 pub async fn get_top_task_per_team(
     State(state): State<AppState>,
     _claims: Claims,
-) -> Result<Json<HashMap<TeamId, FinishedCompilerTaskSummary>>> {
-    Ok(Json(state.db.get_top_task_per_team().await?))
+) -> Result<Json<HashMap<TeamId, ApiFinishedCompilerTaskSummary>>> {
+    let top_tasks = state.db.get_top_task_per_team().await?;
+    let teams = state
+        .db
+        .get_teams()
+        .await?
+        .into_iter()
+        .map(|team| (team.id, team.display_name))
+        .collect::<HashMap<_, _>>();
+
+    let top_tasks = top_tasks
+        .into_iter()
+        .map(|(team_id, task)| {
+            let team_name = teams.get(&team_id).cloned().unwrap_or_default();
+            (team_id, ApiFinishedCompilerTaskSummary { task, team_name })
+        })
+        .collect::<HashMap<_, _>>();
+
+    Ok(Json(top_tasks))
 }
 
 #[instrument(skip_all)]
@@ -243,4 +260,12 @@ impl From<(FinishedCompilerTask, Vec<TestId>)> for FinishedCompilerTaskWithOutda
     fn from((task, outdated): (FinishedCompilerTask, Vec<TestId>)) -> Self {
         Self { task, outdated }
     }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiFinishedCompilerTaskSummary {
+    #[serde(flatten)]
+    pub task: FinishedCompilerTaskSummary,
+    pub team_name: String,
 }

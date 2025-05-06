@@ -24,6 +24,16 @@ pub(super) async fn get_team(con: &mut SqliteConnection, team_id: &TeamId) -> Re
     }
 }
 
+#[instrument(skip_all)]
+pub(super) async fn get_teams(con: &mut SqliteConnection) -> Result<Vec<Team>> {
+    query_as!(Team, r#"SELECT id as "id!", display_name FROM Teams"#,)
+        .fetch_all(con)
+        .instrument(info_span!("sqlx_get_teams"))
+        .await
+        .context(SqlxSnafu)
+}
+
+#[instrument(skip_all)]
 pub(super) async fn get_team_info(
     con: &mut SqliteConnection,
     team_id: &TeamId,

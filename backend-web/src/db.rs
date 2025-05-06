@@ -114,6 +114,11 @@ impl Database {
         repo::get_repos(&mut *pool.acquire().await.context(SqlxSnafu)?).await
     }
 
+    pub async fn get_teams(&self) -> Result<Vec<Team>> {
+        let pool = self.read_lock().await;
+        team::get_teams(&mut *pool.acquire().await.context(SqlxSnafu)?).await
+    }
+
     pub async fn get_team(&self, team_id: &TeamId) -> Result<Team> {
         let pool = self.read_lock().await;
         team::get_team(&mut *pool.acquire().await.context(SqlxSnafu)?, team_id).await
