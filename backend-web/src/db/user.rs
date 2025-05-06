@@ -55,7 +55,9 @@ pub(super) async fn synchronize_oidc_user(
     con: &mut SqliteConnection,
     user: OidcUser,
     team: Option<TeamId>,
+    role: Option<UserRole>,
 ) -> Result<OwnUser> {
+    let role = role.unwrap_or(UserRole::Regular);
     query!(
         r#"
         INSERT INTO Users
@@ -64,11 +66,12 @@ pub(super) async fn synchronize_oidc_user(
             (?, ?, ?, ?)
         ON CONFLICT DO UPDATE SET
             display_name = excluded.display_name,
-            team = coalesce(excluded.team, team)
+            team = coalesce(excluded.team, team),
+            role = excluded.role
         "#,
         user.id,
         user.name,
-        UserRole::Regular,
+        role,
         team,
     )
     .execute(&mut *con)

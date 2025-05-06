@@ -13,7 +13,8 @@ use crate::error::{Result, SqlxSnafu};
 use crate::types::{
     CreatedExternalRun, ExternalRunId, ExternalRunStatus, FinalSubmittedTask,
     FinishedCompilerTaskSummary, FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, TeamInfo,
-    TeamIntegrationToken, Test, TestId, TestSummary, TestWithTasteTesting, UserId, WorkItem,
+    TeamIntegrationToken, Test, TestId, TestSummary, TestWithTasteTesting, UserId, UserRole,
+    WorkItem,
 };
 use jiff::Timestamp;
 use shared::{FinishedCompilerTask, TestExecutionOutput};
@@ -86,10 +87,16 @@ impl Database {
         &self,
         user: OidcUser,
         team: Option<TeamId>,
+        role: Option<UserRole>,
     ) -> Result<OwnUser> {
         let pool = self.write_lock().await;
-        user::synchronize_oidc_user(&mut *pool.acquire().await.context(SqlxSnafu)?, user, team)
-            .await
+        user::synchronize_oidc_user(
+            &mut *pool.acquire().await.context(SqlxSnafu)?,
+            user,
+            team,
+            role,
+        )
+        .await
     }
 
     pub async fn set_team_repo(&self, team_id: &TeamId, repo_url: &str) -> Result<Repo> {

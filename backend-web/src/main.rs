@@ -1,6 +1,6 @@
 use crate::auth::oidc::Oidc;
 use crate::auth::{Claims, Keys};
-use crate::config::Config;
+use crate::config::{Config, TeamEntry};
 use crate::db::Database;
 use crate::endpoints::{
     delete_test, executor_info, get_final_tasks, get_integration_status, get_n_recent_tasks,
@@ -113,15 +113,6 @@ async fn main_impl() -> Result<(), Whatever> {
     db.sync_teams(&config.teams)
         .await
         .whatever_context("Error syncing teams")?;
-    let team_mapping: HashMap<UserId, TeamId> = config
-        .teams
-        .into_iter()
-        .flat_map(|team| {
-            team.members
-                .into_iter()
-                .map(move |user| (user, team.id.clone()))
-        })
-        .collect();
 
     let local_repo_path = config.execution.local_repo_path.clone();
     let state = AppState::new(
@@ -130,7 +121,7 @@ async fn main_impl() -> Result<(), Whatever> {
         config.github.as_ref().map(|it| it.app_name.to_string()),
         config.execution,
         config.test,
-        team_mapping,
+        get_team_mapping(config.teams),
         LocalRepos::new(local_repo_path, config.ssh),
         Oidc::build_new(config.oidc.clone())
             .await
@@ -161,6 +152,22 @@ async fn main_impl() -> Result<(), Whatever> {
 
     a?;
     b
+}
+
+fn get_team_mapping(teams: Vec<TeamEntry>) -> HashMap<UserId, (TeamId, UserRole)> {
+    teams
+        .into_iter()
+        .flat_map(|team| {
+            let role = if team.is_admin {
+                UserRole::Admin
+            } else {
+                UserRole::Regular
+            };
+            team.members
+                .into_iter()
+                .map(move |user| (user, (team.id.clone(), role)))
+        })
+        .collect()
 }
 
 #[instrument(skip_all)]

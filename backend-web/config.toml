@@ -44,7 +44,7 @@ local_repo_path = "target/repos"
 # The docker image containing the reference compiler. If not provided, test tasting is disabled.
 reference_compiler_image = "ubuntu:latest"
 
-# All valid teams. Users are assigned only at startup!
+# All valid teams
 [[teams]]
 # The internal id of the team (must be unique and alpha-numeric-ish)
 id = "admin_team"
@@ -52,6 +52,8 @@ id = "admin_team"
 display_name = "The admin team"
 # The ids of team members (can be gauged from the login logs or by knowing your OIDC provider)
 members = ["2e7d40f3e82822848fef2285aa511fd6d4ae169d8b5feab646e3aed403f3bad2"]
+# Whether all users in this team should be admins.
+is_admin = false
 
 # A second team.
 [[teams]]

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO Users\n            (id, display_name, role, team)\n        VALUES\n            (?, ?, ?, ?)\n        ON CONFLICT DO UPDATE SET\n            display_name = excluded.display_name,\n            team = coalesce(excluded.team, team),\n            role = excluded.role\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "fe089909b8b36db2cfe9ddeb84eabf674bed8af81341b6f7a9bd6daf16bc0a4a"
+}

@@ -54,7 +54,7 @@ pub struct AppState {
     pub jwt_keys: Keys,
     pub execution_config: ExecutionConfig,
     pub test_config: TestConfig,
-    pub team_mapping: HashMap<UserId, TeamId>,
+    pub team_mapping: HashMap<UserId, (TeamId, UserRole)>,
     pub executor: Arc<Mutex<Executor>>,
     pub test_tasting: Arc<Mutex<TestTasting>>,
     pub queue: Arc<Mutex<Queue>>,
@@ -71,7 +71,7 @@ impl AppState {
         github_app_name: Option<String>,
         execution_config: ExecutionConfig,
         test_config: TestConfig,
-        team_mapping: HashMap<UserId, TeamId>,
+        team_mapping: HashMap<UserId, (TeamId, UserRole)>,
         local_repos: LocalRepos,
         oidc: Oidc,
     ) -> Self {
