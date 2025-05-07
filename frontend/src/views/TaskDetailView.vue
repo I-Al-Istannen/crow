@@ -64,7 +64,7 @@ import { type TaskId, type WorkItem } from '@/types.ts'
 import { computed, onMounted, ref, watch } from 'vue'
 import { fetchQueuedTask, fetchRunningTaskExists, fetchTaskExists } from '@/data/network.ts'
 import { formatDurationBetween, formatTime } from '../lib/utils.ts'
-import { useIntervalFn, useTimestamp } from '@vueuse/core'
+import { useIntervalFn, useTimestamp, useTitle } from '@vueuse/core'
 import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
 import FinishedTask from '@/components/task-detail/FinishedTask.vue'
 import PageContainer from '@/components/PageContainer.vue'
@@ -106,6 +106,25 @@ watch(
   (status) => {
     if (status === 'running') {
       wasOnceRunning.value = true
+    }
+  },
+  { immediate: true },
+)
+
+const title = useTitle(undefined, { restoreOnUnmount: false })
+watch(
+  [taskStatus, queuedTask],
+  ([status, queued]) => {
+    if (!status) {
+      return
+    }
+    if (status === 'queued') {
+      if (queued) {
+        title.value = 'Queued ' + queued.revision.substring(0, 7)
+      } else {
+        title.value = 'Queued'
+      }
+      return
     }
   },
   { immediate: true },

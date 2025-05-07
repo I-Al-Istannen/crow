@@ -77,6 +77,7 @@ import TaskQuickOverview from '@/components/task-overview/TaskQuickOverview.vue'
 import TestOverviewMatrix from '@/components/task-detail/TestOverviewMatrix.vue'
 import TestOverviewTable from '@/components/task-detail/TestOverviewTable.vue'
 import { queryTask } from '@/data/network.ts'
+import { useTitle } from '@vueuse/core'
 
 const props = defineProps<{
   taskId: TaskId
@@ -90,6 +91,13 @@ const showTableView = ref<boolean>(props.initialView !== 'matrix')
 
 const { data: task, isFetched, isLoading } = queryTask(taskId)
 const taskSummary = computed(() => (task.value ? toSummary(task.value) : undefined))
+
+useTitle(
+  computed(() =>
+    task.value ? 'Task ' + task.value.info.revisionId.substring(0, 7) : 'Finished Task',
+  ),
+  { restoreOnUnmount: false },
+)
 
 const tests = computed(() => {
   if (!task.value || task.value.type !== 'RanTests') {

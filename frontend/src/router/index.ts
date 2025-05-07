@@ -20,6 +20,7 @@ const router = createRouter({
       component: HomeView,
       meta: {
         name: 'Home',
+        title: 'crow',
       },
     },
     {
@@ -61,6 +62,7 @@ const router = createRouter({
       component: TaskDetailView,
       meta: {
         name: 'Task Detail',
+        managesTitle: true,
         hidden: true,
       },
     },
@@ -78,7 +80,7 @@ const router = createRouter({
       name: 'oidc-callback',
       component: LoginCallbackView,
       meta: {
-        name: 'Login callback',
+        name: 'Login Callback',
         hidden: true,
       },
     },
@@ -87,7 +89,7 @@ const router = createRouter({
       name: 'cli-auth',
       component: CliAuthView,
       meta: {
-        name: 'Cli authentication',
+        name: 'Cli Authentication',
         hidden: true,
       },
     },

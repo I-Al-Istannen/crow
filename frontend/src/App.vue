@@ -15,12 +15,27 @@ import NavBar from '@/components/NavBar.vue'
 import { Toaster } from '@/components/ui/sonner'
 import { queryMyself } from '@/data/network.ts'
 import { storeToRefs } from 'pinia'
+import { useTitle } from '@vueuse/core'
 import { useUserStore } from '@/stores/user.ts'
 import { watch } from 'vue'
 
 const { data: myself, isFetching } = queryMyself()
 const { team, user, accountReady } = storeToRefs(useUserStore())
 const route = useRoute()
+
+const pageTitle = useTitle(undefined, { restoreOnUnmount: false })
+
+watch(
+  route,
+  (newRoute) => {
+    if (newRoute.meta?.managesTitle) {
+      return
+    }
+    const title = (newRoute.meta?.title || newRoute.meta?.name) as string | undefined
+    pageTitle.value = title || 'crow'
+  },
+  { immediate: true },
+)
 
 watch(myself, (newData) => {
   if (newData) {

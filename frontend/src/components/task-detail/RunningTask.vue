@@ -57,7 +57,7 @@ import {
   type TaskId,
 } from '@/types.ts'
 import { computed, ref } from 'vue'
-import { useIntervalFn, useWebSocket } from '@vueuse/core'
+import { useIntervalFn, useTitle, useWebSocket } from '@vueuse/core'
 import { BACKEND_URL } from '@/data/fetching.ts'
 import BuildOutputOverview from '@/components/task-detail/BuildOutputOverview.vue'
 import TestOverviewMatrix from '@/components/task-detail/TestOverviewMatrix.vue'
@@ -72,6 +72,30 @@ const tests = ref<(FinishedTest | ExecutingTest)[]>([])
 const animatedWaitingDotsCounter = ref(-3)
 const animatedWaitingDots = computed(() =>
   '.'.repeat(3 - Math.abs(animatedWaitingDotsCounter.value)),
+)
+
+useTitle(
+  computed(() => {
+    if (testingStarted.value) {
+      if (tests.value.length > 0) {
+        const finished = tests.value.filter((it) => 'output' in it).length
+        const total = tests.value.length
+        return `Testing (${finished}/${total})`
+      }
+      return 'Testing'
+    }
+    if (buildStatus.value && buildStatus.value !== 'Started') {
+      return 'Build finished'
+    }
+    if (buildStatus.value === 'Started') {
+      return 'Building'
+    }
+    if (buildStatus.value === null) {
+      return 'Transferring data'
+    }
+    return 'Running task'
+  }),
+  { restoreOnUnmount: false },
 )
 
 useIntervalFn(
