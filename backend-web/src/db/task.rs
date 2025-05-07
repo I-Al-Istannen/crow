@@ -517,16 +517,20 @@ pub(super) async fn get_top_task_per_team(
         FROM (
             SELECT TestResults.task_id, COUNT(DISTINCT test_id) as passed_count
             FROM TestResults
-            JOIN ExecutionResults ER ON (
-                 ER.execution_id = TestResults.binary_exec_id
-              OR ER.execution_id = TestResults.compiler_exec_id
-            )
-            WHERE ER.result = ?
+            WHERE
+                EXISTS(SELECT 1 FROM ExecutionResults ER
+                       WHERE ER.execution_id = TestResults.compiler_exec_id AND ER.result = ?)
+                AND (
+                    TestResults.binary_exec_id is NULL OR
+                    EXISTS(SELECT 1 FROM ExecutionResults ER
+                           WHERE ER.execution_id = TestResults.binary_exec_id AND ER.result = ?)
+                )
             GROUP BY TestResults.task_id
         ) PASS_BY_TASK
         JOIN Tasks ON Tasks.task_id = PASS_BY_TASK.task_id
         GROUP BY Tasks.team_id;
         "#,
+        ExecutionExitStatus::Success,
         ExecutionExitStatus::Success
     )
     .fetch_all(&mut *con)
@@ -664,12 +668,17 @@ async fn get_top_task_for_team_and_category(
         FROM (
             SELECT TestResults.task_id, COUNT(DISTINCT test_id) as passed_count
             FROM TestResults
-            JOIN ExecutionResults ER ON (
-                 ER.execution_id = TestResults.binary_exec_id
-              OR ER.execution_id = TestResults.compiler_exec_id
-            )
             JOIN Tests ON Tests.id = TestResults.test_id
-            WHERE ER.result = ? AND Tests.category = ? AND Tests.provisional_for_category IS NULL
+            WHERE
+                EXISTS(SELECT 1 FROM ExecutionResults ER
+                       WHERE ER.execution_id = TestResults.compiler_exec_id AND ER.result = ?)
+                AND (
+                    TestResults.binary_exec_id is NULL OR
+                    EXISTS(SELECT 1 FROM ExecutionResults ER
+                           WHERE ER.execution_id = TestResults.binary_exec_id AND ER.result = ?)
+                )
+                AND Tests.category = ?
+                AND Tests.provisional_for_category IS NULL
             GROUP BY TestResults.task_id
         ) PASS_BY_TASK
         JOIN Tasks ON Tasks.task_id = PASS_BY_TASK.task_id
@@ -677,6 +686,7 @@ async fn get_top_task_for_team_and_category(
         ORDER BY PASS_BY_TASK.passed_count DESC, Tasks.queue_time DESC
         LIMIT 1
         "#,
+        ExecutionExitStatus::Success,
         ExecutionExitStatus::Success,
         category,
         team_id,
