@@ -1,7 +1,7 @@
 use crate::containers::CROW_SIGNAL_SHIM_MAGIC;
 use crate::AnyError;
 use clap::Args;
-use snafu::location;
+use snafu::{location, Report};
 use std::os::unix::process::ExitStatusExt;
 
 #[derive(Args, Debug)]
@@ -30,7 +30,11 @@ pub fn run_shim(args: CliShimArgs) -> Result<(), AnyError> {
         Ok(status) => status,
         Err(e) => {
             return Err(AnyError::ShimWithSource {
-                msg: format!("Failed to execute command: {}", e),
+                msg: format!(
+                    "Failed to execute command `{}`: {}",
+                    &args[0],
+                    Report::from_error(&e)
+                ),
                 source: Box::new(e),
                 location: location!(),
             });
