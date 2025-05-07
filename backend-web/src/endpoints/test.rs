@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use shared::{TestExecutionOutput, TestModifier};
 use snafu::location;
 use std::collections::HashMap;
-use tracing::{debug, instrument};
+use tracing::{debug, info, instrument};
 
 #[instrument(skip_all)]
 pub async fn list_tests(
@@ -69,7 +69,7 @@ pub async fn set_test(
 
     let test = Test {
         id: test_id,
-        owner,
+        owner: owner.clone(),
         admin_authored,
         category: payload.category,
         compiler_modifiers: payload.compiler_modifiers,
@@ -83,11 +83,26 @@ pub async fn set_test(
 
     if let Some(result) = &taste_testing_result {
         if !matches!(result, TestExecutionOutput::Success { .. }) && !payload.ignore_test_tasting {
+            info!(
+                test_id = %test.id,
+                owner = %owner,
+                team = %claims.team,
+                user = %claims.sub,
+                "Test failed testing"
+            );
             return Ok(Json(SetTestResponse::TastingFailed {
                 output: result.clone(),
             }));
         }
     }
+
+    info!(
+        test_id = %test.id,
+        owner = %owner,
+        team = %claims.team,
+        user = %claims.sub,
+        "Adding/modifying test"
+    );
 
     Ok(Json(SetTestResponse::TestAdded(
         db.add_test(test, taste_testing_result).await?,
@@ -152,6 +167,13 @@ pub async fn delete_test(
             }
         }
     }
+
+    info!(
+        test_id = %test_id,
+        team = %claims.team,
+        user = %claims.sub,
+        "Deleting test"
+    );
 
     db.delete_test(&test_id).await?;
     Ok(())

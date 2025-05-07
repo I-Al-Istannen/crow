@@ -49,6 +49,13 @@ pub async fn set_team_repo(
     // Update only after a successful clone
     let repo = state.db.set_team_repo(&repo.team, &repo.url).await?;
 
+    info!(
+        team = %repo.team,
+        user = %claims.sub,
+        url = %repo.url,
+        "Updated team repo"
+    );
+
     Ok(Json(repo))
 }
 
@@ -135,6 +142,14 @@ pub async fn set_final_task(
             payload.categories.iter().map(|s| s.as_str()),
         )
         .await?;
+
+    info!(
+        team = %claims.team,
+        user = %claims.sub,
+        task_id = %payload.task_id,
+        categories = ?payload.categories,
+        "Set final task"
+    );
 
     Ok(())
 }

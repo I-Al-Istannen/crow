@@ -113,7 +113,7 @@ async fn queue_task(
     let task_id: TaskId = Uuid::new_v4().to_string().into();
     let task = WorkItem {
         id: task_id.clone(),
-        team,
+        team: team.clone(),
         revision: revision.to_string(),
         commit_message,
         insert_time: SystemTime::now(),
@@ -128,6 +128,13 @@ async fn queue_task(
                 .await?;
         }
     }
+
+    info!(
+        task_id = %task_id,
+        revision = %revision,
+        team = %team,
+        "Queued task"
+    );
 
     Ok(Json(json!({ "taskId": task_id })).into_response())
 }
