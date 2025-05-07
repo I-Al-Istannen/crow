@@ -10,10 +10,11 @@
           'hover:!opacity-100',
         )
       "
+      class="flex items-stretch"
     >
       <TooltipProvider>
         <Tooltip>
-          <TooltipTrigger>
+          <TooltipTrigger class="flex items-end">
             <LucideUpload @click.prevent class="h-4 w-4" />
           </TooltipTrigger>
           <TooltipContent v-if="assignedCategories.length > 0">

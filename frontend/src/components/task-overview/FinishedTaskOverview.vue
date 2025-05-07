@@ -21,7 +21,7 @@
       "
     >
       <div class="flex flex-col justify-center max-w-full flex-wrap">
-        <div class="mb-1 flex items-center gap-1 flex-wrap mr-1 max-w-full">
+        <div class="mb-1 flex items-stretch gap-1 flex-wrap mr-1 max-w-full">
           <a
             v-if="commitUrl && task.info.teamId == team?.id"
             :href="commitUrl"
