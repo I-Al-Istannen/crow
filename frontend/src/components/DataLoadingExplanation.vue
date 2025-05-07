@@ -18,6 +18,10 @@
 import { LucideLoaderCircle } from 'lucide-vue-next'
 import { toRefs } from 'vue'
 
+defineOptions({
+  inheritAttrs: false,
+})
+
 const props = defineProps<{
   isLoading: boolean
   failureCount: number
