@@ -32,7 +32,13 @@ watch(
       return
     }
     const title = (newRoute.meta?.title || newRoute.meta?.name) as string | undefined
-    pageTitle.value = title || 'crow'
+    if (newRoute.meta?.title as string | undefined) {
+      pageTitle.value = title
+    } else if (newRoute.meta?.name as string | undefined) {
+      pageTitle.value = `${title} - crow`
+    } else {
+      pageTitle.value = 'crow'
+    }
   },
   { immediate: true },
 )

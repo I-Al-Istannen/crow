@@ -95,7 +95,7 @@ useTitle(
     }
     return 'Running task'
   }),
-  { restoreOnUnmount: false },
+  { restoreOnUnmount: false, titleTemplate: '%s - crow' },
 )
 
 useIntervalFn(

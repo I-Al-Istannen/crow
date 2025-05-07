@@ -111,7 +111,7 @@ watch(
   { immediate: true },
 )
 
-const title = useTitle(undefined, { restoreOnUnmount: false })
+const title = useTitle(undefined, { restoreOnUnmount: false, titleTemplate: '%s - crow' })
 watch(
   [taskStatus, queuedTask],
   ([status, queued]) => {

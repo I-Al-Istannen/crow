@@ -96,7 +96,7 @@ useTitle(
   computed(() =>
     task.value ? 'Task ' + task.value.info.revisionId.substring(0, 7) : 'Finished Task',
   ),
-  { restoreOnUnmount: false },
+  { restoreOnUnmount: false, titleTemplate: '%s - crow' },
 )
 
 const tests = computed(() => {
