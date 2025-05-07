@@ -1,7 +1,10 @@
+use crate::exit::HandleExitcode;
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
 use std::fmt::Formatter;
+use std::path::Path;
+use std::process::{Command, Output};
 use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 
@@ -512,4 +515,22 @@ pub fn indent(string: &str, count: usize) -> String {
     } else {
         indented
     }
+}
+
+pub fn remove_directory_force(dir: &Path) -> std::io::Result<Output> {
+    // Sometimes containers have folders without write permissions. We need to chmod
+    // those first or rm will fail.
+    Command::new("find")
+        .arg(dir)
+        .arg("-type")
+        .arg("d")
+        .arg("-exec")
+        .arg("chmod")
+        .arg("775")
+        .arg("{}")
+        .arg(";")
+        .handle_exitcode()?;
+
+    // Delete the directory
+    Command::new("rm").arg("-rf").arg(dir).handle_exitcode()
 }

@@ -1,11 +1,12 @@
 use derive_more::Display;
 use file_guard::os::unix::FileGuardExt;
 use file_guard::Lock;
-use shared::indent;
+use shared::exit::HandleExitcode;
+use shared::remove_directory_force;
 use snafu::{location, IntoError, Location, NoneError, ResultExt, Snafu};
 use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::Command;
 use std::time::Instant;
 use tracing::{info, warn};
 
@@ -140,13 +141,9 @@ impl Docker {
     pub fn new(cache_folder: Option<PathBuf>) -> Result<Self, DockerError> {
         if let Some(cache) = &cache_folder {
             if cache.exists() {
-                Command::new("rm")
-                    .arg("-rf")
-                    .arg(cache)
-                    .handle_exitcode()
-                    .context(CacheDirDeleteSnafu {
-                        path: cache.clone(),
-                    })?;
+                remove_directory_force(cache).context(CacheDirDeleteSnafu {
+                    path: cache.clone(),
+                })?;
             }
             std::fs::create_dir_all(cache).context(CacheDirCreateSnafu {
                 path: cache.clone(),
@@ -323,33 +320,4 @@ fn get_docker_image_id(image: &ImageId) -> Result<String, DockerError> {
     let output = output.lines().next().unwrap_or_default().to_string();
 
     Ok(output)
-}
-
-trait HandleExitcode {
-    fn handle_exitcode(self) -> std::io::Result<Output>;
-}
-
-impl HandleExitcode for &mut Command {
-    fn handle_exitcode(self) -> std::io::Result<Output> {
-        let output = self.output()?;
-
-        if output.status.success() {
-            return Ok(output);
-        }
-        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-
-        let mut response = "".to_string();
-        if let Some(code) = output.status.code() {
-            response.push_str(&format!("Exited with code {code}\n"));
-        }
-        if !stdout.trim().is_empty() {
-            response.push_str(&format!("stdout:\n{}\n", indent(stdout.trim(), 2)));
-        }
-        if !stderr.trim().is_empty() {
-            response.push_str(&format!("stderr:\n{}", indent(stderr.trim(), 2)));
-        }
-
-        Err(std::io::Error::new(std::io::ErrorKind::Other, response))
-    }
 }

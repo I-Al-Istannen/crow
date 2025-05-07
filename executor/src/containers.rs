@@ -4,8 +4,8 @@ use serde::Deserialize;
 use shared::execute::CommandResult;
 use shared::exit::CrowExitStatus;
 use shared::{
-    AbortedExecution, CompilerTest, ExecutionOutput, FinishedExecution, InternalError,
-    TestExecutionOutput,
+    remove_directory_force, AbortedExecution, CompilerTest, ExecutionOutput, FinishedExecution,
+    InternalError, TestExecutionOutput,
 };
 use snafu::{ensure, IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::io::Read;
@@ -745,31 +745,19 @@ fn delete_container_dir(
         "Cleaning up container workdir"
     );
 
-    let output = Command::new("rm")
-        .arg("-rf")
-        .arg(workdir)
-        .output()
-        .context(DirNotDeletedSnafu {
-            path: workdir.to_path_buf(),
-        })?;
-
-    if !output.status.success() {
-        debug!(
-            workdir = %workdir.display(),
-            container = ?container_id,
-            stderr = %String::from_utf8_lossy(&output.stderr),
-            "Failed to delete workdir"
-        );
-        return Err(DirNotDeletedSnafu {
-            path: workdir.to_path_buf(),
+    match remove_directory_force(workdir) {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            debug!(
+                workdir = %workdir.display(),
+                error = %Report::from_error(&e),
+                "Failed to delete container workdir"
+            );
+            Err(e).context(DirNotDeletedSnafu {
+                path: workdir.to_path_buf(),
+            })
         }
-        .into_error(io::Error::new(
-            io::ErrorKind::Other,
-            format!("rm failed: `{:?}`", String::from_utf8_lossy(&output.stderr)),
-        )));
     }
-
-    Ok(())
 }
 
 fn run_test_command(
