@@ -88,10 +88,9 @@ impl CliContext {
     }
 
     pub fn get_test_detail(&self, id: &str) -> Result<TestDetail, CliContextError> {
-        let url = Url::from_str(&format!("{}/tests/", self.backend_url))
-            .expect("url is valid")
-            .join(id)
-            .expect("url is valid after join");
+        let mut url = Url::from_str(&format!("{}/tests", self.backend_url)).expect("url is valid");
+        url.path_segments_mut().expect("url is a base url").push(id);
+
         let res = self
             .client
             .get(url)
