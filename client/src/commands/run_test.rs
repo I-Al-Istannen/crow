@@ -4,10 +4,13 @@ use crate::formats::{from_markdown, FormatError};
 use crate::util::{infer_test_metadata_from_path, print_test_output};
 use clap::Args;
 use console::style;
+use jiff::{Timestamp, Unit};
+use rayon::ThreadPoolBuilder;
 use shared::execute::execute_test;
 use shared::{execute, CompilerTest, TestExecutionOutput};
 use snafu::{ensure, location, IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::path::{Path, PathBuf};
+use std::sync::mpsc;
 use std::time::Duration;
 use tracing::{error, info};
 use walkdir::WalkDir;
@@ -87,6 +90,9 @@ pub struct CliRunTestsArgs {
     /// The run binary for your compiler
     #[clap(long = "compiler-run", short = 'c')]
     compiler_run: PathBuf,
+    /// How many tests to run in parallel. 0 for processor count.
+    #[clap(long = "jobs", short = 'j', default_value = "0")]
+    parallelism: usize,
 }
 
 pub fn command_run_tests(args: CliRunTestsArgs) -> Result<bool, CrowClientError> {
@@ -96,27 +102,69 @@ pub fn command_run_tests(args: CliRunTestsArgs) -> Result<bool, CrowClientError>
     let mut errors = 0;
     let mut successes = 0;
     let separator_width = 80;
+    let test_count = tests.len();
+
+    let pool = ThreadPoolBuilder::new()
+        .num_threads(args.parallelism)
+        .build()
+        .unwrap();
+    let (tx, rx) = mpsc::channel();
 
     for local_test in tests {
-        let test = &local_test.test;
+        let tx = tx.clone();
+        let test = local_test.test;
+        let test_dir = args.test_dir.clone();
+        let compiler_run = args.compiler_run.clone();
+
+        pool.spawn(move || {
+            let res = run_test(CliRunTestArgs {
+                test_dir,
+                test_id: test.id.clone(),
+                compiler_run,
+            });
+            tx.send((res, test)).unwrap();
+        });
+    }
+    // Explicitly drop the sender to close the channel
+    drop(tx);
+
+    let start = Timestamp::now();
+
+    while let Ok(res) = rx.recv() {
+        let (res, test) = res;
         let remaining_padding = separator_width - test.id.len() - 2;
-        println!(
+        let elapsed = start.duration_until(Timestamp::now());
+        print!(
             "{} {} {}",
             style("=".repeat(remaining_padding / 2)).dim(),
             style(&test.id).bold().bright().cyan(),
             style("=".repeat((remaining_padding as f32 / 2.0).ceil() as usize)).dim(),
         );
-        let res = command_run_test(CliRunTestArgs {
-            test_dir: args.test_dir.clone(),
-            test_id: test.id.clone(),
-            compiler_run: args.compiler_run.clone(),
-        });
+
+        println!(
+            "    {} {}",
+            style(format!(
+                "{}/{} completed",
+                successes + failures + errors,
+                test_count
+            ))
+            .bold()
+            .bright()
+            .cyan(),
+            style(format!(
+                " ({:?} elapsed)",
+                elapsed.round(Unit::Millisecond).unwrap()
+            ))
+            .dim(),
+        );
 
         match res {
-            Ok(true) => {
+            Ok((true, res)) => {
+                print_test_output(&res);
                 successes += 1;
             }
-            Ok(false) => {
+            Ok((false, res)) => {
+                print_test_output(&res);
                 failures += 1;
             }
             Err(err) => {
@@ -143,6 +191,14 @@ pub fn command_run_tests(args: CliRunTestsArgs) -> Result<bool, CrowClientError>
 }
 
 pub fn command_run_test(args: CliRunTestArgs) -> Result<bool, CrowClientError> {
+    let (success, res) = run_test(args)?;
+
+    print_test_output(&res);
+
+    Ok(success)
+}
+
+fn run_test(args: CliRunTestArgs) -> Result<(bool, TestExecutionOutput), CrowClientError> {
     verify_test_dir(&args).context(RunTestSnafu)?;
 
     let test = find_test(&args.test_dir, &args.test_id).context(RunTestSnafu)?;
@@ -172,9 +228,7 @@ pub fn command_run_test(args: CliRunTestArgs) -> Result<bool, CrowClientError> {
         execute::execute_locally,
     );
 
-    print_test_output(&res);
-
-    Ok(matches!(res, TestExecutionOutput::Success { .. }))
+    Ok((matches!(res, TestExecutionOutput::Success { .. }), res))
 }
 
 fn verify_test_dir(args: &CliRunTestArgs) -> Result<(), RunTestError> {

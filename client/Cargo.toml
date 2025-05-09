@@ -13,6 +13,7 @@ jiff = { version = "0.2.10", features = ["serde"] }
 keyring = { version = "3.6.1", features = ["apple-native", "linux-native-sync-persistent", "windows-native"] }
 markdown = "1.0.0-alpha.23"
 mdast_util_to_markdown = "0.0.1"
+rayon = "1.10.0"
 reqwest = { version = "0.12.12", features = ["blocking", "json", "rustls-tls"], default-features = false }
 semver = "1.0.26"
 serde = { version = "1.0.218", features = ["derive"] }
