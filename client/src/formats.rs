@@ -79,7 +79,8 @@ pub fn from_markdown(
 
     let mut nodes = associate_to_headings(nodes_to_process)?;
 
-    let mut meta = extract_key_values(extract_heading(Keys::Meta, &mut nodes)?, |_| true)?;
+    let meta = extract_key_values(extract_heading(Keys::Meta, &mut nodes)?, |_| true)?;
+    let mut meta = IndexMap::from_iter(meta);
     let hash = extract_value(Keys::Hash, &mut meta)?;
     let creator_id = extract_value(Keys::Creator, &mut meta)?;
     let admin_authored = extract_value(Keys::AdminAuthored, &mut meta)?
@@ -189,8 +190,8 @@ fn extract_modifiers(nodes: Vec<Node>) -> Result<Vec<TestModifier>, FormatError>
 fn extract_key_values(
     mut nodes: Vec<Node>,
     needs_value: impl Fn(&str) -> bool,
-) -> Result<IndexMap<String, Option<String>>, FormatError> {
-    let mut result: IndexMap<String, Option<String>> = IndexMap::new();
+) -> Result<Vec<(String, Option<String>)>, FormatError> {
+    let mut result: Vec<(String, Option<String>)> = Vec::new();
 
     while !nodes.is_empty() {
         let node = nodes.remove(0);
@@ -202,14 +203,14 @@ fn extract_key_values(
             let header = header.trim().to_string();
 
             if !needs_value(&header) {
-                result.insert(header, None);
+                result.push((header, None));
                 continue;
             }
 
             while !nodes.is_empty() {
                 let node = nodes.remove(0);
                 if let Node::Code(Code { value, .. }) = node {
-                    result.insert(header, Some(value));
+                    result.push((header, Some(value)));
                     break;
                 }
             }
