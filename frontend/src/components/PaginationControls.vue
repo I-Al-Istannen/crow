@@ -121,6 +121,9 @@ watch(
       newPage = currentPage.value
     }
 
+    const totalPages = Math.ceil(data.length / itemsPerPage)
+    newPage = Math.min(totalPages, newPage)
+
     const start = Math.max(0, newPage - 1) * itemsPerPage
     const end = Math.min(data.length, newPage * itemsPerPage)
     const slice = data.slice(start, end)
