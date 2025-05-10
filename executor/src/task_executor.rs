@@ -94,7 +94,7 @@ fn execute_task_impl(
     let aborted = task.aborted;
     let message_channel = task.message_channel;
     let task = task.inner;
-    let container = TaskContainer::new(&ImageId(task.image), &task.build_command, docker)
+    let container = TaskContainer::<()>::new(&ImageId(task.image), &task.build_command, docker)
         .context(ContainerCreateSnafu)?;
 
     container
@@ -321,7 +321,7 @@ fn run_test_impl(
     if base_container.borrow().is_none() {
         info!("Creating reference compiler container");
         // We have nothing really to do here, so we just use `true` as the builder.
-        let container = TaskContainer::new(image_id, &["true".to_string()], docker)
+        let container = TaskContainer::<()>::new(image_id, &["true".to_string()], docker)
             .context(ContainerCreateSnafu)?
             .run()
             .context(ContainerRunSnafu)?;

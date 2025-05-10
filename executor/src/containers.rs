@@ -325,6 +325,11 @@ pub struct Built {
     pub runtime: Duration,
 }
 
+#[derive(Debug, Clone)]
+pub struct ForTest<'a> {
+    parent: &'a TaskContainer<Built>,
+}
+
 #[derive(Debug)]
 #[must_use]
 pub struct TaskContainer<T> {
@@ -492,51 +497,16 @@ impl TaskContainer<Built> {
             .into_error(NoneError));
         }
 
-        let workdir = TempDir::new()
-            .context(TempDirCreationSnafu)
-            .context(CreationSnafu)?;
-        let container_id = ContainerId(Uuid::new_v4().to_string());
-
-        let cleanup_guard = ScopeGuard(|| {
-            if let Err(e) = delete_container_dir(&container_id, workdir.path()) {
-                error!(
-                    error = ?e,
-                    container = ?container_id,
-                    "Failed to delete test container workdir"
-                );
-            }
-        });
-        // TODO: This is hackish. We need the container rootfs to place the compiler arguments in
-        //       and check for the results.
-        let container_root = workdir.path().join("overlay-upper");
-        if !container_root.exists() {
-            fs::create_dir(&container_root)
-                .context(TempDirCreationSnafu)
-                .context(CreationSnafu)?;
-        }
-        let output_binary_path = container_root.join("out.🦆");
-
-        fs::copy(
-            std::env::current_exe().context(FindOwnExecutableSnafu)?,
-            container_root.join(CROW_SHIM_IN_CONTAINER_PATH),
-        )
-        .context(CopyExecutorToContainerSnafu)?;
+        let mut test_container = TaskContainer::<ForTest<'_>>::new(self)?;
+        let output_binary_path = test_container.rootfs.join("out.🦆");
 
         let res = shared::execute::execute_test(
             test,
-            &container_root,
+            &test_container.rootfs.clone(),
             &output_binary_path,
             Path::new("/"),
             |path, cmd| {
-                let res = run_test_command(
-                    path,
-                    cmd,
-                    workdir.path(),
-                    &self.rootfs,
-                    &container_id,
-                    aborted.clone(),
-                    timeout,
-                );
+                let res = test_container.execute_command(path, cmd, aborted.clone(), timeout);
                 match res {
                     Ok(res) => Ok(res),
                     Err(e) => Err(Box::new(e)),
@@ -544,9 +514,77 @@ impl TaskContainer<Built> {
             },
         );
 
-        drop(cleanup_guard);
-
         Ok(res)
+    }
+}
+
+impl<'a> TaskContainer<ForTest<'a>> {
+    pub fn new(outer: &'a TaskContainer<Built>) -> Result<Self, TestRunError> {
+        if !outer.data.exit_status.success() {
+            return Err(BaseNotBuiltSnafu {
+                exit_status: outer.data.exit_status,
+            }
+            .into_error(NoneError));
+        }
+
+        let workdir = TempDir::new()
+            .context(TempDirCreationSnafu)
+            .context(CreationSnafu)?;
+        let container_id = ContainerId(Uuid::new_v4().to_string());
+
+        let container_root = workdir.path().join("overlay-upper");
+        fs::create_dir(&container_root)
+            .context(TempDirCreationSnafu)
+            .context(CreationSnafu)?;
+
+        fs::copy(
+            std::env::current_exe().context(FindOwnExecutableSnafu)?,
+            container_root.join(CROW_SHIM_IN_CONTAINER_PATH),
+        )
+        .context(CopyExecutorToContainerSnafu)?;
+
+        Ok(Self {
+            workdir: workdir.into_path(),
+            rootfs: container_root,
+            container_id,
+            do_cleanup: true,
+            data: ForTest { parent: outer },
+        })
+    }
+
+    pub fn execute_command(
+        &mut self,
+        binary_path: &Path,
+        args: &[String],
+        aborted: Arc<AtomicBool>,
+        timeout: Duration,
+    ) -> Result<CommandResult, TestRunError> {
+        let mut full_command = vec![
+            format!("/{CROW_SHIM_IN_CONTAINER_PATH}"),
+            "shim".to_string(),
+            "--".to_string(),
+            binary_path.to_str().expect("path was Unicode").to_string(),
+        ];
+        full_command.extend_from_slice(args);
+
+        ContainerConfig::OverlayRootfs
+            .apply_to_workdir(&self.data.parent.rootfs, &self.workdir, &full_command, true)
+            .context(ConfigApplySnafu)
+            .context(CreationSnafu)?;
+
+        let mut process =
+            start_container(&self.workdir, &self.container_id).context(ExecutionStartSnafu)?;
+
+        let res = wait_for_container(
+            aborted,
+            &self.container_id,
+            &mut process.stdout.take().unwrap(),
+            &mut process.stderr.take().unwrap(),
+            &mut process,
+            timeout,
+        );
+
+        wait_result_to_command_result(&self.container_id, res)
     }
 }
 
@@ -760,42 +798,6 @@ fn delete_container_dir(
     }
 }
 
-fn run_test_command(
-    path: &Path,
-    cmd: &[String],
-    workdir: &Path,
-    rootfs: &Path,
-    container_id: &ContainerId,
-    aborted: Arc<AtomicBool>,
-    timeout: Duration,
-) -> Result<CommandResult, TestRunError> {
-    let mut full_command = vec![
-        format!("/{CROW_SHIM_IN_CONTAINER_PATH}"),
-        "shim".to_string(),
-        "--".to_string(),
-        path.to_str().expect("path was Unicode").to_string(),
-    ];
-    full_command.extend_from_slice(cmd);
-
-    ContainerConfig::OverlayRootfs
-        .apply_to_workdir(rootfs, workdir, &full_command, true)
-        .context(ConfigApplySnafu)
-        .context(CreationSnafu)?;
-
-    let mut process = start_container(workdir, container_id).context(ExecutionStartSnafu)?;
-
-    let res = wait_for_container(
-        aborted,
-        container_id,
-        &mut process.stdout.take().unwrap(),
-        &mut process.stderr.take().unwrap(),
-        &mut process,
-        timeout,
-    );
-
-    wait_result_to_command_result(container_id, res)
-}
-
 fn wait_result_to_command_result(
     container_id: &ContainerId,
     res: Result<(String, String, ExitStatus, Duration), WaitForContainerError>,
@@ -883,12 +885,4 @@ pub fn execution_output_from_wait_error(error: &WaitForContainerError) -> Option
     }
 
     None
-}
-
-struct ScopeGuard<F: FnMut()>(F);
-
-impl<F: FnMut()> Drop for ScopeGuard<F> {
-    fn drop(&mut self) {
-        self.0();
-    }
 }
