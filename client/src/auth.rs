@@ -6,7 +6,7 @@ use reqwest::blocking::Client;
 use reqwest::StatusCode;
 use snafu::{IntoError, Location, NoneError, ResultExt, Snafu};
 use std::fmt::{Display, Formatter};
-use tracing::error;
+use tracing::{error, info};
 
 #[derive(Debug, Clone)]
 pub struct BackendAuth(String);
@@ -61,6 +61,12 @@ pub enum AuthError {
 }
 
 pub fn get_stored_auth(frontend_url: &str) -> Result<BackendAuth, AuthError> {
+    let token = std::env::var("CROW_CLIENT_AUTH_TOKEN").ok();
+    if let Some(token) = token {
+        info!("CROW_CLIENT_AUTH_TOKEN is set, using it as the auth token.");
+        return Ok(BackendAuth(token));
+    }
+
     let entry = Entry::new("crow-client", "backend-auth").context(EntryNameInvalidSnafu)?;
 
     let token = match entry.get_password() {
