@@ -327,7 +327,7 @@ dependencies = [
 
 [[package]]
 name = "backend-web"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "axum 0.7.9",
  "axum-extra",
@@ -536,7 +536,7 @@ checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 
 [[package]]
 name = "client"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "clap",
  "console",
@@ -1069,7 +1069,7 @@ dependencies = [
 
 [[package]]
 name = "executor"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "clap",
  "ctrlc",
@@ -3407,7 +3407,7 @@ dependencies = [
 
 [[package]]
 name = "shared"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "derive_more",
  "is_executable",

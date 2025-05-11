@@ -197,6 +197,8 @@ fn check_updates() -> std::result::Result<(), Whatever> {
             st("You are using the latest version of crow: ")
                 .append(style(format!("{my_version}")).green())
         );
+        // Only reset the update check time if we are up to date, always nag otherwise
+        reset_update_check_time()?;
     }
 
     Ok(())
@@ -233,10 +235,21 @@ fn should_perform_update_check() -> std::result::Result<bool, Whatever> {
         return Ok(false);
     }
 
+    Ok(true)
+}
+
+fn reset_update_check_time() -> std::result::Result<(), Whatever> {
+    let temp_dir = tempfile::env::temp_dir();
+    ensure_whatever!(
+        temp_dir.exists(),
+        "Temp dir does not exist, skipping update check"
+    );
+
+    let update_file = temp_dir.join("crow-client-last-update-check");
     File::create(&update_file)
         .whatever_context("Could not create update tracking file")?
         .write_all("Hello there :)".as_bytes())
         .whatever_context("Could not write to update tracking file")?;
 
-    Ok(true)
+    Ok(())
 }
