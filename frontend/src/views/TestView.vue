@@ -27,7 +27,12 @@
         />
         <div v-if="allTests">
           <TooltipProvider v-if="allTests.length > 0">
-            <Input type="text" placeholder="Search..." class="shadow-none" v-model="searchText" />
+            <Input
+              type="text"
+              placeholder="Search for test names, team names or category..."
+              class="shadow-none"
+              v-model="searchText"
+            />
             <Accordion type="multiple" v-model="expandedTests">
               <TestListEntry v-for="test in displayedTests" :key="test.id" :test="test">
                 <template #actions>
