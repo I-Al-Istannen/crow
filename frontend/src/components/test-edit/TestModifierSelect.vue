@@ -177,9 +177,7 @@ const showFail = computed(() => {
 const showCrash = computed(() => {
   return modifierTarget.value === 'binary' || modifier.value.type === 'ShouldCrash'
 })
-const showArgString = computed(() => {
-  return modifierTarget.value === 'compiler' || modifier.value.type === 'ProgramArgument'
-})
+const showArgString = computed(() => modifier.value.type === 'ProgramArgument')
 const showArgFile = computed(() => {
   return modifierTarget.value === 'compiler' || modifier.value.type === 'ProgramArgumentFile'
 })
