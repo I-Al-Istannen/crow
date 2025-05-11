@@ -181,6 +181,7 @@ function doesTestMatchFilter(filter: string, test: TestSummary) {
   return (
     test.id.toLowerCase().includes(filterLower) ||
     test.creatorName.toLowerCase().includes(filterLower) ||
+    test.creatorId.toLowerCase().includes(filterLower) ||
     test.category.toLowerCase().includes(filterLower)
   )
 }
