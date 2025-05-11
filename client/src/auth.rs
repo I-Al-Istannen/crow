@@ -4,7 +4,8 @@ use console::style;
 use keyring::Entry;
 use reqwest::blocking::Client;
 use reqwest::StatusCode;
-use snafu::{IntoError, Location, NoneError, ResultExt, Snafu};
+use shared::indent;
+use snafu::{IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::fmt::{Display, Formatter};
 use tracing::{error, info};
 
@@ -143,5 +144,17 @@ pub fn validate_token(
 
 pub fn store_auth(auth: BackendAuth) -> Result<(), AuthError> {
     let entry = Entry::new("crow-client", "backend-auth").context(EntryNameInvalidSnafu)?;
-    entry.set_password(&auth.0).context(PasswordWriteSnafu)
+    if let Err(e) = entry.set_password(&auth.0).context(PasswordWriteSnafu) {
+        error!(
+            "{}",
+            st(style("Failed").red())
+                .append(" to set password in keyring. ")
+                .append("You can set the ")
+                .append(style("CROW_CLIENT_AUTH_TOKEN").bold().cyan())
+                .append(" environment variable to a valid token to bypass the keyring.\n")
+                .append(indent(&Report::from_error(e).to_string(), 2))
+        );
+    };
+
+    Ok(())
 }
