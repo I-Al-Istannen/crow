@@ -42,6 +42,9 @@ pub struct CliExecutorArgs {
     /// The directory to cache docker images in. If not set, no cache will be used.
     #[clap(long)]
     pub image_cache_dir: Option<PathBuf>,
+    /// The amount of tests to execute in parallel. If 0, the number of processors is used.
+    #[clap(long, short = 'j', default_value = "0")]
+    pub parallelism: usize,
 }
 
 pub fn run_executor(args: CliExecutorArgs) -> Result<(), AnyError> {
@@ -67,7 +70,10 @@ pub fn run_executor(args: CliExecutorArgs) -> Result<(), AnyError> {
     let mut iteration: Box<dyn Iteration> = if args.test_taster {
         Box::new(test_tasting::TestTastingState::new(docker))
     } else {
-        Box::new(test_compiler::TestCompilerState::new(docker)?)
+        Box::new(test_compiler::TestCompilerState::new(
+            docker,
+            args.parallelism,
+        )?)
     };
 
     while !shutdown_requested.load(Ordering::Relaxed) {

@@ -17,8 +17,11 @@ pub struct TestCompilerState {
 }
 
 impl TestCompilerState {
-    pub fn new(docker: Docker) -> Result<Self, AnyError> {
-        let thread_pool = match ThreadPoolBuilder::new().build() {
+    pub fn new(docker: Docker, max_parallelism: usize) -> Result<Self, AnyError> {
+        let thread_pool = match ThreadPoolBuilder::new()
+            .num_threads(max_parallelism)
+            .build()
+        {
             Err(e) => {
                 return Err(AnyError::ThreadPoolBuild {
                     source: e,
