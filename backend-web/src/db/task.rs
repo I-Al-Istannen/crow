@@ -1,7 +1,8 @@
 use crate::config::TestCategory;
 use crate::error::{Result, SqlxSnafu, WebError};
 use crate::types::{
-    ExecutionExitStatus, FinalSubmittedTask, FinishedCompilerTaskSummary, TaskId, TeamId, TestId,
+    ExecutionExitStatus, FinalSubmittedTask, FinishedCompilerTaskSummary, FinishedTestSummary,
+    TaskId, TeamId, TestId,
 };
 use crate::UserId;
 use jiff::Timestamp;
@@ -138,21 +139,9 @@ pub(super) async fn get_task(
         team_id: task.team_id.to_string(),
     };
 
-    let outdated_tests = query!(
-        r#"
-        SELECT test_id as "test_id!: TestId"
-        FROM TestResults
-        JOIN Tests ON Tests.id = TestResults.test_id
-        JOIN Tasks ON Tasks.task_id = TestResults.task_id
-        WHERE Tasks.task_id = ? AND Tests.last_updated > Tasks.queue_time
-        "#,
-        task_id
-    )
-    .map(|it| it.test_id)
-    .fetch_all(&mut *con)
-    .instrument(info_span!("sqlx_get_task_outdated_tests"))
-    .await
-    .context(SqlxSnafu)?;
+    let outdated_tests = get_outdated_tests(&mut con, task_id)
+        .instrument(info_span!("sqlx_get_task_outdated_tests"))
+        .await?;
 
     if !matches!(build_output, ExecutionOutput::Success(_)) {
         return Ok((
@@ -541,13 +530,115 @@ pub(super) async fn get_top_task_per_team(
     let mut result = HashMap::new();
 
     for row in query_res {
-        let task = get_task(&mut *con, &row.task_id)
+        let task = get_task_summary(&mut con, &row.task_id)
             .instrument(info_span!("sqlx_get_top_task_per_team_inner"))
             .await?;
-        result.insert(row.team_id, task.into());
+        result.insert(row.team_id, task);
     }
 
     Ok(result)
+}
+
+#[instrument(skip_all)]
+async fn get_task_summary(
+    con: &mut SqliteConnection,
+    task_id: &TaskId,
+) -> Result<FinishedCompilerTaskSummary> {
+    let task = query!(
+        r#"
+        SELECT
+            task_id as "task_id!: TaskId",
+            start_time as "start_time!: u64",
+            end_time as "end_time!: u64",
+            team_id as "team_id!: TeamId",
+            revision as "revision_id!: String",
+            commit_message as "commit_message!: String",
+            execution_id as "execution_id!: String",
+            (
+                SELECT result FROM ExecutionResults WHERE execution_id = execution_id
+            ) as "build_result!: ExecutionExitStatus"
+        FROM Tasks
+        WHERE task_id = ?
+        "#,
+        task_id
+    )
+    .fetch_optional(&mut *con)
+    .instrument(info_span!("sqlx_get_task_summary_query"))
+    .await
+    .context(SqlxSnafu)?;
+
+    let Some(task) = task else {
+        return Err(WebError::not_found(location!()));
+    };
+
+    let start = SystemTime::UNIX_EPOCH.add(Duration::from_millis(task.start_time));
+    let end = SystemTime::UNIX_EPOCH.add(Duration::from_millis(task.end_time));
+    let info = FinishedTaskInfo {
+        task_id: task_id.to_string(),
+        start,
+        end,
+        revision_id: task.revision_id,
+        commit_message: task.commit_message,
+        team_id: task.team_id.to_string(),
+    };
+
+    if task.build_result != ExecutionExitStatus::Success {
+        return Ok(FinishedCompilerTaskSummary::BuildFailed {
+            info,
+            status: task.build_result,
+        });
+    }
+
+    let tests = query!(
+        r#"
+        SELECT
+            test_id as "test_id!: TestId",
+            (
+                SELECT result FROM ExecutionResults
+                WHERE execution_id = binary_exec_id
+            ) as "binary_status?: ExecutionExitStatus",
+            (
+                SELECT result FROM ExecutionResults
+                WHERE execution_id = compiler_exec_id
+            ) as "compiler_status!: ExecutionExitStatus",
+            provisional_for_category as "provisional_for_category?"
+        FROM TestResults
+        WHERE task_id = ?"#,
+        task_id
+    )
+    .map(|it| FinishedTestSummary {
+        test_id: it.test_id,
+        output: it.binary_status.unwrap_or(it.compiler_status),
+        provisional_for_category: it.provisional_for_category,
+    })
+    .fetch_all(&mut *con)
+    .instrument(info_span!("sqlx_get_task_summary_tests"))
+    .await
+    .context(SqlxSnafu)?;
+
+    Ok(FinishedCompilerTaskSummary::RanTests {
+        info,
+        tests,
+        outdated: get_outdated_tests(con, task_id).await?,
+    })
+}
+
+async fn get_outdated_tests(con: &mut SqliteConnection, task_id: &TaskId) -> Result<Vec<TestId>> {
+    query!(
+        r#"
+        SELECT test_id as "test_id!: TestId"
+        FROM TestResults
+        JOIN Tests ON Tests.id = TestResults.test_id
+        JOIN Tasks ON Tasks.task_id = TestResults.task_id
+        WHERE Tasks.task_id = ? AND Tests.last_updated > Tasks.queue_time
+        "#,
+        task_id
+    )
+    .map(|it| it.test_id)
+    .fetch_all(&mut *con)
+    .instrument(info_span!("sqlx_get_task_outdated_tests"))
+    .await
+    .context(SqlxSnafu)
 }
 
 #[instrument(skip_all)]

@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            task_id as \"task_id!: TaskId\",\n            start_time as \"start_time!: u64\",\n            end_time as \"end_time!: u64\",\n            team_id as \"team_id!: TeamId\",\n            revision as \"revision_id!: String\",\n            commit_message as \"commit_message!: String\",\n            execution_id as \"execution_id!: String\",\n            (\n                SELECT result FROM ExecutionResults WHERE execution_id = execution_id\n            ) as \"build_result!: ExecutionExitStatus\"\n        FROM Tasks\n        WHERE task_id = ?\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "task_id!: TaskId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "start_time!: u64",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "end_time!: u64",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "team_id!: TeamId",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "revision_id!: String",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "commit_message!: String",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "execution_id!: String",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "build_result!: ExecutionExitStatus",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "ea1882429d531cdfff5b3ef30dcf909fa7eca9e95cb6490513d9b86661a45a88"
+}
