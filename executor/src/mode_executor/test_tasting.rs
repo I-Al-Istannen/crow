@@ -110,7 +110,7 @@ impl super::Iteration for TestTastingState {
             id: task_id.clone(),
         };
 
-        info!(id = %task_id, res = ?res, "Task finished");
+        info!(id = %task_id, "Tasting finished");
         client
             .post(&endpoints.done_taste_test)
             .json(&res)

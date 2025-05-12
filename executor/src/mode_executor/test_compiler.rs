@@ -121,7 +121,7 @@ impl super::Iteration for TestCompilerState {
         start_update_listener(args, endpoints, rx);
         let res = execute_task(task, source_tar.into_temp_path(), &self.docker);
 
-        info!(id = task_id, res = ?res, "Task finished");
+        info!(id = task_id, res = ?res.info(), "Task finished");
         client
             .post(&endpoints.done)
             .json(&res)
