@@ -504,7 +504,7 @@ pub(super) async fn get_top_task_per_team(
             PASS_BY_TASK.task_id as "task_id!: TaskId",
             MAX(PASS_BY_TASK.passed_count) as passes
         FROM (
-            SELECT TestResults.task_id, COUNT(DISTINCT test_id) as passed_count
+            SELECT TestResults.task_id, COUNT(test_id) as passed_count
             FROM TestResults
             WHERE
                 EXISTS(SELECT 1 FROM ExecutionResults ER
@@ -668,12 +668,12 @@ pub(super) async fn get_final_submitted_task(
     .context(SqlxSnafu)?;
 
     if let Some(override_task) = manual_task {
-        let task = get_task(&mut *con, &override_task.task_id)
+        let summary = get_task_summary(&mut con, &override_task.task_id)
             .instrument(info_span!("sqlx_get_final_submitted_task_inner"))
             .await?;
 
         return Ok(Some(FinalSubmittedTask::ManuallyOverridden {
-            summary: task.into(),
+            summary,
             user_id: override_task.user_id,
             time: override_task.update_time,
         }));
@@ -757,7 +757,7 @@ async fn get_top_task_for_team_and_category(
         SELECT
             PASS_BY_TASK.task_id as "task_id!: TaskId"
         FROM (
-            SELECT TestResults.task_id, COUNT(DISTINCT test_id) as passed_count
+            SELECT TestResults.task_id, COUNT(test_id) as passed_count
             FROM TestResults
             JOIN Tests ON Tests.id = TestResults.test_id
             WHERE

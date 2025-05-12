@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            Tasks.team_id as \"team_id!: TeamId\",\n            PASS_BY_TASK.task_id as \"task_id!: TaskId\",\n            MAX(PASS_BY_TASK.passed_count) as passes\n        FROM (\n            SELECT TestResults.task_id, COUNT(test_id) as passed_count\n            FROM TestResults\n            WHERE\n                EXISTS(SELECT 1 FROM ExecutionResults ER\n                       WHERE ER.execution_id = TestResults.compiler_exec_id AND ER.result = ?)\n                AND (\n                    TestResults.binary_exec_id is NULL OR\n                    EXISTS(SELECT 1 FROM ExecutionResults ER\n                           WHERE ER.execution_id = TestResults.binary_exec_id AND ER.result = ?)\n                )\n            GROUP BY TestResults.task_id\n        ) PASS_BY_TASK\n        JOIN Tasks ON Tasks.task_id = PASS_BY_TASK.task_id\n        GROUP BY Tasks.team_id;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "team_id!: TeamId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "task_id!: TaskId",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "passes",
+        "ordinal": 2,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "e6ffc0085523c14517e0bfbd84155389b7f3d074d00fb5e37639b3f68dfbb262"
+}
