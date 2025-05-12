@@ -1,0 +1,1 @@
+CREATE INDEX tasks_team_idx ON tasks (team_id);
