@@ -1,3 +1,4 @@
+use crate::containers::LimitsConfig;
 use crate::docker::Docker;
 use crate::mode_executor::{backoff, start_update_listener, CliExecutorArgs};
 use crate::task_executor::{execute_task, ExecutingTask};
@@ -14,10 +15,17 @@ use tracing::{debug, info, warn};
 pub struct TestCompilerState {
     thread_pool: ThreadPool,
     docker: Docker,
+    build_limits: LimitsConfig,
+    test_limits: LimitsConfig,
 }
 
 impl TestCompilerState {
-    pub fn new(docker: Docker, max_parallelism: usize) -> Result<Self, AnyError> {
+    pub fn new(
+        docker: Docker,
+        max_parallelism: usize,
+        build_limits: LimitsConfig,
+        test_limits: LimitsConfig,
+    ) -> Result<Self, AnyError> {
         let thread_pool = match ThreadPoolBuilder::new()
             .num_threads(max_parallelism)
             .build()
@@ -34,6 +42,8 @@ impl TestCompilerState {
         Ok(Self {
             thread_pool,
             docker,
+            build_limits,
+            test_limits,
         })
     }
 }
@@ -122,7 +132,13 @@ impl super::Iteration for TestCompilerState {
             message_channel: tx,
         };
         start_update_listener(args, endpoints, rx);
-        let res = execute_task(task, source_tar.into_temp_path(), &self.docker);
+        let res = execute_task(
+            task,
+            source_tar.into_temp_path(),
+            &self.docker,
+            &self.build_limits,
+            &self.test_limits,
+        );
 
         info!(id = task_id, res = ?res.info(), "Task finished");
         client

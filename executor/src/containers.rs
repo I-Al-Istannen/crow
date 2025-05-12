@@ -235,6 +235,62 @@ pub struct RuncLogMessage {
     pub time: String,
 }
 
+pub struct LimitsConfig {
+    pub cpus: Option<u32>,
+    pub memory_bytes: Option<usize>,
+}
+
+impl LimitsConfig {
+    pub fn new(cpus: u32, memory_bytes: usize) -> Self {
+        Self {
+            cpus: if cpus > 0 { Some(cpus) } else { None },
+            memory_bytes: if memory_bytes > 0 {
+                Some(memory_bytes)
+            } else {
+                None
+            },
+        }
+    }
+
+    pub fn apply(&self, mut config: String) -> String {
+        if let Some(cpus) = self.cpus {
+            config = config.replace(
+                "{cpu_limits}",
+                &format!(
+                    r#"
+                   "cpu": {{
+                       "quota": {},
+                       "period": 100000
+                   }},
+                   "#,
+                    cpus * 100_000
+                ),
+            )
+        } else {
+            config = config.replace("{cpu_limits}", "");
+        }
+
+        if let Some(memory) = self.memory_bytes {
+            config = config.replace(
+                "{memory_limits}",
+                &format!(
+                    r#"
+                   "memory": {{
+                       "limit": {},
+                       "swap": {}
+                   }},
+                   "#,
+                    memory, memory
+                ),
+            )
+        } else {
+            config = config.replace("{memory_limits}", "");
+        }
+
+        config
+    }
+}
+
 pub enum ContainerConfig {
     WritableRootfs,
     OverlayRootfs,
@@ -247,6 +303,7 @@ impl ContainerConfig {
         workdir: &Path,
         args: &[String],
         exists_okay: bool,
+        limits_config: &LimitsConfig,
     ) -> Result<PathBuf, RunConfigError> {
         let path_config = workdir.join("config.json");
 
@@ -259,6 +316,7 @@ impl ContainerConfig {
                         "{args}",
                         &serde_json::to_string(args).context(ArgsNotJsonSnafu)?,
                     );
+                let config = limits_config.apply(config);
 
                 fs::write(&path_config, config).context(FileWriteSnafu {
                     path: path_config.to_path_buf(),
@@ -291,6 +349,7 @@ impl ContainerConfig {
                     .replace("{lower_dir}", &rootfs.display().to_string())
                     .replace("{upper_dir}", &path_upper.display().to_string())
                     .replace("{work_dir}", &path_work.display().to_string());
+                let config = limits_config.apply(config);
 
                 fs::write(&path_config, config).context(FileWriteSnafu {
                     path: path_config.to_path_buf(),
@@ -345,6 +404,7 @@ impl TaskContainer<()> {
         image: &ImageId,
         args: &[String],
         docker: &Docker,
+        limits: &LimitsConfig,
     ) -> Result<TaskContainer<Created>, ContainerCreateError> {
         let workdir = TempDir::new().context(TempDirCreationSnafu)?;
         let path_rootfs = workdir.path().join("rootfs");
@@ -356,7 +416,7 @@ impl TaskContainer<()> {
             .context(ImageCopySnafu)?;
 
         ContainerConfig::WritableRootfs
-            .apply_to_workdir(&path_rootfs, workdir.path(), args, false)
+            .apply_to_workdir(&path_rootfs, workdir.path(), args, false, limits)
             .context(ConfigApplySnafu)?;
 
         Ok(TaskContainer {
@@ -489,6 +549,7 @@ impl TaskContainer<Built> {
         test: &CompilerTest,
         timeout: Duration,
         aborted: Arc<AtomicBool>,
+        limits: &LimitsConfig,
     ) -> Result<TestExecutionOutput, TestRunError> {
         if !self.data.exit_status.success() {
             return Err(BaseNotBuiltSnafu {
@@ -506,7 +567,8 @@ impl TaskContainer<Built> {
             &output_binary_path,
             Path::new("/"),
             |path, cmd| {
-                let res = test_container.execute_command(path, cmd, aborted.clone(), timeout);
+                let res =
+                    test_container.execute_command(path, cmd, aborted.clone(), timeout, limits);
                 match res {
                     Ok(res) => Ok(res),
                     Err(e) => Err(Box::new(e)),
@@ -558,6 +620,7 @@ impl<'a> TaskContainer<ForTest<'a>> {
         args: &[String],
         aborted: Arc<AtomicBool>,
         timeout: Duration,
+        limits: &LimitsConfig,
     ) -> Result<CommandResult, TestRunError> {
         let mut full_command = vec![
             format!("/{CROW_SHIM_IN_CONTAINER_PATH}"),
@@ -568,7 +631,13 @@ impl<'a> TaskContainer<ForTest<'a>> {
         full_command.extend_from_slice(args);
 
         ContainerConfig::OverlayRootfs
-            .apply_to_workdir(&self.data.parent.rootfs, &self.workdir, &full_command, true)
+            .apply_to_workdir(
+                &self.data.parent.rootfs,
+                &self.workdir,
+                &full_command,
+                true,
+                limits,
+            )
             .context(ConfigApplySnafu)
             .context(CreationSnafu)?;
 

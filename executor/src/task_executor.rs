@@ -1,6 +1,6 @@
 use crate::containers::{
     execution_output_from_wait_error, Built, ContainerCreateError, IntegrateSourceError,
-    TaskContainer, TestRunError,
+    LimitsConfig, TaskContainer, TestRunError,
 };
 use crate::docker::{Docker, ImageId};
 use rayon::ThreadPool;
@@ -56,6 +56,8 @@ pub fn execute_task(
     task: ExecutingTask<'_>,
     source_tar: TempPath,
     docker: &Docker,
+    build_limits: &LimitsConfig,
+    test_limits: &LimitsConfig,
 ) -> FinishedCompilerTask {
     let task_id = task.inner.task_id.clone();
     let team_id = task.inner.team_id.clone();
@@ -65,7 +67,7 @@ pub fn execute_task(
     let start_monotonic = Instant::now();
     let message_channel = task.message_channel.clone();
 
-    let res = match execute_task_impl(task, source_tar, docker) {
+    let res = match execute_task_impl(task, source_tar, docker, build_limits, test_limits) {
         Ok(res) => res,
         Err(e) => task_run_error_to_task(
             start,
@@ -86,6 +88,8 @@ fn execute_task_impl(
     task: ExecutingTask<'_>,
     source_tar: TempPath,
     docker: &Docker,
+    build_limits: &LimitsConfig,
+    test_limits: &LimitsConfig,
 ) -> Result<FinishedCompilerTask, TaskRunError> {
     let start = SystemTime::now();
     let start_monotonic = Instant::now();
@@ -94,8 +98,13 @@ fn execute_task_impl(
     let aborted = task.aborted;
     let message_channel = task.message_channel;
     let task = task.inner;
-    let container = TaskContainer::<()>::new(&ImageId(task.image), &task.build_command, docker)
-        .context(ContainerCreateSnafu)?;
+    let container = TaskContainer::<()>::new(
+        &ImageId(task.image),
+        &task.build_command,
+        docker,
+        build_limits,
+    )
+    .context(ContainerCreateSnafu)?;
 
     container
         .integrate_source(source_tar)
@@ -148,7 +157,7 @@ fn execute_task_impl(
                 let _ = message_channel.send(RunnerUpdate::StartedTest {
                     test_id: test.test_id.clone(),
                 });
-                let res = container.run_test(&test, test.timeout, aborted);
+                let res = container.run_test(&test, test.timeout, aborted, test_limits);
                 let res = tx.send((test.clone(), res));
                 if let Err(e) = res {
                     error!(
@@ -277,6 +286,7 @@ pub fn run_test(
     shutdown_requested: Arc<AtomicBool>,
     base_container: Rc<RefCell<Option<TaskContainer<Built>>>>,
     docker: &Docker,
+    limits: &LimitsConfig,
 ) -> TestExecutionOutput {
     let test_id = test.test_id.clone();
     let start = Instant::now();
@@ -287,6 +297,7 @@ pub fn run_test(
         shutdown_requested,
         base_container,
         docker,
+        limits,
     );
 
     match res {
@@ -317,14 +328,23 @@ fn run_test_impl(
     shutdown_requested: Arc<AtomicBool>,
     base_container: Rc<RefCell<Option<TaskContainer<Built>>>>,
     docker: &Docker,
+    limits: &LimitsConfig,
 ) -> Result<TestExecutionOutput, TaskRunError> {
     if base_container.borrow().is_none() {
         info!("Creating reference compiler container");
         // We have nothing really to do here, so we just use `true` as the builder.
-        let container = TaskContainer::<()>::new(image_id, &["true".to_string()], docker)
-            .context(ContainerCreateSnafu)?
-            .run()
-            .context(ContainerRunSnafu)?;
+        let container = TaskContainer::<()>::new(
+            image_id,
+            &["true".to_string()],
+            docker,
+            &LimitsConfig {
+                cpus: Some(1),
+                memory_bytes: Some(50 * 1024 * 1024), // 50MiB
+            },
+        )
+        .context(ContainerCreateSnafu)?
+        .run()
+        .context(ContainerRunSnafu)?;
         let container = container
             .wait_for_build(Duration::from_secs(10), shutdown_requested.clone())
             .map_err(|output| TaskRunError::WaitForBuild {
@@ -338,7 +358,7 @@ fn run_test_impl(
     let base_container = base_container.as_ref().unwrap();
 
     let start = Instant::now();
-    let res = base_container.run_test(&test, test.timeout, shutdown_requested.clone());
+    let res = base_container.run_test(&test, test.timeout, shutdown_requested.clone(), limits);
 
     let res = match res {
         Ok(res) => res,

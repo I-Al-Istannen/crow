@@ -1,3 +1,4 @@
+use crate::containers::LimitsConfig;
 use crate::docker::Docker;
 use crate::{AnyError, Endpoints, ReqwestSnafu};
 use clap::Args;
@@ -45,6 +46,18 @@ pub struct CliExecutorArgs {
     /// The amount of tests to execute in parallel. If 0, the number of processors is used.
     #[clap(long, short = 'j', default_value = "0")]
     pub parallelism: usize,
+    /// The number of CPUs to allow the build container. 0 means no limit.
+    #[clap(long, default_value = "0")]
+    pub build_max_cpu: u32,
+    /// The max ram size in bytes to allow the build container. 0 means no limit.
+    #[clap(long, default_value_t = 5 * 1024 * 1024 * 1024)]
+    pub build_max_memory: usize,
+    /// The number of CPUs to allow the test containers. 0 means no limit.
+    #[clap(long, default_value = "1")]
+    pub test_max_cpu: u32,
+    /// The max ram size in bytes to allow the test containers. 0 means no limit.
+    #[clap(long, default_value_t = 2 * 1024 * 1024 * 1024)]
+    pub test_max_memory: usize,
 }
 
 pub fn run_executor(args: CliExecutorArgs) -> Result<(), AnyError> {
@@ -68,11 +81,16 @@ pub fn run_executor(args: CliExecutorArgs) -> Result<(), AnyError> {
     };
 
     let mut iteration: Box<dyn Iteration> = if args.test_taster {
-        Box::new(test_tasting::TestTastingState::new(docker))
+        Box::new(test_tasting::TestTastingState::new(
+            docker,
+            LimitsConfig::new(args.test_max_cpu, args.test_max_memory),
+        ))
     } else {
         Box::new(test_compiler::TestCompilerState::new(
             docker,
             args.parallelism,
+            LimitsConfig::new(args.build_max_cpu, args.build_max_memory),
+            LimitsConfig::new(args.test_max_cpu, args.test_max_memory),
         )?)
     };
 

@@ -209,13 +209,11 @@
                     "_comment": "/dev/fuse"
                 }
             ],
-            "memory": {
-                "limit": 5368709100,
-                "swap": 5368709100
-            },
             "pids": {
                 "limit": 2000
             },
+            {memory_limits}
+            {cpu_limits}
             "blockIO": {}
         },
         "seccomp": {
