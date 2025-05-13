@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        WITH pass_by_task AS (\n            SELECT\n                Tasks.task_id as \"task_id\",\n                Tasks.team_id as \"team_id\",\n                COUNT(test_id) as \"passed_count\"\n            FROM TestResults\n            JOIN Tasks ON Tasks.task_id = TestResults.task_id\n            JOIN ExecutionResults CompilerRes\n                ON TestResults.compiler_exec_id = CompilerRes.execution_id\n            LEFT JOIN ExecutionResults BinaryRes\n                ON TestResults.binary_exec_id = BinaryRes.execution_id\n            WHERE\n                    CompilerRes.result = ?\n                AND (BinaryRes.result IS NULL OR BinaryRes.result = ?)\n            GROUP BY Tasks.task_id\n        )\n        SELECT\n            pass_by_task.team_id as \"team_id!: TeamId\",\n            pass_by_task.task_id as \"task_id!: TaskId\",\n            -- Unused max to force SQLite to return extremal values for the other columns\n            MAX(pass_by_task.passed_count) as \"passes!: i64\"\n        FROM pass_by_task\n        GROUP BY pass_by_task.team_id;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "team_id!: TeamId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "task_id!: TaskId",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "passes!: i64",
+        "ordinal": 2,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "43eef57bda6f930e97504fa721ed5e88edf194118aa410a45842faec2cd60d15"
+}

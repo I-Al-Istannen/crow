@@ -499,25 +499,29 @@ pub(super) async fn get_top_task_per_team(
 
     let query_res = query!(
         r#"
-        SELECT
-            Tasks.team_id as "team_id!: TeamId",
-            PASS_BY_TASK.task_id as "task_id!: TaskId",
-            MAX(PASS_BY_TASK.passed_count) as passes
-        FROM (
-            SELECT TestResults.task_id, COUNT(test_id) as passed_count
+        WITH pass_by_task AS (
+            SELECT
+                Tasks.task_id as "task_id",
+                Tasks.team_id as "team_id",
+                COUNT(test_id) as "passed_count"
             FROM TestResults
+            JOIN Tasks ON Tasks.task_id = TestResults.task_id
+            JOIN ExecutionResults CompilerRes
+                ON TestResults.compiler_exec_id = CompilerRes.execution_id
+            LEFT JOIN ExecutionResults BinaryRes
+                ON TestResults.binary_exec_id = BinaryRes.execution_id
             WHERE
-                EXISTS(SELECT 1 FROM ExecutionResults ER
-                       WHERE ER.execution_id = TestResults.compiler_exec_id AND ER.result = ?)
-                AND (
-                    TestResults.binary_exec_id is NULL OR
-                    EXISTS(SELECT 1 FROM ExecutionResults ER
-                           WHERE ER.execution_id = TestResults.binary_exec_id AND ER.result = ?)
-                )
-            GROUP BY TestResults.task_id
-        ) PASS_BY_TASK
-        JOIN Tasks ON Tasks.task_id = PASS_BY_TASK.task_id
-        GROUP BY Tasks.team_id;
+                    CompilerRes.result = ?
+                AND (BinaryRes.result IS NULL OR BinaryRes.result = ?)
+            GROUP BY Tasks.task_id
+        )
+        SELECT
+            pass_by_task.team_id as "team_id!: TeamId",
+            pass_by_task.task_id as "task_id!: TaskId",
+            -- Unused max to force SQLite to return extremal values for the other columns
+            MAX(pass_by_task.passed_count) as "passes!: i64"
+        FROM pass_by_task
+        GROUP BY pass_by_task.team_id;
         "#,
         ExecutionExitStatus::Success,
         ExecutionExitStatus::Success
@@ -754,35 +758,34 @@ async fn get_top_task_for_team_and_category(
 
     let query_res = query!(
         r#"
-        SELECT
-            PASS_BY_TASK.task_id as "task_id!: TaskId"
-        FROM (
-            SELECT TestResults.task_id, COUNT(test_id) as passed_count
-            FROM TestResults
-            JOIN Tests ON Tests.id = TestResults.test_id
-            WHERE
-                EXISTS(SELECT 1 FROM ExecutionResults ER
-                       WHERE ER.execution_id = TestResults.compiler_exec_id AND ER.result = ?)
-                AND (
-                    TestResults.binary_exec_id is NULL OR
-                    EXISTS(SELECT 1 FROM ExecutionResults ER
-                           WHERE ER.execution_id = TestResults.binary_exec_id AND ER.result = ?)
-                )
-                AND Tests.category = ?
-                AND Tests.provisional_for_category IS NULL
-            GROUP BY TestResults.task_id
-        ) PASS_BY_TASK
-        JOIN Tasks ON Tasks.task_id = PASS_BY_TASK.task_id
-        WHERE Tasks.team_id = ? AND Tasks.queue_time BETWEEN ? AND ?
-        ORDER BY PASS_BY_TASK.passed_count DESC, Tasks.queue_time DESC
+        -- noinspection SqlAggregates
+        -- We group by the primary key of Tasks, there will never be two differing
+        -- queue_time values. SQLite will non-deterministically pick one of the copies.
+        SELECT Tasks.task_id as "task_id!: TaskId"
+        FROM TestResults
+        JOIN Tasks ON Tasks.task_id = TestResults.task_id
+        JOIN Tests ON Tests.id = TestResults.test_id
+        JOIN ExecutionResults CompilerRes
+            ON TestResults.compiler_exec_id = CompilerRes.execution_id
+        LEFT JOIN ExecutionResults BinaryRes
+            ON TestResults.binary_exec_id = BinaryRes.execution_id
+        WHERE
+                Tasks.team_id = ?
+            AND Tasks.queue_time BETWEEN ? AND ?
+            AND Tests.category = ?
+            AND Tests.provisional_for_category IS NULL
+            AND CompilerRes.result = ?
+            AND (BinaryRes.result IS NULL OR BinaryRes.result = ?)
+        GROUP BY Tasks.task_id
+        ORDER BY COUNT(test_id) DESC, Tasks.queue_time DESC
         LIMIT 1
         "#,
-        ExecutionExitStatus::Success,
-        ExecutionExitStatus::Success,
-        category,
         team_id,
         starts_at,
-        ends_at
+        ends_at,
+        category,
+        ExecutionExitStatus::Success,
+        ExecutionExitStatus::Success,
     )
     .fetch_optional(&mut *con)
     .instrument(info_span!("sqlx_get_top_task_for_team_and_category"))

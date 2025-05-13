@@ -1,0 +1,1 @@
+CREATE INDEX execution_result_id_result_idx ON ExecutionResults(execution_id, result);
