@@ -14,7 +14,7 @@ use shared::{
 };
 use snafu::{ensure, location, IntoError, Location, NoneError, Report, Snafu};
 use tokio_util::io::ReaderStream;
-use tracing::{debug, instrument, warn};
+use tracing::{debug, info, instrument, warn};
 
 #[derive(Debug, Snafu)]
 pub enum ExecutorError {
@@ -126,6 +126,8 @@ pub async fn runner_done(
     TypedHeader(auth): TypedHeader<Authorization<Basic>>,
     Json(task): Json<FinishedCompilerTask>,
 ) -> Result<()> {
+    info!(task = %task.info().task_id, info = ?task.info(), "Runner finished task");
+
     if state
         .executor
         .lock()
@@ -133,6 +135,7 @@ pub async fn runner_done(
         .get_running_task(&task.info().task_id.clone().into())
         .is_none()
     {
+        warn!(task = %task.info().task_id, "Runner finished unknown task");
         return Err(UnknownTaskSnafu {
             task_id: task.info().task_id.clone(),
             runner_id: auth.username().to_string(),
@@ -141,7 +144,15 @@ pub async fn runner_done(
         .into());
     }
 
-    state.db.add_finished_task(&task).await?;
+    if let Err(e) = state.db.add_finished_task(&task).await {
+        warn!(
+            task = %task.info().task_id,
+            error = %Report::from_error(&e),
+            "Failed to add finished task to database"
+        );
+        return Err(e);
+    }
+
     state
         .executor
         .lock()
