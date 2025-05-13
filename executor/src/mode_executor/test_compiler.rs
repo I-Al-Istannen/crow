@@ -141,12 +141,25 @@ impl super::Iteration for TestCompilerState {
         );
 
         info!(id = task_id, res = ?res.info(), "Task finished");
-        client
+        let res = client
             .post(&endpoints.done)
             .json(&res)
             .basic_auth(&args.id, Some(&args.token))
             .send()
             .context(ReqwestSnafu)?;
+
+        if !res.status().is_success() {
+            let status = res.status();
+            let body = res
+                .text()
+                .unwrap_or_else(|_| "Failed to read response".to_string());
+            warn!(
+                status = %status,
+                endpoint = %endpoints.done,
+                body = %body,
+                "Failed to send task result"
+            );
+        }
 
         Ok(())
     }
