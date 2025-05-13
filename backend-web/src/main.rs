@@ -14,7 +14,7 @@ use crate::endpoints::{
 use crate::error::WebError;
 use crate::storage::LocalRepos;
 use crate::types::{AppState, TeamId, UserId, UserRole};
-use axum::extract::{Request, State};
+use axum::extract::{DefaultBodyLimit, Request, State};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
 use axum::routing::{delete, get, head, post, put};
@@ -267,6 +267,7 @@ async fn main_server(
         .route("/users/me/integrations", get(get_integration_status))
         .route("/login", get(login_oidc))
         .route("/login/oidc/callback", post(login_oidc_callback))
+        .layer(DefaultBodyLimit::max(25 * 1024 * 1024)) // 25 MiB
         .layer(prometheus_layer)
         .layer(CorsLayer::very_permissive()) // TODO: Make nicer
         .layer(TraceLayer::new_for_http())
