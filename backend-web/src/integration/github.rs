@@ -106,6 +106,8 @@ fn parse_url_to_repo_owner(url: &str) -> Option<(String, String)> {
     let url = url.replace("http://", "").replace("https://", "");
 
     if let Some(rest) = url.strip_prefix("github.com/") {
+        // GitHub also redirects ".git" HTTP URLs to non ".git" URLs apparently
+        let rest = rest.strip_suffix(".git").unwrap_or(rest);
         return parse_path_to_repo_owner(rest);
     }
 
