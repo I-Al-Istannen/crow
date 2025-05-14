@@ -24,14 +24,20 @@
 </template>
 
 <script setup lang="ts">
+import {
+  type ApiFinishedCompilerTaskSummary,
+  type FinishedCompilerTaskSummary,
+  type TeamId,
+} from '@/types.ts'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
-import type { FinishedCompilerTaskSummary } from '@/types.ts'
 import FinishedTaskOverview from '@/components/task-overview/FinishedTaskOverview.vue'
 import TopTaskTable from '@/components/top-tasks/TopTaskTable.vue'
 import { computed } from 'vue'
 import { queryTopTaskPerTeam } from '@/data/network.ts'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
+
+type TaskWithFinishedTests = [number, [TeamId, ApiFinishedCompilerTaskSummary]][]
 
 const { data: topTasks, isLoading, failureCount, failureReason } = queryTopTaskPerTeam()
 
@@ -39,19 +45,23 @@ const sortedTeams = computed(() => {
   if (!topTasks.value) {
     return undefined
   }
-  const result = [...topTasks.value.entries()]
+  const result: TaskWithFinishedTests = Array.from(topTasks.value.entries()).map(([team, task]) => [
+    finishedTests(task),
+    [team, task],
+  ])
+
   result.sort((a, b) => {
-    const cmp = finishedTests(b[1]) - finishedTests(a[1])
+    const cmp = b[0] - a[0]
     if (cmp !== 0) {
       return cmp
     }
-    return a[0].localeCompare(b[0])
+    return a[1][0].localeCompare(b[1][0])
   })
 
-  return result
+  return result.map(([_, it]) => it)
 })
 
-function finishedTests(task: FinishedCompilerTaskSummary) {
+function finishedTests(task: FinishedCompilerTaskSummary): number {
   const tests = task.type === 'RanTests' ? task.tests : undefined
   return tests?.filter((test) => test.output === 'Success')?.length || 0
 }
