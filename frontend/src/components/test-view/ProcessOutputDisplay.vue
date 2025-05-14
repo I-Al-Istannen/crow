@@ -29,9 +29,15 @@
           </span>
         </AccordionTrigger>
         <AccordionContent>
-          <pre class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto">{{
-            accumulatedErrors
-          }}</pre>
+          <pre class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto"><span
+            class="block"
+            v-for="(line, index) in accumulatedErrorLines"
+            :class="{
+              'text-red-500': line.startsWith('-'),
+              'text-green-600': line.startsWith('+'),
+              'text-violet-500': line.startsWith('@@'),
+            }"
+            :key="index">{{ line }}<br v-if="line.trim().length === 0" /></span></pre>
         </AccordionContent>
       </AccordionItem>
       <AccordionItem value="stdout" v-if="buildOutput.stdout.length > 0">
@@ -59,15 +65,9 @@
           </span>
         </AccordionTrigger>
         <AccordionContent>
-          <pre class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto"><span
-            class="block"
-            v-for="(line, index) in stderrLines"
-            :class="{
-              'text-red-500': line.startsWith('-'),
-              'text-green-600': line.startsWith('+'),
-              'text-violet-500': line.startsWith('@@'),
-            }"
-            :key="index">{{ line }}<br v-if="line.trim().length === 0" /></span></pre>
+          <pre class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto">{{
+            buildOutput.stderr
+          }}</pre>
         </AccordionContent>
       </AccordionItem>
     </Accordion>
@@ -96,8 +96,8 @@ const { ofWhom, output, subject } = toRefs(props)
 
 const buildOutput = computed(() => getBuildOutput(output.value))
 
-const stderrLines = computed(() => {
-  return buildOutput.value.stderr.split('\n')
+const accumulatedErrorLines = computed(() => {
+  return accumulatedErrors.value?.split('\n') || []
 })
 
 const ofWhomText = computed(() => {
