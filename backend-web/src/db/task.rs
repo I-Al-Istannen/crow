@@ -222,10 +222,10 @@ pub(super) async fn get_recent_tasks(
     let mut finished_tasks = Vec::new();
 
     for task in tasks {
-        let task = get_task(&mut con, &task)
+        let task = get_task_summary(&mut con, &task)
             .instrument(info_span!("sqlx_get_recent_tasks_inner"))
             .await?;
-        finished_tasks.push(task.into());
+        finished_tasks.push(task);
     }
 
     Ok(finished_tasks)
