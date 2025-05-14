@@ -50,7 +50,12 @@
           </span>
         </AccordionTrigger>
         <AccordionContent>
-          <pre class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto">{{
+          <pre
+            v-if="isAnsi(buildOutput.stdout)"
+            v-html="asAnsi(buildOutput.stdout)"
+            class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto"
+          />
+          <pre v-else class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto">{{
             buildOutput.stdout
           }}</pre>
         </AccordionContent>
@@ -65,7 +70,12 @@
           </span>
         </AccordionTrigger>
         <AccordionContent>
-          <pre class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto">{{
+          <pre
+            v-html="asAnsi(buildOutput.stderr)"
+            v-if="isAnsi(buildOutput.stderr)"
+            class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto"
+          />
+          <pre v-else class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto">{{
             buildOutput.stderr
           }}</pre>
         </AccordionContent>
@@ -82,6 +92,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { computed, toRefs } from 'vue'
+import { AnsiUp } from 'ansi_up'
 import type { ExecutionOutput } from '@/types.ts'
 import { formatDuration } from '@/lib/utils.ts'
 
@@ -136,5 +147,15 @@ function getBuildOutput(task: ExecutionOutput): {
     return task.execution
   }
   return task
+}
+
+function isAnsi(input: string): boolean {
+  return input.includes('\x1b[')
+}
+
+function asAnsi(input: string): string {
+  const ansi = new AnsiUp()
+  ansi.escape_html = true // just to make sure they don't change the defaults
+  return ansi.ansi_to_html(input)
 }
 </script>

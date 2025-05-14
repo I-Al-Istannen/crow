@@ -122,7 +122,7 @@
 
             pnpmDeps = pkgs.pnpm_9.fetchDeps {
               inherit (finalAttrs) pname version src;
-              hash = "sha256-op+ii/3xfGh4KSU23ZWsqFhkDlJ3oXKKM4foiQBQf7M=";
+              hash = "sha256-fkxNt+EVNb1PL4Y0HTr2F5D9jOi2LzVHjkCw/VgHx7A=";
             };
           });
           docker = {
