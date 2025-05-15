@@ -11,7 +11,8 @@
       <TableRow
         v-for="([teamId, task], index) in sortedTeams"
         :key="teamId"
-        @click="goto(task.info.taskId)"
+        @click="goto(task.info.taskId, $event)"
+        @click.middle="goto(task.info.taskId, $event)"
         class="cursor-pointer"
       >
         <TableCell class="py-0 text-center">{{ index + 1 }}</TableCell>
@@ -21,7 +22,11 @@
         </TableCell>
         <TableCell class="py-0">{{ task.info.start.toLocaleString() }}</TableCell>
         <TableCell class="py-0">
-          <RouterLink :to="{ name: 'task-detail', params: { taskId: task.info.taskId } }">
+          <RouterLink
+            :to="{ name: 'task-detail', params: { taskId: task.info.taskId } }"
+            @click.capture.stop="null"
+            @click.middle.capture.stop="null"
+          >
             <Button variant="link">To the task</Button>
           </RouterLink>
         </TableCell>
@@ -50,7 +55,11 @@ defineProps<{
 
 const router = useRouter()
 
-function goto(taskId: TaskId) {
+function goto(taskId: TaskId, event: MouseEvent) {
+  if (event.ctrlKey || event.button === 1) {
+    window.open(router.resolve({ name: 'task-detail', params: { taskId } }).href, '_blank')
+    return
+  }
   router.push({
     name: 'task-detail',
     params: { taskId },
