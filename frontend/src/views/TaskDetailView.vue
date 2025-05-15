@@ -12,7 +12,7 @@
     />
     <Card v-else>
       <CardHeader class="pb-2">
-        <CardTitle>
+        <CardTitle class="flex justify-between">
           <div v-if="queuedTask" class="flex items-center">
             <span>
               {{ queuedTask.commitMessage.split('\n')[0] }}
@@ -24,6 +24,16 @@
             />
           </div>
           <span v-else>Task detail</span>
+          <div v-if="queuedTask" class="text-muted-foreground ml-5">
+            <RouterLink
+              v-if="isAdmin"
+              :to="{ name: 'team-info', params: { teamId: queuedTask.team } }"
+              class="hover:underline cursor-pointer"
+            >
+              by the {{ queuedTask.team }}
+            </RouterLink>
+            <span v-else>{{ queuedTask.team }}</span>
+          </div>
         </CardTitle>
         <CardDescription>
           <span v-if="queuedTask">{{ queuedTask.revision }}</span>
@@ -87,6 +97,8 @@ const lastUpdate = ref<Date | null>(null)
 const failureReason = ref<Error | null>(null)
 const failureCount = ref<number>(0)
 const wasOnceRunning = ref(false)
+
+const { isAdmin } = storeToRefs(useUserStore())
 
 const { pause, resume } = useIntervalFn(
   async () => {

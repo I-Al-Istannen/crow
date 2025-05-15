@@ -1,7 +1,7 @@
 <template>
   <Card>
     <CardHeader class="pb-2">
-      <CardTitle>
+      <CardTitle class="flex justify-between">
         <div v-if="taskSummary" class="flex items-center">
           <span>{{ taskSummary.info.commitMessage.split('\n')[0] }}</span>
           <TaskExternalLinkIcon
@@ -11,6 +11,16 @@
           />
         </div>
         <span v-else>Task summary</span>
+        <div v-if="taskSummary" class="text-muted-foreground ml-5">
+          <RouterLink
+            v-if="isAdmin"
+            :to="{ name: 'team-info', params: { teamId: taskSummary.info.teamId } }"
+            class="hover:underline cursor-pointer"
+          >
+            by the {{ taskSummary.info.teamId }}
+          </RouterLink>
+          <span v-else>{{ taskSummary.info.teamId }}</span>
+        </div>
       </CardTitle>
       <CardDescription>
         <span v-if="taskSummary" class="break-all">{{ taskSummary.info.revisionId }}</span>
@@ -77,7 +87,9 @@ import TaskQuickOverview from '@/components/task-overview/TaskQuickOverview.vue'
 import TestOverviewMatrix from '@/components/task-detail/TestOverviewMatrix.vue'
 import TestOverviewTable from '@/components/task-detail/TestOverviewTable.vue'
 import { queryTask } from '@/data/network.ts'
+import { storeToRefs } from 'pinia'
 import { useTitle } from '@vueuse/core'
+import { useUserStore } from '@/stores/user.ts'
 
 const props = defineProps<{
   taskId: TaskId
@@ -89,6 +101,7 @@ const clickedTest = ref<FinishedTest | undefined>(undefined)
 const dialogOpen = ref<boolean>(false)
 const showTableView = ref<boolean>(props.initialView !== 'matrix')
 
+const { isAdmin } = storeToRefs(useUserStore())
 const { data: task, isFetched, isLoading } = queryTask(taskId)
 const taskSummary = computed(() => (task.value ? toSummary(task.value) : undefined))
 
