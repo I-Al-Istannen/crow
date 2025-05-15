@@ -8,25 +8,45 @@
       <TableHead class="text-center">Task</TableHead>
     </TableHeader>
     <TableBody>
-      <TableRow
-        v-for="([teamId, task], index) in sortedTeams"
-        :key="teamId"
-        @click="goto(task.info.taskId, $event)"
-        @click.middle="goto(task.info.taskId, $event)"
-        class="cursor-pointer"
-      >
-        <TableCell class="py-0 text-center">{{ index + 1 }}</TableCell>
-        <TableCell class="py-0">{{ task.teamName }}</TableCell>
-        <TableCell class="py-0">
+      <TableRow v-for="([teamId, task], index) in sortedTeams" :key="teamId" class="cursor-pointer">
+        <TableCell
+          class="py-0 text-center"
+          @click="goto(task.info.taskId, $event)"
+          @click.middle="goto(task.info.taskId, $event)"
+        >
+          {{ index + 1 }}
+        </TableCell>
+        <TableCell v-if="isAdmin" class="py-0">
+          <RouterLink :to="{ name: 'team-info', params: { teamId: task.info.teamId } }">
+            <Button variant="link">
+              {{ task.teamName }}
+            </Button>
+          </RouterLink>
+        </TableCell>
+        <TableCell
+          v-else
+          class="py-0"
+          @click="goto(task.info.taskId, $event)"
+          @click.middle="goto(task.info.taskId, $event)"
+        >
+          {{ task.teamName }}
+        </TableCell>
+        <TableCell
+          class="py-0"
+          @click="goto(task.info.taskId, $event)"
+          @click.middle="goto(task.info.taskId, $event)"
+        >
           <TaskQuickOverview class="text-sm" :task="task" />
         </TableCell>
-        <TableCell class="py-0">{{ task.info.start.toLocaleString() }}</TableCell>
+        <TableCell
+          class="py-0"
+          @click="goto(task.info.taskId, $event)"
+          @click.middle="goto(task.info.taskId, $event)"
+        >
+          {{ task.info.start.toLocaleString() }}
+        </TableCell>
         <TableCell class="py-0">
-          <RouterLink
-            :to="{ name: 'task-detail', params: { taskId: task.info.taskId } }"
-            @click.capture.stop="null"
-            @click.middle.capture.stop="null"
-          >
+          <RouterLink :to="{ name: 'task-detail', params: { taskId: task.info.taskId } }">
             <Button variant="link">To the task</Button>
           </RouterLink>
         </TableCell>
@@ -47,13 +67,16 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import TaskQuickOverview from '@/components/task-overview/TaskQuickOverview.vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user.ts'
 
 defineProps<{
   sortedTeams: [TeamId, ApiFinishedCompilerTaskSummary][]
 }>()
 
 const router = useRouter()
+const { isAdmin } = storeToRefs(useUserStore())
 
 function goto(taskId: TaskId, event: MouseEvent) {
   if (event.ctrlKey || event.button === 1) {
