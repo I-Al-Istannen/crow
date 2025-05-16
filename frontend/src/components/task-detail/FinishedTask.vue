@@ -64,7 +64,12 @@
         :tests="tests"
         @test-clicked="handleTestClicked"
       />
-      <TestOverviewMatrix v-else :tests="sortedTests!" @test-clicked="handleTestClicked" />
+      <TestOverviewMatrix
+        v-else
+        :tests="sortedTests!"
+        @test-clicked="handleTestClicked"
+        is-finished
+      />
     </CardContent>
   </Card>
 </template>

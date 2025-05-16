@@ -11,11 +11,14 @@
           v-model:dialog-open="failedTastingDialogOpen"
           hide-test-content
         />
-        <FinishedTestcaseSummaryIcon
-          :test="testTastingError"
-          class="ml-2"
-          @test-clicked="failedTastingDialogOpen = true"
-        />
+        <TooltipProvider>
+          <FinishedTestcaseSummaryIcon
+            :test="testTastingError"
+            class="ml-2"
+            @test-clicked="failedTastingDialogOpen = true"
+            is-finished
+          />
+        </TooltipProvider>
       </div>
       <div v-if="test" class="grid grid-cols-1 lg:grid-cols-2 gap-4 p-1">
         <div>
@@ -45,6 +48,7 @@ import { computed, ref, toRefs } from 'vue'
 import FinishedTestDetailDialog from '@/components/test-view/FinishedTestDetailDialog.vue'
 import FinishedTestcaseSummaryIcon from '@/components/task-detail/FinishedTestcaseSummaryIcon.vue'
 import TestModifierList from '@/components/test-edit/TestModifierList.vue'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { queryTest } from '@/data/network.ts'
 
 const failedTastingDialogOpen = ref<boolean>(false)

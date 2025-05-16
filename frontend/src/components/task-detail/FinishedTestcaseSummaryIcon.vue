@@ -1,10 +1,10 @@
 <template>
-  <HoverCard :open-delay="0">
-    <HoverCardTrigger
+  <Tooltip>
+    <TooltipTrigger
       class="w-[2em] h-[2em] flex justify-center items-center text-white rounded cursor-pointer"
       :class="[statusColor(testType(test), 'bg')]"
       v-bind="$attrs"
-      @click="'output' in test ? handleTestClick(test) : undefined"
+      @click.prevent="'output' in test ? handleTestClick(test) : undefined"
     >
       <LucideCheck v-if="testType(test) === 'Success'" />
       <LucideX v-else-if="testType(test) === 'Failure'" />
@@ -13,31 +13,32 @@
       <LucideClockAlert v-else-if="testType(test) === 'Timeout'" />
       <span v-else-if="testType(test) === 'Queued'" />
       <RocketIcon class="animate-pulse" v-else-if="testType(test) === 'Started'" />
-    </HoverCardTrigger>
-    <HoverCardContent class="w-96">
+    </TooltipTrigger>
+    <TooltipContent class="w-96 text-sm">
       <span class="font-medium"> {{ test.testId }} </span>:
       <span :class="[statusColor(testType(test), 'text')]">{{ testType(test) }}</span>
       <br />
-      <span class="text-sm text-muted-foreground" v-if="'output' in test">
+      <span class="text-sm text-muted-foreground" v-if="isFinished">
         Click the test square to see more details
       </span>
       <span class="text-sm text-muted-foreground" v-else>
-        Wait for the test to finish to view more details
+        Wait for the run to finish to view more details
       </span>
-    </HoverCardContent>
-  </HoverCard>
+    </TooltipContent>
+  </Tooltip>
 </template>
 
 <script setup lang="ts">
 import { type ExecutingTest, type FinishedTest, toExecutionStatus } from '@/types.ts'
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { LucideCheck, LucideClockAlert, LucideFlame, LucideUnplug, LucideX } from 'lucide-vue-next'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { RocketIcon } from '@radix-icons/vue'
 import { statusColor } from '@/lib/utils.ts'
 import { toRefs } from 'vue'
 
 const props = defineProps<{
   test: FinishedTest | ExecutingTest
+  isFinished?: boolean
 }>()
 
 const { test } = toRefs(props)

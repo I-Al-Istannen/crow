@@ -40,7 +40,11 @@
         <CardDescription>Information about individual tests</CardDescription>
       </CardHeader>
       <CardContent>
-        <TestOverviewMatrix of-whom="yours" :tests="Array.from(tests.values())" />
+        <TestOverviewMatrix
+          of-whom="yours"
+          :tests="Array.from(tests.values())"
+          :is-finished="false"
+        />
       </CardContent>
     </Card>
   </div>

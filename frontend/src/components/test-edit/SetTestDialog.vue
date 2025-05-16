@@ -91,11 +91,13 @@
                   v-model:dialog-open="failedTastingDialogOpen"
                   hide-test-content
                 />
-                <FinishedTestcaseSummaryIcon
-                  v-if="failedTestTasting !== null"
-                  :test="failedTestTasting"
-                  @test-clicked="handleFailedTastingClick"
-                />
+                <TooltipProvider v-if="failedTestTasting !== null">
+                  <FinishedTestcaseSummaryIcon
+                    :test="failedTestTasting"
+                    @test-clicked="handleFailedTastingClick"
+                    is-finished
+                  />
+                </TooltipProvider>
               </div>
             </FormItem>
           </FormField>
@@ -158,6 +160,7 @@ import FinishedTestcaseSummaryIcon from '@/components/task-detail/FinishedTestca
 import { Input } from '@/components/ui/input'
 import { LoaderCircle } from 'lucide-vue-next'
 import TestModifierList from '@/components/test-edit/TestModifierList.vue'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { storeToRefs } from 'pinia'
 import { toTypedSchema } from '@vee-validate/zod'
 import { toast } from 'vue-sonner'
