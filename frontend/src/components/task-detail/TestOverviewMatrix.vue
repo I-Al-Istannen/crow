@@ -1,20 +1,20 @@
 <template>
-  <div class="-mt-2" v-if="sortedTests.length === 0">No tests were run during this task.</div>
+  <div class="-mt-2" v-if="tests.length === 0">No tests were run during this task.</div>
   <div class="flex flex-row gap-1 flex-wrap" v-else>
     <FinishedTestcaseIcon
-      v-for="test in sortedTests"
+      v-for="test in tests"
+      v-memo="[test.testId, testType(test)]"
       :key="test.testId"
       :test="test"
       @test-clicked="emit('testClicked', $event)"
-      :open-delay="0"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import type { ExecutingTest, FinishedTest } from '@/types.ts'
-import { computed, toRefs } from 'vue'
+import { type ExecutingTest, type FinishedTest, toExecutionStatus } from '@/types.ts'
 import FinishedTestcaseIcon from '@/components/task-detail/FinishedTestcaseSummaryIcon.vue'
+import { toRefs } from 'vue'
 
 const props = defineProps<{
   tests: (FinishedTest | ExecutingTest)[]
@@ -26,7 +26,7 @@ const emit = defineEmits<{
   testClicked: [test: FinishedTest]
 }>()
 
-const sortedTests = computed(() =>
-  tests.value.slice().sort((a, b) => a.testId.localeCompare(b.testId)),
-)
+function testType(test: FinishedTest | ExecutingTest) {
+  return 'output' in test ? toExecutionStatus(test.output) : test.status
+}
 </script>

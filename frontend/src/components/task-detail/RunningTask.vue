@@ -40,7 +40,7 @@
         <CardDescription>Information about individual tests</CardDescription>
       </CardHeader>
       <CardContent>
-        <TestOverviewMatrix of-whom="yours" :tests="tests" />
+        <TestOverviewMatrix of-whom="yours" :tests="Array.from(tests.values())" />
       </CardContent>
     </Card>
   </div>
@@ -55,6 +55,7 @@ import {
   type FinishedTest,
   RunnerUpdateMessageSchema,
   type TaskId,
+  type TestId,
 } from '@/types.ts'
 import { computed, ref } from 'vue'
 import { useIntervalFn, useTitle, useWebSocket } from '@vueuse/core'
@@ -68,19 +69,27 @@ import { vAutoAnimate } from '@formkit/auto-animate/vue'
 
 const buildStatus = ref<'Started' | FinishedExecution | null>(null)
 const testingStarted = ref(false)
-const tests = ref<(FinishedTest | ExecutingTest)[]>([])
+const tests = ref<Map<TestId, FinishedTest | ExecutingTest>>(new Map())
 const animatedWaitingDotsCounter = ref(-3)
 const animatedWaitingDots = computed(() =>
   '.'.repeat(3 - Math.abs(animatedWaitingDotsCounter.value)),
 )
+const finishedTests = computed(() => {
+  let finished = 0
+  for (const test of tests.value.values()) {
+    if ('output' in test) {
+      finished++
+    }
+  }
+  return finished
+})
 
 useTitle(
   computed(() => {
     if (testingStarted.value) {
-      if (tests.value.length > 0) {
-        const finished = tests.value.filter((it) => 'output' in it).length
-        const total = tests.value.length
-        return `Testing (${finished}/${total})`
+      if (finishedTests.value > 0) {
+        const total = tests.value.size
+        return `Testing (${finishedTests.value}/${total})`
       }
       return 'Testing'
     }
@@ -163,9 +172,9 @@ const { status } = useWebSocket(websocketUrl, {
         break
       }
       case 'AllTests': {
-        for (const newTestId of update.tests) {
-          tests.value.push({
-            testId: newTestId,
+        for (const testId of update.tests.sort()) {
+          tests.value.set(testId, {
+            testId,
             status: 'Queued',
           })
         }
@@ -174,27 +183,14 @@ const { status } = useWebSocket(websocketUrl, {
       case 'StartedTest': {
         testingStarted.value = true
 
-        const existing = tests.value.findIndex((test) => test.testId === update.testId)
-        if (existing !== -1) {
-          tests.value[existing] = {
-            status: 'Started',
-            testId: update.testId,
-          }
-        } else {
-          tests.value.push({
-            status: 'Started',
-            testId: update.testId,
-          })
-        }
+        tests.value.set(update.testId, {
+          status: 'Started',
+          testId: update.testId,
+        })
         break
       }
       case 'FinishedTest': {
-        const existing = tests.value.findIndex((test) => test.testId === update.result.testId)
-        if (existing !== -1) {
-          tests.value[existing] = update.result
-        } else {
-          tests.value.push(update.result)
-        }
+        tests.value.set(update.result.testId, update.result)
         break
       }
     }

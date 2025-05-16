@@ -64,7 +64,7 @@
         :tests="tests"
         @test-clicked="handleTestClicked"
       />
-      <TestOverviewMatrix v-else :tests="tests" @test-clicked="handleTestClicked" />
+      <TestOverviewMatrix v-else :tests="sortedTests!" @test-clicked="handleTestClicked" />
     </CardContent>
   </Card>
 </template>
@@ -117,6 +117,10 @@ const tests = computed(() => {
     return undefined
   }
   return task.value.tests
+})
+
+const sortedTests = computed(() => {
+  return tests.value?.slice()?.sort((a, b) => a.testId.localeCompare(b.testId))
 })
 
 const outdatedTests = computed(() => {
