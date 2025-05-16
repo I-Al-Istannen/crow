@@ -121,10 +121,19 @@ fn judge_program_exit_status(
     expected_code: u32,
 ) -> Option<JudgeProblem> {
     match exit_status.code() {
-        None => Some(JudgeProblem {
-            message: "The program had no exit status".to_string(),
-            modifier_name: "ExitCode".to_string(),
-        }),
+        None => {
+            let mut message = "The program had no exit status".to_string();
+            if let Some(signal) = exit_status.signal() {
+                message.push_str(". It was killed by signal ");
+                message.push_str(&signal.to_string());
+                message.push('.');
+            }
+
+            Some(JudgeProblem {
+                message,
+                modifier_name: "ExitCode".to_string(),
+            })
+        }
         Some(val) => {
             if val != expected_code as i32 {
                 Some(JudgeProblem {
