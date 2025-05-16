@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ssh compiler "cd setup/backend && docker compose pull && docker compose up -d"
-ssh compiler "cd setup/frontend && docker compose pull && docker compose up -d"
+ssh compiler-vm "cd setup/backend && docker compose pull && docker compose up -d"
+ssh compiler-vm "cd setup/frontend && docker compose pull && docker compose up -d"
 
-ssh crow-executor@compiler 'bash -l -c "~/deploy"'
+echo -e "Do you wanna redeploy the runner? \033[31mIf so do it yourself...\033[0m"
+#ssh crow-executor@compiler 'bash -l -c "~/deploy"'
