@@ -5,6 +5,7 @@
       <TableHead class="text-center">Team</TableHead>
       <TableHead class="text-center">Tests</TableHead>
       <TableHead class="text-center">Time</TableHead>
+      <TableHead class="text-center">Duration</TableHead>
       <TableHead class="text-center">Task</TableHead>
     </TableHeader>
     <TableBody>
@@ -45,6 +46,13 @@
         >
           {{ task.info.start.toLocaleString() }}
         </TableCell>
+        <TableCell
+          class="py-0"
+          @click="goto(task.info.taskId, $event)"
+          @click.middle="goto(task.info.taskId, $event)"
+        >
+          {{ formatDurationBetween(task.info.start, task.info.end) }}
+        </TableCell>
         <TableCell class="py-0">
           <RouterLink :to="{ name: 'task-detail', params: { taskId: task.info.taskId } }">
             <Button variant="link">To the task</Button>
@@ -67,6 +75,7 @@ import {
 } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import TaskQuickOverview from '@/components/task-overview/TaskQuickOverview.vue'
+import { formatDurationBetween } from '@/lib/utils.ts'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user.ts'
