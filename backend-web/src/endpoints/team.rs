@@ -92,6 +92,15 @@ pub async fn get_recent_tasks(
 }
 
 #[instrument(skip_all)]
+pub async fn get_tasks_for_team(
+    State(AppState { db, .. }): State<AppState>,
+    Path(team_id): Path<TeamId>,
+    _claims: Claims,
+) -> Result<Json<Vec<FinishedCompilerTaskSummary>>> {
+    Ok(Json(db.get_recent_tasks(&team_id, u32::MAX).await?))
+}
+
+#[instrument(skip_all)]
 pub async fn get_final_tasks(
     State(state): State<AppState>,
     claims: Claims,

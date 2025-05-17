@@ -32,6 +32,7 @@ pub use self::team::get_recent_tasks;
 pub use self::team::get_team_info;
 pub use self::team::get_team_repo;
 pub use self::team::set_final_task;
+pub use self::team::get_tasks_for_team;
 pub use self::team::set_team_repo;
 pub use self::test::delete_test;
 pub use self::test::get_test;

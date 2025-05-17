@@ -37,8 +37,8 @@
           <span class="font-medium text-ellipsis overflow-hidden text-nowrap max-w-[50ch]">
             {{ task.info.commitMessage }}
           </span>
-          <AutoSelectedGradedMarker :task-id="task.info.taskId" />
-          <ManuallyOverrideDialog :task-id="task.info.taskId" />
+          <AutoSelectedGradedMarker v-if="!hideSubmissionButtons" :task-id="task.info.taskId" />
+          <ManuallyOverrideDialog v-if="!hideSubmissionButtons" :task-id="task.info.taskId" />
         </div>
         <TaskQuickOverview class="text-sm" :task="task" />
       </div>
@@ -70,6 +70,7 @@ import { useUserStore } from '@/stores/user.ts'
 
 const props = defineProps<{
   task: FinishedCompilerTaskSummary
+  hideSubmissionButtons?: boolean
 }>()
 const { task } = toRefs(props)
 const { team } = storeToRefs(useUserStore())

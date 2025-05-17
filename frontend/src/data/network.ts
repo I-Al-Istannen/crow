@@ -458,3 +458,20 @@ export async function fetchUsers(): Promise<AdminUserInfo[]> {
   const response = await fetchWithAuth('/users')
   return AdminUserInfoSchema.array().parse(await response.json())
 }
+
+export function queryTasksOfTeam(teamId: MaybeRefOrGetter<TeamId | undefined>) {
+  return useQuery({
+    queryKey: ['tasks', teamId],
+    queryFn: () => fetchTasksOfTeam(toValue(teamId)!),
+    meta: {
+      purpose: 'fetching tasks of team',
+    },
+    enabled:
+      isLoggedIn() && storeToRefs(useUserStore()).isAdmin && computed(() => !!toRef(teamId).value),
+  })
+}
+
+export async function fetchTasksOfTeam(teamId: TeamId): Promise<FinishedCompilerTaskSummary[]> {
+  const response = await fetchWithAuth(`/team/tasks/${encodeURIComponent(teamId)}`)
+  return FinishedCompilerTaskSummarySchema.array().parse(await response.json())
+}

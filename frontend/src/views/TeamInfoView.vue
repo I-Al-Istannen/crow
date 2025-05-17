@@ -21,6 +21,7 @@
         </ul>
       </CardContent>
     </Card>
+    <TeamTasks v-if="teamId && isAdmin" :teamId="teamId" />
   </PageContainer>
 </template>
 
@@ -29,13 +30,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
 import PageContainer from '@/components/PageContainer.vue'
 import type { TeamId } from '@/types.ts'
+import TeamTasks from '@/components/admin/TeamTasks.vue'
 import UsernameDisplay from '@/components/team/UsernameDisplay.vue'
 import { computed } from 'vue'
 import { queryTeamInfo } from '@/data/network.ts'
+import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
+import { useUserStore } from '@/stores/user.ts'
 
 const route = useRoute()
 const teamId = computed(() => (route.params.teamId ? (route.params.teamId as TeamId) : undefined))
+const { isAdmin } = storeToRefs(useUserStore())
 
 const { data: info, isLoading, failureCount, failureReason } = queryTeamInfo(teamId)
 </script>
