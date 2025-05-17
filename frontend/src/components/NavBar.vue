@@ -10,7 +10,7 @@
         </router-link>
 
         <NavigationMenu v-if="accountReady" class="w-full max-sm:max-w-full">
-          <NavigationMenuList class="w-full">
+          <NavigationMenuList class="w-full flex-wrap">
             <NavigationMenuItem v-for="route in routes" :key="route.title">
               <router-link :to="route.route">
                 <NavigationMenuLink
