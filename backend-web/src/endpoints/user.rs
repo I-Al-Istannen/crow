@@ -37,8 +37,26 @@ pub async fn get_integration_status(
 pub async fn list_users(
     State(AppState { db, .. }): State<AppState>,
     _claims: Option<Claims>,
-) -> Result<Json<Vec<FullUserForAdmin>>> {
-    Ok(Json(db.fetch_users().await?))
+) -> Result<Json<Vec<UserInfo>>> {
+    let mut result = Vec::new();
+
+    for user in db.fetch_users().await? {
+        let (repo_url, team) = if let Some(team) = &user.user.user.team {
+            (
+                db.fetch_repo(team).await?.map(|repo| repo.url),
+                db.get_team(team).await.ok(),
+            )
+        } else {
+            (None, None)
+        };
+        result.push(UserInfo {
+            user,
+            repo_url,
+            team,
+        });
+    }
+
+    Ok(Json(result))
 }
 
 #[derive(Debug, Serialize)]
@@ -71,4 +89,13 @@ impl GithubIntegrationInfoResponse {
 pub struct IntegrationInfoResponse {
     pub token: TeamIntegrationToken,
     pub github: Option<GithubIntegrationInfoResponse>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserInfo {
+    #[serde(flatten)]
+    user: FullUserForAdmin,
+    repo_url: Option<String>,
+    team: Option<Team>,
 }

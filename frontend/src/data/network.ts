@@ -1,4 +1,6 @@
 import {
+  type AdminUserInfo,
+  AdminUserInfoSchema,
   type ApiFinishedCompilerTaskSummary,
   ApiFinishedCompilerTaskSummarySchema,
   type FinalSelectedTask,
@@ -439,4 +441,20 @@ export function mutateSetFinalSubmittedTask(queryClient: QueryClient) {
       purpose: 'requesting a revision',
     },
   })
+}
+
+export function queryUsers() {
+  return useQuery({
+    queryKey: ['users'],
+    queryFn: fetchUsers,
+    meta: {
+      purpose: 'fetching users',
+    },
+    enabled: isLoggedIn() && storeToRefs(useUserStore()).isAdmin,
+  })
+}
+
+export async function fetchUsers(): Promise<AdminUserInfo[]> {
+  const response = await fetchWithAuth('/users')
+  return AdminUserInfoSchema.array().parse(await response.json())
 }

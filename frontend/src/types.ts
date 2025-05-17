@@ -309,6 +309,16 @@ export const ListTestResponseSchema = z.object({
   categories: z.record(z.string(), TestCategorySchema),
 })
 
+export const UserRoleSchema = z.enum(['Admin', 'Regular'])
+export const FullUserForAdminSchema = OwnUserSchema.merge(z.object({ role: UserRoleSchema }))
+
+export const AdminUserInfoSchema = FullUserForAdminSchema.merge(
+  z.object({
+    repoUrl: z.string().nullable(),
+    team: TeamSchema.nullable(),
+  }),
+)
+
 export type AbortedExecution = z.infer<typeof AbortedExecutionSchema>
 export type ExecutingTest = z.infer<typeof ExecutingTestSchema>
 export type ExecutionExitStatus = z.infer<typeof ExecutionExitStatusSchema>
@@ -352,6 +362,9 @@ export type OwnUser = z.infer<typeof OwnUserSchema>
 export type UserId = z.infer<typeof UserIdSchema>
 export type RunnerWorkingOn = z.infer<typeof RunnerWorkingOnSchema>
 export type WorkItem = z.infer<typeof WorkItemSchema>
+export type UserRole = z.infer<typeof UserRoleSchema>
+export type FullUserForAdmin = z.infer<typeof FullUserForAdminSchema>
+export type AdminUserInfo = z.infer<typeof AdminUserInfoSchema>
 
 export function toExecutionStatus(output: TestExecutionOutput): ExecutionExitStatus {
   switch (output.type) {

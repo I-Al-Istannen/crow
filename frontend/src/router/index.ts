@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import AdminView from '@/views/AdminView.vue'
 import AllTasksView from '@/views/AllTasksView.vue'
 import CliAuthView from '@/views/CliAuthView.vue'
 import HomeView from '@/views/HomeView.vue'
@@ -91,6 +92,15 @@ const router = createRouter({
       meta: {
         name: 'Cli Authentication',
         hidden: true,
+      },
+    },
+    {
+      path: '/admin',
+      name: 'admin',
+      component: AdminView,
+      meta: {
+        name: 'Admin',
+        hidden: (isAdmin: boolean) => !isAdmin,
       },
     },
   ],
