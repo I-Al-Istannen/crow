@@ -84,6 +84,6 @@ impl HandleExitcode for &mut Command {
             response.push_str(&format!("stderr:\n{}", indent(stderr.trim(), 2)));
         }
 
-        Err(std::io::Error::new(std::io::ErrorKind::Other, response))
+        Err(std::io::Error::other(response))
     }
 }

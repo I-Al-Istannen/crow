@@ -382,16 +382,16 @@ impl From<FinishedCompilerTask> for QueuedTaskStatus {
             }
         };
 
-        if status.iter().any(|it| *it == ExecutionExitStatus::Aborted) {
+        if status.contains(&ExecutionExitStatus::Aborted) {
             return Self::Aborted;
         }
-        if status.iter().any(|it| *it == ExecutionExitStatus::Error) {
+        if status.contains(&ExecutionExitStatus::Error) {
             return Self::Error;
         }
-        if status.iter().any(|it| *it == ExecutionExitStatus::Timeout) {
+        if status.contains(&ExecutionExitStatus::Timeout) {
             return Self::Error;
         }
-        if status.iter().any(|it| *it == ExecutionExitStatus::Failure) {
+        if status.contains(&ExecutionExitStatus::Failure) {
             return Self::Failure;
         }
         Self::Success
