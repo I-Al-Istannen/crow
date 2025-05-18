@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        WITH pass_by_task AS (\n            SELECT\n                Tasks.task_id as \"task_id\",\n                Tasks.team_id as \"team_id\",\n                COUNT(test_id) as \"passed_count\"\n            FROM TestResults\n            JOIN Tasks ON Tasks.task_id = TestResults.task_id\n            WHERE TestResults.status = ?\n            GROUP BY Tasks.task_id\n        )\n        SELECT\n            pass_by_task.team_id as \"team_id!: TeamId\",\n            pass_by_task.task_id as \"task_id!: TaskId\",\n            -- Unused max to force SQLite to return extremal values for the other columns\n            MAX(pass_by_task.passed_count) as \"passes!: i64\"\n        FROM pass_by_task\n        GROUP BY pass_by_task.team_id;\n        ",
+  "describe": {
+    "columns": [
+      {
+        "name": "team_id!: TeamId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "task_id!: TaskId",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "passes!: i64",
+        "ordinal": 2,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "82073c494476b9c59e9898fe7602c894b8d5550fc4532fbc8c0bc5ce2d26075e"
+}

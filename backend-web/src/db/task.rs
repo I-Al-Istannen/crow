@@ -506,13 +506,7 @@ pub(super) async fn get_top_task_per_team(
                 COUNT(test_id) as "passed_count"
             FROM TestResults
             JOIN Tasks ON Tasks.task_id = TestResults.task_id
-            JOIN ExecutionResults CompilerRes
-                ON TestResults.compiler_exec_id = CompilerRes.execution_id
-            LEFT JOIN ExecutionResults BinaryRes
-                ON TestResults.binary_exec_id = BinaryRes.execution_id
-            WHERE
-                    CompilerRes.result = ?
-                AND (BinaryRes.result IS NULL OR BinaryRes.result = ?)
+            WHERE TestResults.status = ?
             GROUP BY Tasks.task_id
         )
         SELECT
@@ -524,7 +518,6 @@ pub(super) async fn get_top_task_per_team(
         GROUP BY pass_by_task.team_id;
         "#,
         ExecutionExitStatus::Success,
-        ExecutionExitStatus::Success
     )
     .fetch_all(&mut *con)
     .instrument(info_span!("sqlx_get_top_task_per_team"))
@@ -765,27 +758,21 @@ async fn get_top_task_for_team_and_category(
         FROM TestResults
         JOIN Tasks ON Tasks.task_id = TestResults.task_id
         JOIN Tests ON Tests.id = TestResults.test_id
-        JOIN ExecutionResults CompilerRes
-            ON TestResults.compiler_exec_id = CompilerRes.execution_id
-        LEFT JOIN ExecutionResults BinaryRes
-            ON TestResults.binary_exec_id = BinaryRes.execution_id
         WHERE
                 Tasks.team_id = ?
+            AND TestResults.status = ?
             AND Tasks.queue_time BETWEEN ? AND ?
             AND Tests.category = ?
             AND Tests.provisional_for_category IS NULL
-            AND CompilerRes.result = ?
-            AND (BinaryRes.result IS NULL OR BinaryRes.result = ?)
         GROUP BY Tasks.task_id
         ORDER BY COUNT(test_id) DESC, Tasks.queue_time DESC
         LIMIT 1
         "#,
         team_id,
+        ExecutionExitStatus::Success,
         starts_at,
         ends_at,
         category,
-        ExecutionExitStatus::Success,
-        ExecutionExitStatus::Success,
     )
     .fetch_optional(&mut *con)
     .instrument(info_span!("sqlx_get_top_task_for_team_and_category"))
