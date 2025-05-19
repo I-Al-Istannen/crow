@@ -23,6 +23,8 @@ import {
   SetTestResponseSchema,
   type ShowMyselfResponse,
   ShowMyselfResponseSchema,
+  type SnapshotResponse,
+  SnapshotResponseSchema,
   type TaskId,
   type TeamId,
   TeamIdSchema,
@@ -474,4 +476,21 @@ export function queryTasksOfTeam(teamId: MaybeRefOrGetter<TeamId | undefined>) {
 export async function fetchTasksOfTeam(teamId: TeamId): Promise<FinishedCompilerTaskSummary[]> {
   const response = await fetchWithAuth(`/team/tasks/${encodeURIComponent(teamId)}`)
   return FinishedCompilerTaskSummarySchema.array().parse(await response.json())
+}
+
+export function mutateCreateSnapshot() {
+  return useMutation({
+    mutationFn: fetchCreateSnapshot,
+    onSuccess: (_, __, ___) => {},
+    meta: {
+      purpose: 'requesting a revision',
+    },
+  })
+}
+
+export async function fetchCreateSnapshot(): Promise<SnapshotResponse> {
+  const res = await fetchWithAuth('/admin/snapshot', {
+    method: 'POST',
+  })
+  return SnapshotResponseSchema.parse(await res.json())
 }

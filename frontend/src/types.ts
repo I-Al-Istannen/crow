@@ -319,6 +319,11 @@ export const AdminUserInfoSchema = FullUserForAdminSchema.merge(
   }),
 )
 
+export const SnapshotResponseSchema = z.object({
+  errors: z.array(z.string()),
+  exported: z.array(TeamIdSchema),
+})
+
 export type AbortedExecution = z.infer<typeof AbortedExecutionSchema>
 export type ExecutingTest = z.infer<typeof ExecutingTestSchema>
 export type ExecutionExitStatus = z.infer<typeof ExecutionExitStatusSchema>
@@ -365,6 +370,7 @@ export type WorkItem = z.infer<typeof WorkItemSchema>
 export type UserRole = z.infer<typeof UserRoleSchema>
 export type FullUserForAdmin = z.infer<typeof FullUserForAdminSchema>
 export type AdminUserInfo = z.infer<typeof AdminUserInfoSchema>
+export type SnapshotResponse = z.infer<typeof SnapshotResponseSchema>
 
 export function toExecutionStatus(output: TestExecutionOutput): ExecutionExitStatus {
   switch (output.type) {
