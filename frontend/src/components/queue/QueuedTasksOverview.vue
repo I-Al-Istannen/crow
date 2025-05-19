@@ -25,7 +25,7 @@
           {{ item.commitMessage.substring(0, 60) }}{{ item.commitMessage.length > 60 ? '…' : '' }}
         </TableCell>
         <TableCell>
-          {{ item.revision.substring(0, 8) }}
+          {{ item.revision.substring(0, 7) }}
         </TableCell>
         <TableCell>
           {{ item.team }}

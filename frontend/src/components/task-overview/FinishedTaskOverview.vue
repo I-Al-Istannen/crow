@@ -29,10 +29,10 @@
             class="text-muted-foreground hover:underline"
             @click.prevent="openUrl(commitUrl)"
           >
-            {{ task.info.revisionId.substring(0, 8) }}:
+            {{ task.info.revisionId.substring(0, 7) }}:
           </a>
           <span v-else class="text-muted-foreground"
-            >{{ task.info.revisionId.substring(0, 8) }}:
+            >{{ task.info.revisionId.substring(0, 7) }}:
           </span>
           <span class="font-medium text-ellipsis overflow-hidden text-nowrap max-w-[50ch]">
             {{ task.info.commitMessage }}
