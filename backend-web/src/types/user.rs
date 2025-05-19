@@ -34,6 +34,7 @@ pub struct Team {
 #[serde(rename_all = "camelCase")]
 pub struct TeamInfo {
     pub team: Team,
+    pub repo_url: Option<String>,
     pub members: Vec<User>,
 }
 

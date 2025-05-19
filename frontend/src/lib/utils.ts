@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from 'clsx'
 import { computed, toRef } from 'vue'
 import { type MaybeRefOrGetter } from '@vueuse/core'
+import type { TeamId } from '@/types.ts'
 import { queryRepo } from '@/data/network.ts'
 import { storeToRefs } from 'pinia'
 import { twMerge } from 'tailwind-merge'
@@ -105,13 +106,28 @@ export function statusColor(
   }
 }
 
-export function useCommitUrl(commitGet: MaybeRefOrGetter<string>) {
+export function useCommitUrl(
+  commitGet: MaybeRefOrGetter<string>,
+  teamGet: MaybeRefOrGetter<TeamId>,
+  repoUrlGet: MaybeRefOrGetter<string | undefined>,
+) {
   const commit = toRef(commitGet)
-  const { team } = storeToRefs(useUserStore())
-  const { data: repo } = queryRepo(computed(() => team.value?.id))
+  const repoUrl = toRef(repoUrlGet)
+  const commitTeam = toRef(teamGet)
+  const { team: myTeam } = storeToRefs(useUserStore())
+  const { data: repo } = queryRepo(computed(() => myTeam.value?.id))
+  const finalRepoUrl = computed(() => {
+    if (repoUrl.value) {
+      return repoUrl.value
+    }
+    if (myTeam.value?.id === commitTeam.value) {
+      return repo.value?.url
+    }
+    return undefined
+  })
 
   const commitUrl = computed(() => {
-    const url = repo.value?.url
+    const url = finalRepoUrl.value
     if (!url) {
       return undefined
     }

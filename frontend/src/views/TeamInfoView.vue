@@ -3,7 +3,17 @@
     <Card>
       <CardHeader>
         <CardTitle>Team Overview</CardTitle>
-        <CardDescription>Information about a team and its members</CardDescription>
+        <CardDescription class="flex justify-between flex-wrap">
+          <span>Information about a team and its members</span>
+          <a
+            v-if="info && info.repoUrl"
+            :href="info.repoUrl"
+            target="_blank"
+            class="hover:underline"
+          >
+            {{ info.repoUrl }}
+          </a>
+        </CardDescription>
       </CardHeader>
       <CardContent v-if="info">
         <DataLoadingExplanation
@@ -21,7 +31,7 @@
         </ul>
       </CardContent>
     </Card>
-    <TeamTasks v-if="teamId && isAdmin" :teamId="teamId" />
+    <TeamTasks v-if="teamId && isAdmin" :teamId="teamId" :repoUrl="info?.repoUrl || undefined" />
   </PageContainer>
 </template>
 

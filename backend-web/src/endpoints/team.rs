@@ -226,8 +226,14 @@ pub async fn get_team_info(
     if !claims.is_admin() && claims.team != team_id {
         return Err(WebError::unauthorized(location!()));
     }
+    let (team, members) = db.get_team_info(&team_id).await?;
+    let repo_url = db.fetch_repo(&team_id).await?.map(|it| it.url);
 
-    Ok(Json(db.get_team_info(&team_id).await?))
+    Ok(Json(TeamInfo {
+        team,
+        members,
+        repo_url,
+    }))
 }
 
 #[derive(Debug, Deserialize)]

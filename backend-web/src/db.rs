@@ -12,8 +12,8 @@ use crate::config::{TeamEntry, TestCategory};
 use crate::error::{Result, SqlxSnafu, WebError};
 use crate::types::{
     CreatedExternalRun, ExternalRunId, ExternalRunStatus, FinalSubmittedTask,
-    FinishedCompilerTaskSummary, FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, TeamInfo,
-    TeamIntegrationToken, Test, TestId, TestSummary, TestWithTasteTesting, UserId, UserRole,
+    FinishedCompilerTaskSummary, FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId,
+    TeamIntegrationToken, Test, TestId, TestSummary, TestWithTasteTesting, User, UserId, UserRole,
     WorkItem,
 };
 use jiff::Timestamp;
@@ -131,7 +131,7 @@ impl Database {
         team::get_team(&mut *pool.acquire().await.context(SqlxSnafu)?, team_id).await
     }
 
-    pub async fn get_team_info(&self, team_id: &TeamId) -> Result<TeamInfo> {
+    pub async fn get_team_info(&self, team_id: &TeamId) -> Result<(Team, Vec<User>)> {
         let pool = self.read_lock().await;
         team::get_team_info(&mut *pool.acquire().await.context(SqlxSnafu)?, team_id).await
     }

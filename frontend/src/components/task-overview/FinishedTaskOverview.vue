@@ -23,7 +23,7 @@
       <div class="flex flex-col justify-center max-w-full flex-wrap">
         <div class="mb-1 flex items-stretch gap-1 flex-wrap mr-1 max-w-full">
           <a
-            v-if="commitUrl && task.info.teamId == team?.id"
+            v-if="commitUrl"
             :href="commitUrl"
             target="_blank"
             class="text-muted-foreground hover:underline"
@@ -64,18 +64,16 @@ import type { FinishedCompilerTaskSummary } from '@/types.ts'
 import ManuallyOverrideDialog from '@/components/task-overview/ManuallyOverrideDialog.vue'
 import TaskQuickOverview from '@/components/task-overview/TaskQuickOverview.vue'
 import { clsx } from 'clsx'
-import { storeToRefs } from 'pinia'
 import { toRefs } from 'vue'
-import { useUserStore } from '@/stores/user.ts'
 
 const props = defineProps<{
   task: FinishedCompilerTaskSummary
   hideSubmissionButtons?: boolean
+  repoUrl?: string
 }>()
-const { task } = toRefs(props)
-const { team } = storeToRefs(useUserStore())
+const { task, repoUrl } = toRefs(props)
 
-const { commitUrl } = useCommitUrl(task.value.info.revisionId)
+const { commitUrl } = useCommitUrl(task.value.info.revisionId, task.value.info.teamId, repoUrl)
 
 function openUrl(commitUrl: string) {
   window.open(commitUrl, '_blank')

@@ -284,6 +284,7 @@ export const SetTestResponseSchema = z.discriminatedUnion('type', [
 
 export const TeamInfoSchema = z.object({
   team: TeamSchema,
+  repoUrl: z.string().nullable(),
   members: z.array(UserSchema),
 })
 

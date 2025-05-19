@@ -1,6 +1,6 @@
 use crate::config::TeamEntry;
 use crate::error::{Result, SqlxSnafu, WebError};
-use crate::types::{Team, TeamId, TeamInfo, TeamIntegrationToken, User, UserRole};
+use crate::types::{Team, TeamId, TeamIntegrationToken, User, UserRole};
 use snafu::{location, ResultExt};
 use sqlx::{query, query_as, Acquire, Sqlite, SqliteConnection};
 use std::collections::HashSet;
@@ -37,7 +37,7 @@ pub(super) async fn get_teams(con: &mut SqliteConnection) -> Result<Vec<Team>> {
 pub(super) async fn get_team_info(
     con: &mut SqliteConnection,
     team_id: &TeamId,
-) -> Result<TeamInfo> {
+) -> Result<(Team, Vec<User>)> {
     let team = get_team(con, team_id).await?;
 
     let members = query_as!(
@@ -50,7 +50,7 @@ pub(super) async fn get_team_info(
     .await
     .context(SqlxSnafu)?;
 
-    Ok(TeamInfo { team, members })
+    Ok((team, members))
 }
 
 #[instrument(skip_all)]

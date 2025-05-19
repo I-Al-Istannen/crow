@@ -21,9 +21,9 @@ const props = defineProps<{
   revision: string
   teamId: string
 }>()
-const { revision } = toRefs(props)
+const { revision, teamId } = toRefs(props)
 
-const { commitUrl } = useCommitUrl(revision)
+const { commitUrl } = useCommitUrl(revision, teamId, undefined)
 const { team } = storeToRefs(useUserStore())
 
 function openUrl(url: string) {

@@ -14,6 +14,7 @@
         v-for="task in sortedTasks"
         :task="task"
         :key="task.info.taskId"
+        :repoUrl="repoUrl"
         hide-submission-buttons
         class="ml-2"
       />
@@ -31,6 +32,7 @@ import { queryTasksOfTeam } from '@/data/network.ts'
 
 const props = defineProps<{
   teamId: TeamId
+  repoUrl?: string
 }>()
 const { teamId } = toRefs(props)
 
