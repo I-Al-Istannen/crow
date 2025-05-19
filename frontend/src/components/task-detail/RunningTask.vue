@@ -176,7 +176,7 @@ const { status } = useWebSocket(websocketUrl, {
         break
       }
       case 'AllTests': {
-        for (const testId of update.tests.sort()) {
+        for (const testId of update.tests.sort((a, b) => a.localeCompare(b))) {
           tests.value.set(testId, {
             testId,
             status: 'Queued',
