@@ -9,7 +9,8 @@ use crate::endpoints::{
     get_top_task_per_team, get_work, get_work_tar, head_running_task_info,
     integration_get_task_status, integration_request_revision, list_tests, list_users, login_oidc,
     login_oidc_callback, request_revision, runner_done, runner_ping, runner_register,
-    runner_update, set_final_task, set_team_repo, set_test, show_me_myself, taste_testing_done,
+    runner_update, set_final_task, set_team_repo, set_test, show_me_myself, snapshot_state,
+    taste_testing_done,
 };
 use crate::error::WebError;
 use crate::storage::LocalRepos;
@@ -120,6 +121,7 @@ async fn main_impl() -> Result<(), Whatever> {
         Keys::new(config.jwt_secret.as_bytes()),
         config.github.as_ref().map(|it| it.app_name.to_string()),
         config.execution,
+        config.grading,
         config.test,
         get_team_mapping(config.teams),
         LocalRepos::new(local_repo_path, config.ssh),
@@ -266,9 +268,10 @@ async fn main_server(
         .route("/tests/:test_id", get(get_test))
         .route("/tests/:test_id", put(set_test))
         .route("/top-tasks", get(get_top_task_per_team))
-        .route("/users", get(list_users).layer(authed_admin))
+        .route("/users", get(list_users).layer(authed_admin.clone()))
         .route("/users/me", get(show_me_myself))
         .route("/users/me/integrations", get(get_integration_status))
+        .route("/admin/snapshot", post(snapshot_state).layer(authed_admin))
         .route("/login", get(login_oidc))
         .route("/login/oidc/callback", post(login_oidc_callback))
         .layer(DefaultBodyLimit::max(25 * 1024 * 1024)) // 25 MiB

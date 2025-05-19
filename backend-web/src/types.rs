@@ -29,7 +29,7 @@ pub use self::user::UserId;
 pub use self::user::UserRole;
 use crate::auth::oidc::Oidc;
 use crate::auth::Keys;
-use crate::config::{ExecutionConfig, TestConfig};
+use crate::config::{ExecutionConfig, GradingConfig, TestConfig};
 use crate::db::Database;
 use crate::storage::LocalRepos;
 use crate::types::queue::Queue;
@@ -54,6 +54,7 @@ pub struct AppState {
     pub db: Database,
     pub jwt_keys: Keys,
     pub execution_config: ExecutionConfig,
+    pub grading_config: GradingConfig,
     pub test_config: TestConfig,
     pub team_mapping: HashMap<UserId, (TeamId, UserRole)>,
     pub executor: Arc<Mutex<Executor>>,
@@ -71,6 +72,7 @@ impl AppState {
         jwt_secret: Keys,
         github_app_name: Option<String>,
         execution_config: ExecutionConfig,
+        grading_config: GradingConfig,
         test_config: TestConfig,
         team_mapping: HashMap<UserId, (TeamId, UserRole)>,
         local_repos: LocalRepos,
@@ -80,6 +82,7 @@ impl AppState {
             db,
             jwt_keys: jwt_secret,
             execution_config,
+            grading_config,
             test_config,
             team_mapping,
             executor: Executor::new(),

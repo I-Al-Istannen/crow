@@ -118,6 +118,14 @@ pub enum GitError {
         #[snafu(implicit)]
         location: Location,
     },
+    #[snafu(display("Failed to export repository `{}` for `{team}` at {location}", path.display()))]
+    NotExported {
+        team: TeamId,
+        path: PathBuf,
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: Location,
+    },
 }
 
 impl HttpError for GitError {
@@ -167,6 +175,43 @@ impl LocalRepos {
                 done: done_tx,
                 repo: repo.clone(),
                 path: path.clone(),
+            })
+            .await
+            .context(UpdaterSendSnafu {
+                team: repo.team.clone(),
+            })?;
+
+        done_rx.await.context(UpdaterWaitSnafu {
+            team: repo.team.clone(),
+        })?
+    }
+
+    pub async fn snapshot_repo(&self, repo: &Repo, target_folder: &Path) -> Result<(), GitError> {
+        let path = self.get_repo_path(&repo.team);
+
+        if !path.exists() {
+            debug!(
+                team = %repo.team,
+                path = %path.display(),
+                "Repo does not exist, cloning it"
+            );
+            clone_mirror(repo, &path, None).await?;
+        }
+
+        debug!(
+            team = %repo.team,
+            path = %path.display(),
+            "Snapshotting repo"
+        );
+
+        let (done_tx, done_rx) = sync::oneshot::channel();
+
+        self.updater
+            .send(RepoUpdateRequest::SnapshotRepo {
+                repo: repo.clone(),
+                path,
+                target_folder: target_folder.to_path_buf(),
+                done: done_tx,
             })
             .await
             .context(UpdaterSendSnafu {
@@ -473,6 +518,27 @@ async fn repo_updater(mut rx: Receiver<RepoUpdateRequest>, ssh_config: Option<Ss
                 }
                 let _ = done.send(());
             }
+            RepoUpdateRequest::SnapshotRepo {
+                repo,
+                path,
+                target_folder,
+                done,
+            } => {
+                let res = Command::new("git")
+                    .arg("clone")
+                    .arg(&path)
+                    .arg("--mirror")
+                    .arg(&target_folder)
+                    .handle_exitcode()
+                    .await
+                    .context(NotExportedSnafu {
+                        team: repo.team.clone(),
+                        path: path.to_path_buf(),
+                    })
+                    .map(|_| ());
+
+                let _ = done.send(res);
+            }
         }
     }
 }
@@ -488,6 +554,12 @@ pub enum RepoUpdateRequest {
         repo: Repo,
         path: PathBuf,
         done: sync::oneshot::Sender<()>,
+    },
+    SnapshotRepo {
+        repo: Repo,
+        path: PathBuf,
+        target_folder: PathBuf,
+        done: sync::oneshot::Sender<Result<(), GitError>>,
     },
 }
 

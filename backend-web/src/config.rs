@@ -11,6 +11,7 @@ pub struct Config {
     pub jwt_secret: String,
     pub teams: Vec<TeamEntry>,
     pub execution: ExecutionConfig,
+    pub grading: GradingConfig,
     pub github: Option<GithubConfig>,
     pub test: TestConfig,
     pub oidc: OidcConfig,
@@ -96,6 +97,11 @@ pub struct OidcConfig {
 #[derive(Debug, Clone, Deserialize)]
 pub struct SshConfig {
     pub team_to_key: HashMap<TeamId, String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GradingConfig {
+    pub snapshot_path: PathBuf,
 }
 
 fn parse_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>

@@ -9,7 +9,7 @@ mod user;
 pub use self::user::UserForAuth;
 use crate::auth::oidc::OidcUser;
 use crate::config::{TeamEntry, TestCategory};
-use crate::error::{Result, SqlxSnafu};
+use crate::error::{Result, SqlxSnafu, WebError};
 use crate::types::{
     CreatedExternalRun, ExternalRunId, ExternalRunStatus, FinalSubmittedTask,
     FinishedCompilerTaskSummary, FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId, TeamInfo,
@@ -17,12 +17,12 @@ use crate::types::{
     WorkItem,
 };
 use jiff::Timestamp;
-use shared::{FinishedCompilerTask, TestExecutionOutput};
-use snafu::ResultExt;
+use shared::{indent, FinishedCompilerTask, TestExecutionOutput};
+use snafu::{location, Report, ResultExt};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
 use sqlx::{query, Pool, Sqlite, SqlitePool};
 use std::collections::HashMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use tracing::{info_span, instrument, Instrument};
@@ -30,6 +30,7 @@ use tracing::{info_span, instrument, Instrument};
 #[derive(Clone)]
 pub struct Database {
     lock: Arc<RwLock<Pool<Sqlite>>>,
+    db_path: PathBuf,
 }
 
 impl Database {
@@ -56,6 +57,7 @@ impl Database {
 
         Ok(Self {
             lock: Arc::new(RwLock::new(pool)),
+            db_path: db_path.to_path_buf(),
         })
     }
 
@@ -341,5 +343,35 @@ impl Database {
             task_id,
         )
         .await
+    }
+
+    pub async fn snapshot_db(&self, path: &Path) -> Result<()> {
+        // Guard against concurrent writes to the database
+        let _ = self.write_lock().await;
+
+        // Thanks sqlx.
+        // https://github.com/launchbadge/sqlx/issues/190
+
+        let res = tokio::process::Command::new("sqlite3")
+            .arg(&self.db_path)
+            .arg(format!(".backup {}", path.display()))
+            .output()
+            .await
+            .map_err(|e| {
+                WebError::internal_error(Report::from_error(&e).to_string(), location!())
+            })?;
+
+        if !res.status.success() {
+            return Err(WebError::internal_error(
+                format!(
+                    "Failed to snapshot db. Stdout:\n{}\nStderr:\n{}",
+                    indent(&String::from_utf8_lossy(&res.stdout), 2),
+                    indent(&String::from_utf8_lossy(&res.stderr), 2)
+                ),
+                location!(),
+            ));
+        }
+
+        Ok(())
     }
 }

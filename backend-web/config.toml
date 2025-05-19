@@ -24,6 +24,12 @@ starts_at = "2025-05-10 14:00:00[Europe/Berlin]"
 labs_end_at = "2025-05-12 14:00:00[Europe/Berlin]"
 tests_end_at = "2025-05-12 14:00:00[Europe/Berlin]"
 
+[grading]
+# The path to store snapshots for grading.
+# They will include a full database backup, as well
+# as a complete backup of all repositories.
+snapshot_path = "target/snapshots"
+
 [execution]
 # The authentication token for runners, needs to be set to the same value in the executor invocation
 runner_token = "correct horse battery staple"
