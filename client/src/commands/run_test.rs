@@ -97,6 +97,9 @@ pub struct CliRunTestsArgs {
     /// tests limited to a category that is not the latest (defined by lexical order).
     #[clap(long = "category", short = 'l')]
     category: Option<String>,
+    /// Only show failing tests in the output
+    #[clap(long = "only-failing", default_value = "false")]
+    only_failing: bool,
 }
 
 pub fn command_run_tests(args: CliRunTestsArgs) -> Result<bool, CrowClientError> {
@@ -153,33 +156,40 @@ pub fn command_run_tests(args: CliRunTestsArgs) -> Result<bool, CrowClientError>
         let (res, test) = res;
         let remaining_padding = separator_width - test.id.len() - 2;
         let elapsed = start.duration_until(Timestamp::now());
-        print!(
-            "{} {} {}",
-            style("=".repeat(remaining_padding / 2)).dim(),
-            style(&test.id).bold().bright().cyan(),
-            style("=".repeat((remaining_padding as f32 / 2.0).ceil() as usize)).dim(),
-        );
 
-        println!(
-            "    {} {}",
-            style(format!(
-                "{}/{} completed",
-                successes + failures + errors,
-                test_count
-            ))
-            .bold()
-            .bright()
-            .cyan(),
-            style(format!(
-                " ({:?} elapsed)",
-                elapsed.round(Unit::Millisecond).unwrap()
-            ))
-            .dim(),
-        );
+        let print_test = !(args.only_failing && matches!(res, Ok((true, _))));
+
+        if print_test {
+            print!(
+                "{} {} {}",
+                style("=".repeat(remaining_padding / 2)).dim(),
+                style(&test.id).bold().bright().cyan(),
+                style("=".repeat((remaining_padding as f32 / 2.0).ceil() as usize)).dim(),
+            );
+
+            println!(
+                "    {} {}",
+                style(format!(
+                    "{}/{} completed",
+                    successes + failures + errors,
+                    test_count
+                ))
+                .bold()
+                .bright()
+                .cyan(),
+                style(format!(
+                    " ({:?} elapsed)",
+                    elapsed.round(Unit::Millisecond).unwrap()
+                ))
+                .dim(),
+            );
+        }
 
         match res {
             Ok((true, res)) => {
-                print_test_output(&res);
+                if print_test {
+                    print_test_output(&res);
+                }
                 successes += 1;
             }
             Ok((false, res)) => {
