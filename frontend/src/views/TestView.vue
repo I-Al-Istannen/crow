@@ -182,7 +182,9 @@ function doesTestMatchFilter(filter: string, test: TestSummary) {
     test.id.toLowerCase().includes(filterLower) ||
     test.creatorName.toLowerCase().includes(filterLower) ||
     test.creatorId.toLowerCase().includes(filterLower) ||
-    test.category.toLowerCase().includes(filterLower)
+    test.category.toLowerCase().includes(filterLower) ||
+    (test.limitedToCategory && filterLower.includes('archived')) ||
+    (test.provisionalForCategory !== null && filterLower.includes('provisional'))
   )
 }
 </script>
