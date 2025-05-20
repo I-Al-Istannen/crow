@@ -8,9 +8,9 @@ use crate::endpoints::{
     get_tasks_for_team, get_team_info, get_team_repo, get_test, get_test_tasting_work,
     get_top_task_per_team, get_work, get_work_tar, head_running_task_info,
     integration_get_task_status, integration_request_revision, list_tests, list_users, login_oidc,
-    login_oidc_callback, request_revision, runner_done, runner_ping, runner_register,
-    runner_update, set_final_task, set_team_repo, set_test, show_me_myself, snapshot_state,
-    taste_testing_done,
+    login_oidc_callback, request_revision, rerun_submissions, runner_done, runner_ping,
+    runner_register, runner_update, set_final_task, set_team_repo, set_test, show_me_myself,
+    snapshot_state, taste_testing_done,
 };
 use crate::error::WebError;
 use crate::storage::LocalRepos;
@@ -271,7 +271,14 @@ async fn main_server(
         .route("/users", get(list_users).layer(authed_admin.clone()))
         .route("/users/me", get(show_me_myself))
         .route("/users/me/integrations", get(get_integration_status))
-        .route("/admin/snapshot", post(snapshot_state).layer(authed_admin))
+        .route(
+            "/admin/snapshot",
+            post(snapshot_state).layer(authed_admin.clone()),
+        )
+        .route(
+            "/admin/rerun_submissions/:category",
+            post(rerun_submissions).layer(authed_admin),
+        )
         .route("/login", get(login_oidc))
         .route("/login/oidc/callback", post(login_oidc_callback))
         .layer(DefaultBodyLimit::max(25 * 1024 * 1024)) // 25 MiB

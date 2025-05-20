@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        INSERT INTO FinalizedSubmittedTasks\n            (team_id, task_id, category)\n        VALUES\n            (?, ?, ?)\n        ON CONFLICT DO UPDATE SET\n            task_id = excluded.task_id\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "c8224d40fd51ea6652f116699ba696f79082efddbe2f9ad6dea17f0566a1539c"
+}

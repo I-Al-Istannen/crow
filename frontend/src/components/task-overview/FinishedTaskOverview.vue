@@ -37,6 +37,7 @@
           <span class="font-medium text-ellipsis overflow-hidden text-nowrap max-w-[50ch]">
             {{ task.info.commitMessage }}
           </span>
+          <FinalizedGradedMarker :task-id="task.info.taskId" />
           <AutoSelectedGradedMarker v-if="!hideSubmissionButtons" :task-id="task.info.taskId" />
           <ManuallyOverrideDialog v-if="!hideSubmissionButtons" :task-id="task.info.taskId" />
         </div>
@@ -60,6 +61,7 @@
 <script setup lang="ts">
 import { formatDurationBetween, formatTime, useCommitUrl } from '@/lib/utils.ts'
 import AutoSelectedGradedMarker from '@/components/task-overview/AutoSelectedGradedMarker.vue'
+import FinalizedGradedMarker from '@/components/task-overview/FinalizedGradedMarker.vue'
 import type { FinishedCompilerTaskSummary } from '@/types.ts'
 import ManuallyOverrideDialog from '@/components/task-overview/ManuallyOverrideDialog.vue'
 import TaskQuickOverview from '@/components/task-overview/TaskQuickOverview.vue'

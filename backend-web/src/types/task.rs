@@ -74,13 +74,22 @@ pub enum FinalSubmittedTask {
         user_id: UserId,
         time: i64,
     },
+    #[serde(rename_all = "camelCase")]
+    Finalized {
+        summary: FinishedCompilerTaskSummary,
+    },
 }
 
 impl FinalSubmittedTask {
     pub fn task_id(&self) -> TaskId {
+        self.summary().info().task_id.clone().into()
+    }
+
+    pub fn summary(&self) -> &FinishedCompilerTaskSummary {
         match self {
-            Self::AutomaticallySelected { summary } => summary.info().task_id.clone().into(),
-            Self::ManuallyOverridden { summary, .. } => summary.info().task_id.clone().into(),
+            Self::AutomaticallySelected { summary } => summary,
+            Self::ManuallyOverridden { summary, .. } => summary,
+            Self::Finalized { summary } => summary,
         }
     }
 }

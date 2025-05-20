@@ -19,6 +19,8 @@ import {
   RepoSchema,
   type RequestRevision,
   RequestRevisionSchema,
+  type RerunResponse,
+  RerunResponseSchema,
   type SetTestResponse,
   SetTestResponseSchema,
   type ShowMyselfResponse,
@@ -483,7 +485,7 @@ export function mutateCreateSnapshot() {
     mutationFn: fetchCreateSnapshot,
     onSuccess: (_, __, ___) => {},
     meta: {
-      purpose: 'requesting a revision',
+      purpose: 'creating a snapshot',
     },
   })
 }
@@ -493,4 +495,21 @@ export async function fetchCreateSnapshot(): Promise<SnapshotResponse> {
     method: 'POST',
   })
   return SnapshotResponseSchema.parse(await res.json())
+}
+
+export function mutateRerunForGrading() {
+  return useMutation({
+    mutationFn: fetchRerunForGrading,
+    onSuccess: (_, __, ___) => {},
+    meta: {
+      purpose: 'rerunning for grading',
+    },
+  })
+}
+
+export async function fetchRerunForGrading(category: string): Promise<RerunResponse> {
+  const res = await fetchWithAuth(`/admin/rerun_submissions/${encodeURIComponent(category)}`, {
+    method: 'POST',
+  })
+  return RerunResponseSchema.parse(await res.json())
 }

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT task_id as \"task_id: TaskId\" FROM FinalizedSubmittedTasks\n            WHERE team_id = ? AND category = ?\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "task_id: TaskId",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4ff7a1699d4cce4ba42aa6126174e8cae636a18210ca80114ffcfef4de5404c7"
+}

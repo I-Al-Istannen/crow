@@ -110,7 +110,7 @@ pub async fn get_final_tasks(
     for (name, meta) in state.test_config.categories {
         if let Some(task) = state
             .db
-            .get_final_submitted_task_for_team_and_category(&claims.team, &name, &meta)
+            .get_final_submitted_task_for_team_and_category(&claims.team, &name, &meta, true)
             .await?
         {
             result.insert(name, task);
@@ -130,7 +130,7 @@ pub async fn set_final_task(
     for (name, category) in &state.test_config.categories {
         let task = state
             .db
-            .get_final_submitted_task_for_team_and_category(&claims.team, name, category)
+            .get_final_submitted_task_for_team_and_category(&claims.team, name, category, true)
             .await?;
         if let Some(task) = task {
             if task.task_id() == payload.task_id {
@@ -202,7 +202,7 @@ async fn ensure_removed_categories_not_past_due(
         if category.is_after_labs_deadline() && !payload.categories.contains(name) {
             let current_submitted_task = state
                 .db
-                .get_final_submitted_task_for_team_and_category(&claims.team, name, category)
+                .get_final_submitted_task_for_team_and_category(&claims.team, name, category, true)
                 .await?;
             if let Some(current_submitted_task) = current_submitted_task {
                 if current_submitted_task.task_id() == payload.task_id {

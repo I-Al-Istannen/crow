@@ -644,8 +644,33 @@ pub(super) async fn get_final_submitted_task(
     team_id: &TeamId,
     category: &str,
     meta: &TestCategory,
+    respect_finalized: bool,
 ) -> Result<Option<FinalSubmittedTask>> {
     let mut con = con.begin().await.context(SqlxSnafu)?;
+
+    if respect_finalized {
+        let finalized = query!(
+            r#"
+            SELECT task_id as "task_id: TaskId" FROM FinalizedSubmittedTasks
+            WHERE team_id = ? AND category = ?
+            "#,
+            team_id,
+            category
+        )
+        .map(|it| it.task_id)
+        .fetch_optional(&mut *con)
+        .instrument(info_span!("sqlx_get_final_submitted_task"))
+        .await
+        .context(SqlxSnafu)?;
+
+        if let Some(task_id) = finalized {
+            return Ok(Some(FinalSubmittedTask::Finalized {
+                summary: get_task_summary(&mut con, &task_id)
+                    .instrument(info_span!("sqlx_get_final_submitted_task_inner"))
+                    .await?,
+            }));
+        }
+    }
 
     let manual_task = query!(
         r#"
@@ -785,4 +810,31 @@ async fn get_top_task_for_team_and_category(
     };
 
     Ok(Some(get_task(con, &query_res.task_id).await?.into()))
+}
+
+pub(super) async fn finalize_submission(
+    con: &mut SqliteConnection,
+    team_id: &TeamId,
+    task_id: &TaskId,
+    category: &str,
+) -> Result<()> {
+    query!(
+        r#"
+        INSERT INTO FinalizedSubmittedTasks
+            (team_id, task_id, category)
+        VALUES
+            (?, ?, ?)
+        ON CONFLICT DO UPDATE SET
+            task_id = excluded.task_id
+        "#,
+        team_id,
+        task_id,
+        category
+    )
+    .execute(con)
+    .instrument(info_span!("sqlx_finalize_submission"))
+    .await
+    .context(SqlxSnafu)?;
+
+    Ok(())
 }

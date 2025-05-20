@@ -7,6 +7,7 @@ mod team;
 mod test;
 mod user;
 
+pub use self::admin::rerun_submissions;
 pub use self::admin::snapshot_state;
 pub use self::executor::get_test_tasting_work;
 pub use self::executor::get_work;

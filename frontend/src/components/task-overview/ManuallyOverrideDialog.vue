@@ -14,7 +14,7 @@
     >
       <TooltipProvider>
         <Tooltip>
-          <TooltipTrigger class="flex items-end">
+          <TooltipTrigger class="flex items-center">
             <LucideUpload @click.prevent class="h-4 w-4" />
           </TooltipTrigger>
           <TooltipContent v-if="assignedCategories.length > 0">

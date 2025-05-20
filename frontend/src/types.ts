@@ -142,6 +142,10 @@ export const FinalSelectedTaskSchema = z.discriminatedUnion('type', [
     summary: FinishedCompilerTaskSummarySchema,
   }),
   z.object({
+    type: z.literal('Finalized'),
+    summary: FinishedCompilerTaskSummarySchema,
+  }),
+  z.object({
     type: z.literal('ManuallyOverridden'),
     summary: FinishedCompilerTaskSummarySchema,
     userId: UserIdSchema,
@@ -325,6 +329,11 @@ export const SnapshotResponseSchema = z.object({
   exported: z.array(TeamIdSchema),
 })
 
+export const RerunResponseSchema = z.object({
+  errors: z.array(z.string()),
+  submitted: z.array(z.tuple([TeamIdSchema, TaskIdSchema])),
+})
+
 export type AbortedExecution = z.infer<typeof AbortedExecutionSchema>
 export type ExecutingTest = z.infer<typeof ExecutingTestSchema>
 export type ExecutionExitStatus = z.infer<typeof ExecutionExitStatusSchema>
@@ -372,6 +381,7 @@ export type UserRole = z.infer<typeof UserRoleSchema>
 export type FullUserForAdmin = z.infer<typeof FullUserForAdminSchema>
 export type AdminUserInfo = z.infer<typeof AdminUserInfoSchema>
 export type SnapshotResponse = z.infer<typeof SnapshotResponseSchema>
+export type RerunResponse = z.infer<typeof RerunResponseSchema>
 
 export function toExecutionStatus(output: TestExecutionOutput): ExecutionExitStatus {
   switch (output.type) {

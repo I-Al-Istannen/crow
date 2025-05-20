@@ -216,9 +216,10 @@ impl Database {
         team_id: &TeamId,
         category: &str,
         meta: &TestCategory,
+        respect_finalized: bool,
     ) -> Result<Option<FinalSubmittedTask>> {
         let pool = self.read_lock().await;
-        task::get_final_submitted_task(&*pool, team_id, category, meta).await
+        task::get_final_submitted_task(&*pool, team_id, category, meta, respect_finalized).await
     }
 
     pub async fn set_final_submitted_task(
@@ -235,6 +236,22 @@ impl Database {
             user_id,
             task_id,
             categories,
+        )
+        .await
+    }
+
+    pub async fn finalize_submission(
+        &self,
+        team_id: &TeamId,
+        task_id: &TaskId,
+        category: &str,
+    ) -> Result<()> {
+        let pool = self.write_lock().await;
+        task::finalize_submission(
+            &mut *pool.acquire().await.context(SqlxSnafu)?,
+            team_id,
+            task_id,
+            category,
         )
         .await
     }
