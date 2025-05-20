@@ -38,6 +38,15 @@
             Created after test deadline. This test will only count in the next cycle.
           </TooltipContent>
         </Tooltip>
+        <Tooltip v-if="test.limitedToCategory">
+          <TooltipTrigger as-child>
+            <LucideFileArchive :size="16" class="text-orange-500" />
+          </TooltipTrigger>
+          <TooltipContent>
+            This test is only relevant for the category it was submitted for. It will no longer be
+            executed for newer categories.
+          </TooltipContent>
+        </Tooltip>
       </span>
       <span class="flex flex-grow justify-end mr-2 items-center gap-2">
         <slot name="actions" />
@@ -57,6 +66,7 @@ import {
   LucideBadgeCheck,
   LucideBadgeX,
   LucideEyeOff,
+  LucideFileArchive,
   LucideShieldCheck,
 } from 'lucide-vue-next'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'

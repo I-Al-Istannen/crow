@@ -48,6 +48,8 @@ pub struct Test {
     pub admin_authored: bool,
     pub category: String,
     pub provisional_for_category: Option<String>,
+    /// This test is not applicable to later categories and should not be run
+    pub limited_to_category: bool,
     #[serde(serialize_with = "jiff::fmt::serde::timestamp::millisecond::required::serialize")]
     #[serde(deserialize_with = "jiff::fmt::serde::timestamp::millisecond::required::deserialize")]
     pub last_updated: Timestamp,
@@ -72,6 +74,7 @@ pub struct TestSummary {
     pub hash: String,
     pub test_taste_success: Option<bool>,
     pub provisional_for_category: Option<String>,
+    pub limited_to_category: bool,
     #[serde(serialize_with = "jiff::fmt::serde::timestamp::millisecond::required::serialize")]
     #[serde(deserialize_with = "jiff::fmt::serde::timestamp::millisecond::required::deserialize")]
     pub last_updated: Timestamp,

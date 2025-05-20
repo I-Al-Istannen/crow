@@ -210,6 +210,7 @@ pub struct Test {
     pub id: String,
     pub creator_id: String,
     pub admin_authored: bool,
+    pub limited_to_category: bool,
     #[serde(skip_serializing, default)]
     pub category: String,
     pub hash: String,

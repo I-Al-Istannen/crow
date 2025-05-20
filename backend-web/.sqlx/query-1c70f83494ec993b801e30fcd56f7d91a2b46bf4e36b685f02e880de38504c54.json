@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE Tests SET hash = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "1c70f83494ec993b801e30fcd56f7d91a2b46bf4e36b685f02e880de38504c54"
+}

@@ -16,6 +16,7 @@
     </Card>
     <SnapshotState />
     <RerunSubmissions />
+    <RehashTests />
   </PageContainer>
 </template>
 
@@ -23,6 +24,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
 import PageContainer from '@/components/PageContainer.vue'
+import RehashTests from '@/components/admin/RehashTests.vue'
 import RerunSubmissions from '@/components/admin/RerunSubmissions.vue'
 import SnapshotState from '@/components/admin/SnapshotState.vue'
 import UserTable from '@/components/admin/UserTable.vue'

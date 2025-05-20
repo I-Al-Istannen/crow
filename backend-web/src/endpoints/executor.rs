@@ -197,12 +197,16 @@ pub async fn get_work(
         }));
     }
 
+    let current_categories = state.test_config.active_categories();
     let queued_tasks = state.db.get_queued_tasks().await?;
     let tests: Vec<CompilerTest> = state
         .db
         .get_tests()
         .await?
         .into_iter()
+        .filter(|test| {
+            !test.limited_to_category || current_categories.contains(&test.category.as_str())
+        })
         .map(|test| CompilerTest {
             test_id: test.id.to_string(),
             timeout: state.execution_config.test_timeout,

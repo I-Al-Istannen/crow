@@ -68,6 +68,16 @@ pub struct TestConfig {
     pub categories: HashMap<String, TestCategory>,
 }
 
+impl TestConfig {
+    pub fn active_categories(&self) -> Vec<&str> {
+        self.categories
+            .iter()
+            .filter(|(_, meta)| meta.is_running())
+            .map(|(name, _)| name.as_str())
+            .collect()
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct TestCategory {
     pub starts_at: Zoned,
@@ -82,6 +92,11 @@ impl TestCategory {
 
     pub fn is_after_labs_deadline(&self) -> bool {
         self.labs_end_at.timestamp() < Timestamp::now()
+    }
+
+    pub fn is_running(&self) -> bool {
+        let now = Timestamp::now();
+        self.starts_at.timestamp() < now && now < self.tests_end_at.timestamp()
     }
 }
 

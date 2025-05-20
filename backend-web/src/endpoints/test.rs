@@ -36,6 +36,7 @@ pub async fn set_test(
     let db = &state.db;
     let mut owner = claims.team.clone();
     let mut admin_authored = claims.is_admin();
+    let mut limited_to_category = false;
 
     if let Some(existing) = db.fetch_test(&test_id).await? {
         if existing.owner != claims.team && !claims.is_admin() {
@@ -44,6 +45,7 @@ pub async fn set_test(
         // Even if an admin edits a test, this stays the same
         owner = existing.owner;
         admin_authored = existing.admin_authored;
+        limited_to_category = existing.limited_to_category;
     }
 
     let Some(category_meta) = state.test_config.categories.get(&payload.category) else {
@@ -74,6 +76,7 @@ pub async fn set_test(
         category: payload.category,
         compiler_modifiers: payload.compiler_modifiers,
         binary_modifiers: payload.binary_modifiers,
+        limited_to_category,
         provisional_for_category,
         last_updated: Timestamp::now(),
     };

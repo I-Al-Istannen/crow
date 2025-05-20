@@ -4,7 +4,7 @@ use crate::error::{Result, WebError};
 use crate::types::{AppState, TaskId, TeamId, WorkItem};
 use axum::extract::{Path, State};
 use serde::Serialize;
-use snafu::{location, Report, ResultExt};
+use snafu::{location, Report};
 use std::collections::HashMap;
 use std::time::SystemTime;
 use tracing::{error, info, warn};
@@ -155,6 +155,12 @@ pub async fn rerun_submissions(
     }
 
     Ok(Json(RerunResponse { errors, submitted }))
+}
+
+pub async fn rehash_tests(State(state): State<AppState>, claims: Claims) -> Result<()> {
+    info!(triggered_by = %claims.sub, "Rehashing tests");
+
+    state.db.rehash_tests().await
 }
 
 #[derive(Debug, Clone, Serialize)]

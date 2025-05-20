@@ -20,13 +20,7 @@ pub(super) async fn add_test(
     let binary_modifiers =
         serde_json::to_string(&test.binary_modifiers).expect("Unexpected json serialize error");
 
-    let mut hash = Sha256::new();
-    hash.update(compiler_modifiers.as_bytes());
-    hash.update(binary_modifiers.as_bytes());
-    hash.update(test.owner.to_string().as_bytes());
-    hash.update([test.admin_authored as u8]);
-    hash.update(test.category.as_bytes());
-    let hash = format!("{:x}", hash.finalize());
+    let hash = hash_test(&test);
 
     let last_updated = test.last_updated.as_millisecond();
     query!(
@@ -97,6 +91,7 @@ pub(super) async fn add_test(
             binary_modifiers,
             admin_authored,
             provisional_for_category,
+            limited_to_category,
             last_updated
         FROM Tests
         WHERE id = ?"#,
@@ -113,6 +108,23 @@ pub(super) async fn add_test(
     Ok(test)
 }
 
+fn hash_test(test: &Test) -> String {
+    let compiler_modifiers =
+        serde_json::to_string(&test.compiler_modifiers).expect("Unexpected json serialize error");
+    let binary_modifiers =
+        serde_json::to_string(&test.binary_modifiers).expect("Unexpected json serialize error");
+
+    let mut hash = Sha256::new();
+    hash.update(compiler_modifiers.as_bytes());
+    hash.update(binary_modifiers.as_bytes());
+    hash.update(test.owner.to_string().as_bytes());
+    hash.update([test.admin_authored as u8]);
+    hash.update([test.limited_to_category as u8]);
+    hash.update(test.category.as_bytes());
+
+    format!("{:x}", hash.finalize())
+}
+
 #[instrument(skip_all)]
 pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>> {
     query_as!(
@@ -126,6 +138,7 @@ pub(super) async fn get_tests(con: &mut SqliteConnection) -> Result<Vec<Test>> {
             binary_modifiers,
             admin_authored,
             provisional_for_category,
+            limited_to_category,
             last_updated
         FROM Tests
         "#
@@ -153,6 +166,7 @@ pub(super) async fn get_tests_summaries(con: &mut SqliteConnection) -> Result<Ve
             (SELECT status == ? FROM TestTastingResults WHERE test_id = Tests.id)
                 as "test_taste_success?: bool",
             Tests.provisional_for_category,
+            Tests.limited_to_category,
             Tests.last_updated as "last_updated!: DbMillis"
         FROM Tests
         JOIN Teams ON Tests.owner = Teams.id
@@ -181,6 +195,7 @@ pub(super) async fn fetch_test(
             binary_modifiers,
             admin_authored,
             provisional_for_category,
+            limited_to_category,
             last_updated
         FROM Tests
         WHERE id = ?
@@ -250,6 +265,24 @@ pub(super) async fn delete_test(con: &mut SqliteConnection, test_id: &TestId) ->
     Ok(())
 }
 
+#[instrument(skip_all)]
+pub(super) async fn rehash(con: impl Acquire<'_, Database = Sqlite>) -> Result<()> {
+    let mut con = con.begin().await.context(SqlxSnafu)?;
+
+    for test in get_tests(&mut con).await? {
+        let hash = hash_test(&test);
+        query!("UPDATE Tests SET hash = ? WHERE id = ?", hash, test.id)
+            .execute(&mut *con)
+            .instrument(info_span!("sqlx_rehash_inner"))
+            .await
+            .context(SqlxSnafu)?;
+    }
+
+    con.commit().await.context(SqlxSnafu)?;
+
+    Ok(())
+}
+
 struct DbTest {
     id: TestId,
     owner: TeamId,
@@ -258,6 +291,7 @@ struct DbTest {
     binary_modifiers: String,
     admin_authored: bool,
     provisional_for_category: Option<String>,
+    limited_to_category: bool,
     last_updated: i64,
 }
 
@@ -273,6 +307,7 @@ impl From<DbTest> for Test {
                 .expect("Unexpected json serialize error"),
             admin_authored: value.admin_authored,
             provisional_for_category: value.provisional_for_category,
+            limited_to_category: value.limited_to_category,
             last_updated: DbMillis(value.last_updated).into(),
         }
     }

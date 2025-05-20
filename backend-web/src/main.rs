@@ -8,9 +8,9 @@ use crate::endpoints::{
     get_tasks_for_team, get_team_info, get_team_repo, get_test, get_test_tasting_work,
     get_top_task_per_team, get_work, get_work_tar, head_running_task_info,
     integration_get_task_status, integration_request_revision, list_tests, list_users, login_oidc,
-    login_oidc_callback, request_revision, rerun_submissions, runner_done, runner_ping,
-    runner_register, runner_update, set_final_task, set_team_repo, set_test, show_me_myself,
-    snapshot_state, taste_testing_done,
+    login_oidc_callback, rehash_tests, request_revision, rerun_submissions, runner_done,
+    runner_ping, runner_register, runner_update, set_final_task, set_team_repo, set_test,
+    show_me_myself, snapshot_state, taste_testing_done,
 };
 use crate::error::WebError;
 use crate::storage::LocalRepos;
@@ -277,7 +277,11 @@ async fn main_server(
         )
         .route(
             "/admin/rerun_submissions/:category",
-            post(rerun_submissions).layer(authed_admin),
+            post(rerun_submissions).layer(authed_admin.clone()),
+        )
+        .route(
+            "/admin/rehash_tests",
+            post(rehash_tests).layer(authed_admin.clone()),
         )
         .route("/login", get(login_oidc))
         .route("/login/oidc/callback", post(login_oidc_callback))

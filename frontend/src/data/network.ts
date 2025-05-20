@@ -513,3 +513,19 @@ export async function fetchRerunForGrading(category: string): Promise<RerunRespo
   })
   return RerunResponseSchema.parse(await res.json())
 }
+
+export function mutateRehashTests() {
+  return useMutation({
+    mutationFn: fetchRehashTests,
+    onSuccess: (_, __, ___) => {},
+    meta: {
+      purpose: 'rehashing tests',
+    },
+  })
+}
+
+export async function fetchRehashTests(): Promise<void> {
+  await fetchWithAuth(`/admin/rehash_tests`, {
+    method: 'POST',
+  })
+}

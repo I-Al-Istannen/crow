@@ -51,6 +51,7 @@ pub enum Keys {
     Hash,
     Creator,
     AdminAuthored,
+    LimitedToCategory,
 }
 
 impl Display for Keys {
@@ -62,6 +63,7 @@ impl Display for Keys {
             Self::Hash => write!(f, "Hash"),
             Self::Creator => write!(f, "Creator"),
             Self::AdminAuthored => write!(f, "Admin Authored"),
+            Self::LimitedToCategory => write!(f, "Limited to Category"),
         }
     }
 }
@@ -91,6 +93,15 @@ pub fn from_markdown(
             }
             .into_error(NoneError)
         })?;
+    let limited_to_category = extract_value(Keys::LimitedToCategory, &mut meta)
+        .unwrap_or("false".to_string())
+        .parse::<bool>()
+        .map_err(|e| {
+            MalformedModifierSnafu {
+                message: format!("Could not parse limited to category: {e}"),
+            }
+            .into_error(NoneError)
+        })?;
 
     let test = Test {
         id,
@@ -98,6 +109,7 @@ pub fn from_markdown(
         hash,
         category,
         admin_authored,
+        limited_to_category,
     };
     let test_detail = details_from_markdown(path)?;
 
@@ -250,6 +262,12 @@ pub fn to_markdown(test: &Test, detail: &TestDetail) -> String {
 
     root.children
         .extend(write_heading_value(&Keys::Meta.to_string(), 1, None));
+
+    root.children.extend(write_heading_value(
+        &Keys::LimitedToCategory.to_string(),
+        2,
+        Some(test.limited_to_category.to_string()),
+    ));
 
     root.children.extend(write_heading_value(
         &Keys::Creator.to_string(),

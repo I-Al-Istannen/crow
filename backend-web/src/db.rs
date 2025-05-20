@@ -298,6 +298,11 @@ impl Database {
         test::delete_test(&mut *pool.acquire().await.context(SqlxSnafu)?, test_id).await
     }
 
+    pub async fn rehash_tests(&self) -> Result<()> {
+        let pool = self.write_lock().await;
+        test::rehash(&*pool).await
+    }
+
     pub async fn add_external_run(&self, run: &CreatedExternalRun) -> Result<()> {
         let pool = self.write_lock().await;
         external::add_external_run(&mut *pool.acquire().await.context(SqlxSnafu)?, run).await

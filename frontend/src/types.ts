@@ -266,6 +266,7 @@ export const TestSchema = z.object({
   compilerModifiers: z.array(TestModifierSchema),
   binaryModifiers: z.array(TestModifierSchema),
   adminAuthored: z.boolean(),
+  limitedToCategory: z.boolean(),
   provisionalForCategory: z.string().nullable(),
   lastUpdated: z.number().transform((ms) => new Date(ms)),
 })
@@ -300,6 +301,7 @@ export const TestSummarySchema = z.object({
   category: z.string(),
   testTasteSuccess: z.boolean().nullable(),
   provisionalForCategory: z.string().nullable(),
+  limitedToCategory: z.boolean(),
   lastUpdated: z.number().transform((ms) => new Date(ms)),
 })
 

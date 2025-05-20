@@ -474,6 +474,7 @@ fn get_locally_inconsistent_tests(
         hash.update(binary_modifiers.as_bytes());
         hash.update(test.creator_id.to_string().as_bytes());
         hash.update([test.admin_authored as u8]);
+        hash.update([test.limited_to_category as u8]);
         hash.update(test.category.as_bytes());
         let actual_hash = format!("{:x}", hash.finalize());
 

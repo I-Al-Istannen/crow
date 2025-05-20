@@ -1,0 +1,2 @@
+ALTER TABLE Tests ADD COLUMN
+    limited_to_category BOOLEAN NOT NULL DEFAULT FALSE;
