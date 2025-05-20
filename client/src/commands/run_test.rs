@@ -93,10 +93,29 @@ pub struct CliRunTestsArgs {
     /// How many tests to run in parallel. 0 for processor count.
     #[clap(long = "jobs", short = 'j', default_value = "0")]
     parallelism: usize,
+    /// The category of tests to run. If not set defaults to all, but will ignore
+    /// tests limited to a category that is not the latest (defined by lexical order).
+    #[clap(long = "category", short = 'l')]
+    category: Option<String>,
 }
 
 pub fn command_run_tests(args: CliRunTestsArgs) -> Result<bool, CrowClientError> {
-    let tests = get_local_tests(&args.test_dir).context(SyncTestsSnafu)?;
+    let mut tests = get_local_tests(&args.test_dir).context(SyncTestsSnafu)?;
+    let mut categories = tests.iter().map(|it| &it.test.category).collect::<Vec<_>>();
+    categories.sort();
+    let newest_category = categories.last().map(|it| it.to_string());
+
+    if let Some(category) = &args.category {
+        info!("Running only tests belonging to category `{}`", category);
+        tests.retain(|it| it.test.category == *category);
+    } else if let Some(newest_category) = &newest_category {
+        info!(
+            "No category specified, running all tests. \
+            Ignoring tests limited to any category besides `{}` to prevent unwanted errors.",
+            newest_category
+        );
+        tests.retain(|it| !it.test.limited_to_category || it.test.category == *newest_category);
+    }
 
     let mut failures = 0;
     let mut errors = 0;
