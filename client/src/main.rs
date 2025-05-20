@@ -81,10 +81,6 @@ fn main() -> ExitCode {
         )
         .init();
 
-    if let Err(e) = check_updates() {
-        println!("{}", Report::from_error(e));
-    }
-
     let res = Report::capture_into_result(|| {
         let args = CliArgs::parse();
         let client = Client::new();
@@ -115,6 +111,11 @@ fn main() -> ExitCode {
     };
 
     println!();
+
+    // Do this at the end so it is not hidden by other output
+    if let Err(e) = check_updates() {
+        println!("{}", Report::from_error(e));
+    }
 
     if res == ExitCode::SUCCESS {
         info!(
