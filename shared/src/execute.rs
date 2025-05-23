@@ -2,13 +2,18 @@ use crate::exit::CrowExitStatus;
 use crate::judge::judge_output;
 use crate::{
     CompilerTest, ExecutionOutput, FinishedExecution, InternalError, TestExecutionOutput,
-    TestModifier,
+    TestModifier, TestModifierExt,
 };
 use is_executable::IsExecutable;
-use snafu::{Report, ResultExt, Snafu};
+use snafu::{IntoError, NoneError, Report, ResultExt, Snafu};
 use std::error::Error;
+use std::io::Read;
+use std::os::fd::AsRawFd;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Child, ChildStderr, ChildStdout, Command, ExitStatus, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::thread;
 use std::time::{Duration, Instant};
 
 #[derive(Debug, Snafu)]
@@ -69,7 +74,11 @@ pub fn execute_test(
     working_dir: &Path,
     output_binary_host_path: &Path,
     parent_dir_in_container: &Path,
-    run_cmd: impl FnMut(&Path, &[String]) -> Result<CommandResult, Box<dyn Error + Sync + Send>>,
+    run_cmd: impl FnMut(
+        &Path,
+        &[String],
+        Option<Duration>,
+    ) -> Result<CommandResult, Box<dyn Error + Sync + Send>>,
 ) -> TestExecutionOutput {
     impl_execute_test(
         test,
@@ -81,13 +90,19 @@ pub fn execute_test(
     .unwrap_or_else(From::from)
 }
 
+const TIMEOUT_MODIFIER_DURATION_SECONDS: u64 = 2;
+
 #[allow(clippy::result_large_err)] // we accept it here, it will hopefully be inlined anyway
 fn impl_execute_test(
     test: &CompilerTest,
     working_dir: &Path,
     output_binary_host_path: &Path,
     parent_dir_in_container: &Path,
-    mut run_cmd: impl FnMut(&Path, &[String]) -> Result<CommandResult, Box<dyn Error + Sync + Send>>,
+    mut run_cmd: impl FnMut(
+        &Path,
+        &[String],
+        Option<Duration>,
+    ) -> Result<CommandResult, Box<dyn Error + Sync + Send>>,
 ) -> Result<TestExecutionOutput, ExecuteInternalError> {
     let should_run_binary = !test.binary_modifiers.is_empty();
     let output_binary_run_path = parent_dir_in_container.join(
@@ -111,10 +126,14 @@ fn impl_execute_test(
     compiler_commands.push(output_binary_run_path.display().to_string());
 
     let start = Instant::now();
-    let compiler_result = run_cmd(Path::new(&test.compile_command[0]), &compiler_commands)
-        .context(CompilerSnafu {
-            runtime: start.elapsed(),
-        })?;
+    let compiler_result = run_cmd(
+        Path::new(&test.compile_command[0]),
+        &compiler_commands,
+        None,
+    )
+    .context(CompilerSnafu {
+        runtime: start.elapsed(),
+    })?;
 
     let compiler_output = match compiler_result {
         CommandResult::ProcessedFailed(output) => output,
@@ -149,13 +168,21 @@ fn impl_execute_test(
             },
         )?,
     );
-    let binary_result =
-        run_cmd(Path::new(&output_binary_run_path), &run_commands).context(BinarySnafu {
+    let timeout = if test.binary_modifiers.as_slice().should_timeout() {
+        Some(Duration::from_secs(TIMEOUT_MODIFIER_DURATION_SECONDS))
+    } else {
+        None
+    };
+    let binary_result = run_cmd(Path::new(&output_binary_run_path), &run_commands, timeout)
+        .context(BinarySnafu {
             runtime: start.elapsed(),
             compiler_output: compiler_output.clone(),
         })?;
 
     let binary_output = match binary_result {
+        CommandResult::ProcessedFailed(ExecutionOutput::Timeout(execution)) => {
+            judge_output(&test.binary_modifiers, CrowExitStatus::Timeout, execution)
+        }
         CommandResult::ProcessedFailed(output) => output,
         CommandResult::Unprocessed((exit_status, execution)) => {
             judge_output(&test.binary_modifiers, exit_status, execution)
@@ -243,17 +270,133 @@ fn gather_arguments(
 pub fn execute_locally(
     path: &Path,
     cmd: &[String],
+    timeout: Option<Duration>,
 ) -> Result<CommandResult, Box<dyn Error + Sync + Send>> {
-    let start = Instant::now();
-    let output = Command::new(path).args(cmd).output().map_err(Box::new)?;
+    let mut child = Command::new(path)
+        .args(cmd)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(Box::new)?;
+
+    let res = run_with_timeout(
+        Arc::new(AtomicBool::new(false)),
+        &mut child.stdout.take().expect("stdout"),
+        &mut child.stderr.take().expect("stderr"),
+        &mut child,
+        timeout.unwrap_or(Duration::from_secs(10)),
+    );
+    let (stdout, stderr, status, runtime) = match res {
+        Ok((stdout, stderr, status, runtime)) => (stdout, stderr, status.into(), runtime),
+        Err(RunWithTimeoutError::Timeout {
+            stdout,
+            stderr,
+            runtime,
+            ..
+        }) => (stdout, stderr, CrowExitStatus::Timeout, runtime),
+        Err(e) => {
+            return Err(Box::new(e));
+        }
+    };
 
     Ok(CommandResult::Unprocessed((
-        output.status.into(),
+        status,
         FinishedExecution {
-            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
-            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
-            runtime: start.elapsed(),
-            exit_status: output.status.code(),
+            stdout,
+            stderr,
+            runtime,
+            exit_status: status.code(),
         },
     )))
+}
+
+#[derive(Debug, Snafu)]
+pub enum RunWithTimeoutError {
+    Aborted {
+        runtime: Duration,
+        stdout: String,
+        stderr: String,
+        #[snafu(implicit)]
+        location: snafu::Location,
+    },
+    Timeout {
+        runtime: Duration,
+        stdout: String,
+        stderr: String,
+        #[snafu(implicit)]
+        location: snafu::Location,
+    },
+    WaitFailed {
+        source: std::io::Error,
+        #[snafu(implicit)]
+        location: snafu::Location,
+    },
+}
+
+pub fn run_with_timeout(
+    aborted: Arc<AtomicBool>,
+    stdout: &mut ChildStdout,
+    stderr: &mut ChildStderr,
+    process: &mut Child,
+    timeout: Duration,
+) -> Result<(String, String, ExitStatus, Duration), RunWithTimeoutError> {
+    #[allow(unsafe_code)]
+    unsafe {
+        let flags = libc::fcntl(stdout.as_raw_fd(), libc::F_GETFL, 0);
+        libc::fcntl(stdout.as_raw_fd(), libc::F_SETFL, flags | libc::O_NONBLOCK);
+        let flags = libc::fcntl(stderr.as_raw_fd(), libc::F_GETFL, 0);
+        libc::fcntl(stderr.as_raw_fd(), libc::F_SETFL, flags | libc::O_NONBLOCK);
+    }
+
+    let start = Instant::now();
+    let mut stdout_buf = Vec::new();
+    let mut stderr_buf = Vec::new();
+    let mut exit_status: Result<ExitStatus, ()> = Err(());
+
+    while Instant::now() < start + timeout {
+        let mut tmpbuf = [0_u8; 1024];
+        if let Ok(count) = stdout.read(&mut tmpbuf) {
+            stdout_buf.extend_from_slice(&tmpbuf[..count]);
+        }
+        let mut tmpbuf = [0_u8; 1024];
+        if let Ok(count) = stderr.read(&mut tmpbuf) {
+            stderr_buf.extend_from_slice(&tmpbuf[..count]);
+        }
+
+        if aborted.load(Ordering::Relaxed) {
+            return Err(AbortedSnafu {
+                runtime: Instant::now().duration_since(start),
+                stdout: String::from_utf8_lossy(&stdout_buf).to_string(),
+                stderr: String::from_utf8_lossy(&stderr_buf).to_string(),
+            }
+            .into_error(NoneError));
+        }
+
+        match process.try_wait() {
+            Err(e) => {
+                return Err(WaitFailedSnafu.into_error(e));
+            }
+            Ok(None) => {
+                thread::sleep(Duration::from_millis(100));
+            }
+            Ok(Some(status)) => {
+                exit_status = Ok(status);
+                break;
+            }
+        }
+    }
+
+    let stdout = String::from_utf8_lossy(&stdout_buf).to_string();
+    let stderr = String::from_utf8_lossy(&stderr_buf).to_string();
+
+    match exit_status {
+        Ok(status) => Ok((stdout, stderr, status, Instant::now().duration_since(start))),
+        Err(_) => Err(TimeoutSnafu {
+            runtime: Instant::now().duration_since(start),
+            stdout,
+            stderr,
+        }
+        .into_error(NoneError)),
+    }
 }

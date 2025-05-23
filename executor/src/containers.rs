@@ -1,21 +1,19 @@
 use crate::docker::{Docker, DockerError, ImageId};
 use derive_more::{Display, From};
 use serde::Deserialize;
-use shared::execute::CommandResult;
+use shared::execute::{CommandResult, RunWithTimeoutError};
 use shared::exit::CrowExitStatus;
 use shared::{
     remove_directory_force, AbortedExecution, CompilerTest, ExecutionOutput, FinishedExecution,
     InternalError, TestExecutionOutput,
 };
-use snafu::{ensure, IntoError, Location, NoneError, Report, ResultExt, Snafu};
-use std::io::Read;
-use std::os::fd::AsRawFd;
+use snafu::{ensure, location, IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStderr, ChildStdout, Command, ExitStatus, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use std::{fs, io, thread};
+use std::{fs, io};
 use tempfile::{TempDir, TempPath};
 use tracing::{debug, error, warn};
 use uuid::Uuid;
@@ -566,7 +564,8 @@ impl TaskContainer<Built> {
             &test_container.rootfs.clone(),
             &output_binary_path,
             Path::new("/"),
-            |path, cmd| {
+            |path, cmd, override_timeout| {
+                let timeout = override_timeout.unwrap_or(timeout);
                 let res =
                     test_container.execute_command(path, cmd, aborted.clone(), timeout, limits);
                 match res {
@@ -699,29 +698,16 @@ fn wait_for_container(
     process: &mut Child,
     timeout: Duration,
 ) -> Result<(String, String, ExitStatus, Duration), WaitForContainerError> {
-    unsafe {
-        let flags = libc::fcntl(stdout.as_raw_fd(), libc::F_GETFL, 0);
-        libc::fcntl(stdout.as_raw_fd(), libc::F_SETFL, flags | libc::O_NONBLOCK);
-        let flags = libc::fcntl(stderr.as_raw_fd(), libc::F_GETFL, 0);
-        libc::fcntl(stderr.as_raw_fd(), libc::F_SETFL, flags | libc::O_NONBLOCK);
-    }
+    let res = shared::execute::run_with_timeout(aborted, stdout, stderr, process, timeout);
 
-    let start = Instant::now();
-    let mut stdout_buf = Vec::new();
-    let mut stderr_buf = Vec::new();
-    let mut exit_status: Result<ExitStatus, ()> = Err(());
-
-    while Instant::now() < start + timeout {
-        let mut tmpbuf = [0_u8; 1024];
-        if let Ok(count) = stdout.read(&mut tmpbuf) {
-            stdout_buf.extend_from_slice(&tmpbuf[..count]);
-        }
-        let mut tmpbuf = [0_u8; 1024];
-        if let Ok(count) = stderr.read(&mut tmpbuf) {
-            stderr_buf.extend_from_slice(&tmpbuf[..count]);
-        }
-
-        if aborted.load(Ordering::Relaxed) {
+    match res {
+        Ok(res) => Ok(res),
+        Err(RunWithTimeoutError::Aborted {
+            runtime,
+            stdout,
+            stderr,
+            ..
+        }) => {
             if let Err(e) = kill_container(container_id) {
                 error!(
                     container_id = %container_id,
@@ -733,58 +719,46 @@ fn wait_for_container(
                 }
                 .into_error(e));
             }
-            return Err(AbortedSnafu {
-                runtime: Instant::now().duration_since(start),
-                stdout: String::from_utf8_lossy(&stdout_buf).to_string(),
-                stderr: String::from_utf8_lossy(&stderr_buf).to_string(),
-            }
-            .into_error(NoneError));
+            Err(WaitForContainerError::Aborted {
+                runtime,
+                stdout,
+                stderr,
+                location: location!(),
+            })
         }
-
-        match process.try_wait() {
-            Err(e) => {
-                warn!(
+        Err(RunWithTimeoutError::Timeout {
+            runtime,
+            stdout,
+            stderr,
+            ..
+        }) => Err(WaitForContainerError::Timeout {
+            runtime,
+            stdout,
+            stderr,
+            location: location!(),
+        }),
+        Err(RunWithTimeoutError::WaitFailed { source, .. }) => {
+            warn!(
+                container_id = %container_id,
+                error = ?source,
+                "Error while waiting for container"
+            );
+            if let Err(e) = kill_container(container_id) {
+                error!(
                     container_id = %container_id,
                     error = ?e,
-                    "Error while waiting for container"
+                    "Failed to kill container after wait error"
                 );
-                if let Err(e) = kill_container(container_id) {
-                    error!(
-                        container_id = %container_id,
-                        error = ?e,
-                        "Failed to kill container after wait error"
-                    );
-                    return Err(WaitContainerKillFailedSnafu {
-                        container_id: container_id.clone(),
-                    }
-                    .into_error(e));
-                }
-                return Err(WaitContainerWaitFailedSnafu {
+                return Err(WaitContainerKillFailedSnafu {
                     container_id: container_id.clone(),
                 }
                 .into_error(e));
             }
-            Ok(None) => {
-                thread::sleep(Duration::from_millis(100));
+            Err(WaitContainerWaitFailedSnafu {
+                container_id: container_id.clone(),
             }
-            Ok(Some(status)) => {
-                exit_status = Ok(status);
-                break;
-            }
+            .into_error(source))
         }
-    }
-
-    let stdout = String::from_utf8_lossy(&stdout_buf).to_string();
-    let stderr = String::from_utf8_lossy(&stderr_buf).to_string();
-
-    match exit_status {
-        Ok(status) => Ok((stdout, stderr, status, Instant::now().duration_since(start))),
-        Err(_) => Err(TimeoutSnafu {
-            runtime: Instant::now().duration_since(start),
-            stdout,
-            stderr,
-        }
-        .into_error(NoneError)),
     }
 }
 
@@ -900,10 +874,7 @@ fn wait_result_to_command_result(
     if let Some(last_line) = stderr.trim().lines().last() {
         if let Some(rest) = last_line.strip_prefix(CROW_SIGNAL_SHIM_MAGIC) {
             if let Ok(signal) = rest.trim().parse::<i32>() {
-                exit_status = CrowExitStatus::WithSignal {
-                    exit_status: exit_status.inner(),
-                    signal,
-                };
+                exit_status = CrowExitStatus::WithSignal { signal };
 
                 // Remove our internal marker from stderr
                 let mut lines = stderr.lines().collect::<Vec<_>>();

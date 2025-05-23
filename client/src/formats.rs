@@ -312,6 +312,7 @@ fn modifier_arg_to_string(modifier: &TestModifier) -> Option<String> {
         TestModifier::ShouldCrash { signal } => Some(signal.to_string()),
         TestModifier::ShouldFail { reason } => Some(reason.to_string()),
         TestModifier::ShouldSucceed => None,
+        TestModifier::ShouldTimeout => None,
     }
 }
 
@@ -369,6 +370,7 @@ fn modifier_from_string(type_: &str, value: Option<String>) -> Result<TestModifi
             reason: parse_fail_reason(&require_value("ShouldFail", value)?)?,
         },
         "ShouldSucceed" => TestModifier::ShouldSucceed,
+        "ShouldTimeout" => TestModifier::ShouldTimeout,
         _ => {
             return Err(FormatError::MalformedModifier {
                 message: format!("Unknown modifier type `{type_}`"),
@@ -419,5 +421,5 @@ fn parse_fail_reason(val: &str) -> Result<CompilerFailReason, FormatError> {
 }
 
 fn modifier_requires_argument(modifier: &str) -> bool {
-    modifier != "ShouldSucceed"
+    modifier != "ShouldSucceed" && modifier != "ShouldTimeout"
 }

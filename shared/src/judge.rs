@@ -40,6 +40,7 @@ pub fn judge_output(
             }
             TestModifier::ShouldSucceed => judge_program_should_succeed(exit_status),
             TestModifier::ShouldFail { reason } => judge_program_should_fail(exit_status, *reason),
+            TestModifier::ShouldTimeout => judge_program_should_timeout(exit_status),
             TestModifier::ExpectedOutput { .. } => None,
             TestModifier::ProgramArgument { .. } => None,
             TestModifier::ProgramArgumentFile { .. } => None,
@@ -128,6 +129,9 @@ fn judge_program_exit_status(
                 message.push_str(&signal.to_string());
                 message.push('.');
             }
+            if matches!(exit_status, CrowExitStatus::Timeout) {
+                message.push_str(". It timed out.");
+            }
 
             Some(JudgeProblem {
                 message,
@@ -192,7 +196,7 @@ fn judge_program_should_succeed(exit_status: CrowExitStatus) -> Option<JudgeProb
     } else {
         Some(JudgeProblem {
             message: format!(
-                "Program should have exited with success, exited with an unknown error: {exit_status:?}"
+                "Program should have exited with success, exited with an unknown error: {exit_status}"
             ),
             modifier_name: "ShouldSucceed".to_string(),
         })
@@ -206,7 +210,7 @@ fn judge_program_should_fail(
     let Some(code) = exit_status.code() else {
         return Some(JudgeProblem {
             message: format!(
-                "Program should have failed with `{}` (`{}`) but it exited with an unknown error: {:?}",
+                "Program should have failed with `{}` (`{}`), but it exited with {}",
                 expected.name(),
                 expected.exit_code(),
                 exit_status
@@ -227,4 +231,38 @@ fn judge_program_should_fail(
         ),
         modifier_name: "ShouldFail".to_string(),
     })
+}
+
+fn judge_program_should_timeout(exit_status: CrowExitStatus) -> Option<JudgeProblem> {
+    match exit_status {
+        CrowExitStatus::WithSignal { signal } => Some(JudgeProblem {
+            message: format!("Program should have timed out, but was killed by signal {signal}."),
+            modifier_name: "ShouldTimeout".to_string(),
+        }),
+        CrowExitStatus::Timeout => None,
+        CrowExitStatus::Original(exit_status) => {
+            if exit_status.success() {
+                Some(JudgeProblem {
+                    message: "Program should have timed out, but it exited with success."
+                        .to_string(),
+                    modifier_name: "ShouldTimeout".to_string(),
+                })
+            } else if let Some(code) = exit_status.code() {
+                Some(JudgeProblem {
+                    message: format!(
+                        "Program should have timed out, but it exited with code {code}."
+                    ),
+                    modifier_name: "ShouldTimeout".to_string(),
+                })
+            } else {
+                Some(JudgeProblem {
+                    message: format!(
+                        "Program should have timed out, but it exited with {}.",
+                        exit_status
+                    ),
+                    modifier_name: "ShouldTimeout".to_string(),
+                })
+            }
+        }
+    }
 }

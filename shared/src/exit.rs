@@ -5,10 +5,8 @@ use std::process::{Command, ExitStatus, Output};
 
 #[derive(Debug, Clone, Copy)]
 pub enum CrowExitStatus {
-    WithSignal {
-        exit_status: ExitStatus,
-        signal: i32,
-    },
+    WithSignal { signal: i32 },
+    Timeout,
     Original(ExitStatus),
 }
 
@@ -21,26 +19,24 @@ impl From<ExitStatus> for CrowExitStatus {
 impl CrowExitStatus {
     pub fn code(&self) -> Option<i32> {
         match self {
-            Self::WithSignal { .. } => None,
             Self::Original(exit_status) => exit_status.code(),
+            Self::WithSignal { .. } => None,
+            Self::Timeout => None,
         }
     }
 
     pub fn success(&self) -> bool {
-        self.inner().success()
+        match self {
+            Self::Original(exit_status) => exit_status.success(),
+            Self::WithSignal { .. } | Self::Timeout => false,
+        }
     }
 
     pub fn signal(&self) -> Option<i32> {
         match self {
             Self::WithSignal { signal, .. } => Some(*signal),
             Self::Original(status) => status.signal(),
-        }
-    }
-
-    pub fn inner(&self) -> ExitStatus {
-        match self {
-            Self::WithSignal { exit_status, .. } => *exit_status,
-            Self::Original(exit_status) => *exit_status,
+            Self::Timeout => None,
         }
     }
 }
@@ -48,13 +44,11 @@ impl CrowExitStatus {
 impl Display for CrowExitStatus {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::WithSignal {
-                exit_status,
-                signal,
-            } => {
-                write!(f, "{} (killed by signal {})", exit_status, signal)
+            Self::WithSignal { signal } => {
+                write!(f, "killed by signal {}", signal)
             }
-            Self::Original(exit_status) => write!(f, "{}", exit_status),
+            Self::Original(exit_status) => write!(f, "exit code {}", exit_status),
+            Self::Timeout => write!(f, "timed out"),
         }
     }
 }

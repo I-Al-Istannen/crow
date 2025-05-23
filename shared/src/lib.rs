@@ -114,6 +114,7 @@ pub enum TestModifier {
     ShouldCrash { signal: CrashSignal },
     ShouldFail { reason: CompilerFailReason },
     ShouldSucceed,
+    ShouldTimeout,
 }
 
 impl TestModifier {
@@ -127,6 +128,7 @@ impl TestModifier {
             Self::ShouldCrash { .. } => "ShouldCrash",
             Self::ShouldFail { .. } => "ShouldFail",
             Self::ShouldSucceed => "ShouldSucceed",
+            Self::ShouldTimeout => "ShouldTimeout",
         }
     }
 }
@@ -135,6 +137,7 @@ pub trait TestModifierExt {
     fn full_input(&self) -> String;
     fn full_output(&self) -> Option<String>;
     fn all_arguments(&self) -> Vec<String>;
+    fn should_timeout(&self) -> bool;
 }
 
 impl<'a, T: Borrow<&'a [TestModifier]>> TestModifierExt for T {
@@ -176,6 +179,12 @@ impl<'a, T: Borrow<&'a [TestModifier]>> TestModifierExt for T {
             })
             .map(|it| it.to_string())
             .collect()
+    }
+
+    fn should_timeout(&self) -> bool {
+        self.borrow()
+            .iter()
+            .any(|it| matches!(it, TestModifier::ShouldTimeout))
     }
 }
 

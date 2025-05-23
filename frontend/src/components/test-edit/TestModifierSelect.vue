@@ -41,6 +41,9 @@
             <SelectItem v-if="showCrash" value="ShouldCrash">
               {{ modifierLabel('ShouldCrash') }}
             </SelectItem>
+            <SelectItem v-if="showTimeout" value="ShouldTimeout">
+              {{ modifierLabel('ShouldTimeout') }}
+            </SelectItem>
             <SelectItem v-if="showFail" value="ShouldFail">
               {{ modifierLabel('ShouldFail') }}
             </SelectItem>
@@ -190,6 +193,9 @@ const showOutput = computed(() => {
 const showExit = computed(() => {
   return modifierTarget.value === 'binary' || modifier.value.type === 'ExitCode'
 })
+const showTimeout = computed(() => {
+  return modifierTarget.value === 'binary' || modifier.value.type === 'ShouldTimeout'
+})
 
 const modifierType = computed(() => modifier.value?.type ?? 'ShouldSucceed')
 const stringArg = computed(() => {
@@ -270,6 +276,7 @@ function update(
     case 'ShouldFail':
       modifier.value = { type, reason: failVal }
       break
+    case 'ShouldTimeout':
     case 'ShouldSucceed':
       modifier.value = { type }
       break
@@ -310,6 +317,8 @@ function modifierLabel(value: TestModifier['type']) {
     return 'Should fail'
   } else if (value === 'ShouldSucceed') {
     return 'Should succeed'
+  } else if (value === 'ShouldTimeout') {
+    return 'Should not terminate'
   }
   return 'Unknown: ' + value
 }

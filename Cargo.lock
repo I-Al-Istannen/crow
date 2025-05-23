@@ -1075,7 +1075,6 @@ dependencies = [
  "ctrlc",
  "derive_more",
  "file-guard",
- "libc",
  "rayon",
  "reqwest",
  "serde",
@@ -1944,9 +1943,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.169"
+version = "0.2.172"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5aba8db14291edd000dfcc4d620c7ebfb122c613afb886ca8803fa4e128a20a"
+checksum = "d750af042f7ef4f724306de029d18836c26c1765a54a6a3f094cbd23a7267ffa"
 
 [[package]]
 name = "libdbus-sys"
@@ -3411,6 +3410,7 @@ version = "0.1.7"
 dependencies = [
  "derive_more",
  "is_executable",
+ "libc",
  "serde",
  "similar",
  "snafu",

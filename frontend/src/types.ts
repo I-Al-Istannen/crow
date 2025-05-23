@@ -257,6 +257,7 @@ export const TestModifierSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ShouldCrash'), signal: CrashSignalSchema }),
   z.object({ type: z.literal('ShouldFail'), reason: CompilerFailReasonSchema }),
   z.object({ type: z.literal('ShouldSucceed') }),
+  z.object({ type: z.literal('ShouldTimeout') }),
 ])
 
 export const TestSchema = z.object({
