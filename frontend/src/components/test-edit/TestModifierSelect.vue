@@ -7,7 +7,7 @@
     <SlotOrReadonly
       :readonly="readonly || false"
       :label="modifierLabel(modifierType)"
-      :class="[readonly ? 'w-[15ch]' : '']"
+      :class="[readonly ? 'w-[18ch]' : '']"
     >
       <Select
         :model-value="modifierType"
