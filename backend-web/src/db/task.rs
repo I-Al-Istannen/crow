@@ -552,7 +552,7 @@ async fn get_task_summary(
             commit_message as "commit_message!: String",
             execution_id as "execution_id!: String",
             (
-                SELECT result FROM ExecutionResults WHERE execution_id = execution_id
+                SELECT result FROM ExecutionResults ER WHERE ER.execution_id = Tasks.execution_id
             ) as "build_result!: ExecutionExitStatus"
         FROM Tasks
         WHERE task_id = ?
