@@ -4,6 +4,9 @@
       <DialogHeader>
         <DialogTitle>
           Test details for <span class="italic">{{ test.testId }}</span>
+          <span v-if="test.category" class="ml-3 text-sm text-muted-foreground">
+            {{ test.category }}
+          </span>
         </DialogTitle>
         <DialogDescription>
           <span :class="[statusColor(toExecutionStatus(test.output), 'text')]">

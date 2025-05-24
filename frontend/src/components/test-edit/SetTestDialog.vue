@@ -296,6 +296,7 @@ const onSubmit = form.handleSubmit(async (values) => {
     failedTestTasting.value = {
       testId: values.id,
       output: res.output,
+      category: values.category,
       provisionalForCategory: null,
     }
     form.setFieldError('testTasting', 'Failed on reference compiler. Details are on the right.')

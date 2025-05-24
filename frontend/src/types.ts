@@ -80,6 +80,7 @@ export const TestExecutionOutputSchema = z.discriminatedUnion('type', [
 // Out of order due to dependencies
 export const FinishedTestSchema = z.object({
   testId: z.string(),
+  category: z.string().nullable(),
   provisionalForCategory: z.string().nullable(),
   output: TestExecutionOutputSchema,
 })

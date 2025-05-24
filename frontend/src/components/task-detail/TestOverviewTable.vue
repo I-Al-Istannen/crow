@@ -175,6 +175,26 @@ const columns: ColumnDef<FinishedTest, never>[] = [
       isMultiSorting: isMultiSorting,
     },
   }),
+  columnHelper.accessor((test) => test.category, {
+    header: (column) =>
+      h(DataTableColumnHeader<FinishedTest>, {
+        column: column.column,
+        title: 'Category',
+      }),
+    id: 'category',
+    filterFn: 'arrIncludesSome',
+    cell: (val) =>
+      h(
+        'span',
+        {
+          class: val.getValue() ? '' : 'text-muted-foreground',
+        },
+        `${val.getValue() || '-'}`,
+      ),
+    meta: {
+      isMultiSorting: isMultiSorting,
+    },
+  }),
   columnHelper.display({
     header: 'Details',
     cell: (val) =>

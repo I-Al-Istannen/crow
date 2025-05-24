@@ -13,6 +13,11 @@
           >
             {{ column.getSortIndex() + 1 }}
           </span>
+          <LucideFilter
+            v-if="column.getFilterValue() !== undefined"
+            class="w-4 h-4"
+            :class="[!isMultiSorting || column.getSortIndex() < 0 ? '-ml-3' : '-ml-1']"
+          />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
@@ -70,7 +75,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LucideArrowDownZA, LucideArrowUpAZ, LucideArrowUpDown } from 'lucide-vue-next'
+import {
+  LucideArrowDownZA,
+  LucideArrowUpAZ,
+  LucideArrowUpDown,
+  LucideFilter,
+} from 'lucide-vue-next'
 import { type Ref, computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
