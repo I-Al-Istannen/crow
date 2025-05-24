@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n        SELECT\n            test_id,\n            compiler_exec_id as \"compiler_exec_id!\",\n            binary_exec_id,\n            status,\n            provisional_for_category as \"provisional_for_category?\"\n        FROM TestResults\n        WHERE task_id = ?",
+  "query": "\n        SELECT\n            test_id,\n            compiler_exec_id as \"compiler_exec_id!\",\n            binary_exec_id,\n            status,\n            provisional_for_category as \"provisional_for_category?\",\n            (SELECT category FROM Tests WHERE id = test_id) as \"category?\"\n        FROM TestResults\n        WHERE task_id = ?",
   "describe": {
     "columns": [
       {
@@ -27,6 +27,11 @@
         "name": "provisional_for_category?",
         "ordinal": 4,
         "type_info": "Text"
+      },
+      {
+        "name": "category?",
+        "ordinal": 5,
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -37,8 +42,9 @@
       false,
       true,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "603c5e731ca8b7c4ef9ddc14adb204d9f636b8697df122696c2e7c0f442b5efd"
+  "hash": "9690476ffff06f665bd911a6fa28c3b8e6c739055c32845fc9960b434661d8fc"
 }

@@ -31,6 +31,7 @@ pub struct CompilerTask {
 #[serde(rename_all = "camelCase")]
 pub struct CompilerTest {
     pub test_id: String,
+    pub category: String,
     #[serde(serialize_with = "serialize_duration")]
     #[serde(deserialize_with = "deserialize_duration")]
     pub timeout: Duration,
@@ -351,6 +352,7 @@ impl FromStr for TestExecutionOutputType {
 #[serde(rename_all = "camelCase")]
 pub struct FinishedTest {
     pub test_id: String,
+    pub category: Option<String>,
     pub output: TestExecutionOutput,
     pub provisional_for_category: Option<String>,
 }

@@ -187,6 +187,7 @@ fn execute_task_impl(
             };
             let result = FinishedTest {
                 test_id: test.test_id,
+                category: Some(test.category),
                 output: result,
                 provisional_for_category: test.provisional_for_category,
             };

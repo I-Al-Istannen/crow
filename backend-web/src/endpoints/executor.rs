@@ -209,6 +209,7 @@ pub async fn get_work(
         })
         .map(|test| CompilerTest {
             test_id: test.id.to_string(),
+            category: test.category,
             timeout: state.execution_config.test_timeout,
             compile_command: state.execution_config.compile_command.clone(),
             binary_arguments: state.execution_config.binary_arguments.clone(),
@@ -334,6 +335,7 @@ pub async fn get_test_tasting_work(
         id: task.taste_id.clone(),
         test: CompilerTest {
             test_id: task.test.id.to_string(),
+            category: task.test.category,
             timeout: state.execution_config.test_timeout,
             compile_command: state.execution_config.compile_command,
             binary_arguments: state.execution_config.binary_arguments,

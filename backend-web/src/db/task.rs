@@ -157,7 +157,8 @@ pub(super) async fn get_task(
             compiler_exec_id as "compiler_exec_id!",
             binary_exec_id,
             status,
-            provisional_for_category as "provisional_for_category?"
+            provisional_for_category as "provisional_for_category?",
+            (SELECT category FROM Tests WHERE id = test_id) as "category?"
         FROM TestResults
         WHERE task_id = ?"#,
         task_id
@@ -179,6 +180,7 @@ pub(super) async fn get_task(
         .await?;
         finished_tests.push(FinishedTest {
             test_id,
+            category: test.category,
             output: execution_output,
             provisional_for_category: test.provisional_for_category,
         })

@@ -244,6 +244,7 @@ fn run_test(args: CliRunTestArgs) -> Result<(bool, TestExecutionOutput), CrowCli
     let res = execute_test(
         &CompilerTest {
             test_id: test.test.id,
+            category: test.test.category,
             timeout: Duration::from_secs(60 * 10), // 10 minutes
             compiler_modifiers: test.detail.compiler_modifiers,
             binary_modifiers: test.detail.binary_modifiers,
