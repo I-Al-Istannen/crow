@@ -45,9 +45,11 @@
 import {
   type ColumnDef,
   FlexRender,
+  type Row,
   type Table as TanstackTable,
   createColumnHelper,
   getCoreRowModel,
+  getFacetedUniqueValues,
   getFilteredRowModel,
   getSortedRowModel,
   useVueTable,
@@ -85,6 +87,29 @@ const columnHelper = createColumnHelper<FinishedTest>()
 const isMultiSorting = computed(() => {
   return table.getState().sorting.length > 1
 })
+const allStatusValues = computed(() =>
+  Array.from(new Set(tests.value.map((test) => test.output.type))).sort(),
+)
+
+function boolFilterFn(row: Row<unknown>, columnId: string, filterValue: boolean | boolean[]) {
+  const cellValue = row.getValue<boolean>(columnId)
+  if (Array.isArray(filterValue)) {
+    return filterValue.some((v) => cellValue === v)
+  }
+  return cellValue === filterValue
+}
+
+function arrIncludesHandleNullFilterFn(
+  row: Row<unknown>,
+  columnId: string,
+  filterValue: unknown | unknown[],
+) {
+  const cellValue = row.getValue<unknown>(columnId)
+  if (Array.isArray(filterValue)) {
+    return filterValue.some((v) => cellValue === v)
+  }
+  return cellValue === filterValue
+}
 
 const columns: ColumnDef<FinishedTest, never>[] = [
   columnHelper.accessor((test) => test.testId, {
@@ -103,11 +128,13 @@ const columns: ColumnDef<FinishedTest, never>[] = [
       h(DataTableColumnHeader<FinishedTest>, {
         column: column.column,
         title: 'Status',
+        potentialValues: allStatusValues,
       }),
     id: 'status',
     meta: {
       isMultiSorting: isMultiSorting,
     },
+    filterFn: 'arrIncludesSome',
     cell: (cell) =>
       h(
         'span',
@@ -122,6 +149,7 @@ const columns: ColumnDef<FinishedTest, never>[] = [
         title: 'Outdated',
       }),
     id: 'outdated',
+    filterFn: boolFilterFn,
     meta: {
       isMultiSorting: isMultiSorting,
     },
@@ -134,6 +162,7 @@ const columns: ColumnDef<FinishedTest, never>[] = [
         title: 'Provisional',
       }),
     id: 'provisional',
+    filterFn: arrIncludesHandleNullFilterFn,
     cell: (val) =>
       h(
         'span',
@@ -168,5 +197,6 @@ const table: TanstackTable<FinishedTest> = useVueTable({
   getSortedRowModel: getSortedRowModel(),
   getFilteredRowModel: getFilteredRowModel(),
   getColumnCanGlobalFilter: (column) => column.columnDef.enableGlobalFilter !== false,
+  getFacetedUniqueValues: getFacetedUniqueValues(),
 })
 </script>

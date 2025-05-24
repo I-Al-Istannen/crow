@@ -32,6 +32,24 @@
           <LucideArrowDownZA class="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
           Desc
         </DropdownMenuCheckboxItem>
+        <DropdownMenuSeparator v-if="uniqueValues.length > 1" />
+        <DropdownMenuGroup v-if="uniqueValues.length > 1">
+          <DropdownMenuLabel class="text-xs">Filter</DropdownMenuLabel>
+          <DropdownMenuCheckboxItem
+            v-for="value in uniqueValues"
+            :key="value"
+            :model-value="isFiltered(value)"
+            @update:model-value="toggleFilterValue(value)"
+            @select="$event.preventDefault()"
+          >
+            <span v-if="value === true">Yes</span>
+            <span v-else-if="value === false">No</span>
+            <span v-else-if="value === null || value === undefined" class="text-muted-foreground">
+              None
+            </span>
+            <span v-else>{{ value }}</span>
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   </div>
@@ -47,16 +65,20 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { LucideArrowDownZA, LucideArrowUpAZ, LucideArrowUpDown } from 'lucide-vue-next'
+import { type Ref, computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { computed } from 'vue'
 
 interface DataTableColumnHeaderProps {
   column: Column<T>
   title: string
+  potentialValues?: Ref<string[]>
 }
 
 defineOptions({
@@ -74,11 +96,35 @@ const isMultiSorting = computed(() => {
   return (meta as any).isMultiSorting.value
 })
 
+const uniqueValues = computed(() => {
+  const values = props.column.getFacetedUniqueValues().keys()
+  return Array.from(values).sort((a, b) => {
+    if (a === null || a === undefined) return -1
+    if (b === null || b === undefined) return 1
+    return a.localeCompare(b)
+  })
+})
+
 function toggleSorting(dir: SortDirection) {
   if (dir == props.column.getIsSorted()) {
     props.column.clearSorting()
     return
   }
   props.column.toggleSorting(dir === 'desc', true)
+}
+
+function isFiltered(value: string): boolean {
+  const filterValue = (props.column.getFilterValue() as string[]) || []
+  return filterValue.includes(value)
+}
+
+function toggleFilterValue(value: string) {
+  const currentFilterValue = (props.column.getFilterValue() as string[]) || []
+
+  const newFilterValue = currentFilterValue.includes(value)
+    ? currentFilterValue.filter((v) => v !== value)
+    : [...currentFilterValue, value]
+
+  props.column.setFilterValue(newFilterValue.length > 0 ? newFilterValue : undefined)
 }
 </script>
