@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            SELECT task_id as \"task_id: TaskId\" FROM FinalizedSubmittedTasks\n            WHERE team_id = ? AND category = ?\n            ",
+  "query": "\n        SELECT task_id as \"task_id: TaskId\"\n        FROM FinalizedSubmittedTasks\n        WHERE team_id = ? AND category = ?\n        ",
   "describe": {
     "columns": [
       {
@@ -16,5 +16,5 @@
       false
     ]
   },
-  "hash": "4ff7a1699d4cce4ba42aa6126174e8cae636a18210ca80114ffcfef4de5404c7"
+  "hash": "2e0362649db55bae0d659b5c31b9e1c22949291b65e74d9c4397215988fc70ae"
 }

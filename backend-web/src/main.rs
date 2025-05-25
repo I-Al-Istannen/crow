@@ -10,7 +10,7 @@ use crate::endpoints::{
     integration_get_task_status, integration_request_revision, list_tests, list_users, login_oidc,
     login_oidc_callback, rehash_tests, request_revision, rerun_submissions, runner_done,
     runner_ping, runner_register, runner_update, set_final_task, set_team_repo, set_test,
-    show_me_myself, snapshot_state, taste_testing_done,
+    show_me_myself, snapshot_state, taste_testing_done, team_statistics,
 };
 use crate::error::WebError;
 use crate::storage::LocalRepos;
@@ -282,6 +282,10 @@ async fn main_server(
         .route(
             "/admin/rehash_tests",
             post(rehash_tests).layer(authed_admin.clone()),
+        )
+        .route(
+            "/admin/team_statistics",
+            get(team_statistics).layer(authed_admin.clone()),
         )
         .route("/login", get(login_oidc))
         .route("/login/oidc/callback", post(login_oidc_callback))

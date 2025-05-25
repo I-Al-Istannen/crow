@@ -651,26 +651,12 @@ pub(super) async fn get_final_submitted_task(
     let mut con = con.begin().await.context(SqlxSnafu)?;
 
     if respect_finalized {
-        let finalized = query!(
-            r#"
-            SELECT task_id as "task_id: TaskId" FROM FinalizedSubmittedTasks
-            WHERE team_id = ? AND category = ?
-            "#,
-            team_id,
-            category
-        )
-        .map(|it| it.task_id)
-        .fetch_optional(&mut *con)
-        .instrument(info_span!("sqlx_get_final_submitted_task"))
-        .await
-        .context(SqlxSnafu)?;
+        let finalized = fetch_finalized_task(&mut con, team_id, category)
+            .instrument(info_span!("sqlx_get_final_submitted_task"))
+            .await?;
 
-        if let Some(task_id) = finalized {
-            return Ok(Some(FinalSubmittedTask::Finalized {
-                summary: get_task_summary(&mut con, &task_id)
-                    .instrument(info_span!("sqlx_get_final_submitted_task_inner"))
-                    .await?,
-            }));
+        if let Some(summary) = finalized {
+            return Ok(Some(FinalSubmittedTask::Finalized { summary }));
         }
     }
 
@@ -839,4 +825,35 @@ pub(super) async fn finalize_submission(
     .context(SqlxSnafu)?;
 
     Ok(())
+}
+
+#[instrument(skip_all)]
+pub(super) async fn fetch_finalized_task(
+    con: &mut SqliteConnection,
+    team_id: &TeamId,
+    category: &str,
+) -> Result<Option<FinishedCompilerTaskSummary>> {
+    let task_id = query!(
+        r#"
+        SELECT task_id as "task_id: TaskId"
+        FROM FinalizedSubmittedTasks
+        WHERE team_id = ? AND category = ?
+        "#,
+        team_id,
+        category
+    )
+    .map(|it| it.task_id)
+    .fetch_optional(&mut *con)
+    .instrument(info_span!("sqlx_get_finalized_task"))
+    .await
+    .context(SqlxSnafu)?;
+
+    if let Some(task_id) = task_id {
+        let summary = get_task_summary(con, &task_id)
+            .instrument(info_span!("sqlx_get_finalized_task_inner"))
+            .await?;
+        Ok(Some(summary))
+    } else {
+        Ok(None)
+    }
 }

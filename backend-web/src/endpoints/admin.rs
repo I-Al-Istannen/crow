@@ -1,15 +1,20 @@
 use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::{Result, WebError};
-use crate::types::{AppState, TaskId, TeamId, WorkItem};
+use crate::types::{
+    AppState, ExecutionExitStatus, FinishedCompilerTaskSummary, TaskId, TeamId, Test, TestId,
+    WorkItem,
+};
 use axum::extract::{Path, State};
 use serde::Serialize;
+use shared::TestModifier;
 use snafu::{location, Report};
 use std::collections::HashMap;
 use std::time::SystemTime;
-use tracing::{error, info, warn};
+use tracing::{error, info, instrument, warn};
 use uuid::Uuid;
 
+#[instrument(skip_all)]
 pub async fn snapshot_state(
     State(state): State<AppState>,
     claims: Claims,
@@ -33,6 +38,7 @@ pub async fn snapshot_state(
     Ok(Json(res))
 }
 
+#[instrument(skip_all)]
 async fn snapshot(state: &AppState) -> Result<SnapshotResponse> {
     let mut errors = Vec::new();
     let mut exported = Vec::new();
@@ -86,6 +92,7 @@ async fn snapshot(state: &AppState) -> Result<SnapshotResponse> {
     Ok(SnapshotResponse { errors, exported })
 }
 
+#[instrument(skip_all)]
 pub async fn rerun_submissions(
     State(state): State<AppState>,
     Path(category_name): Path<String>,
@@ -157,10 +164,54 @@ pub async fn rerun_submissions(
     Ok(Json(RerunResponse { errors, submitted }))
 }
 
+#[instrument(skip_all)]
 pub async fn rehash_tests(State(state): State<AppState>, claims: Claims) -> Result<()> {
     info!(triggered_by = %claims.sub, "Rehashing tests");
 
     state.db.rehash_tests().await
+}
+
+#[instrument(skip_all)]
+pub async fn team_statistics(
+    State(state): State<AppState>,
+    _claims: Claims,
+) -> Result<Json<Vec<TeamStatistics>>> {
+    let mut entries = Vec::new();
+    let tests: HashMap<TeamId, Vec<Test>> =
+        state
+            .db
+            .get_tests()
+            .await?
+            .into_iter()
+            .fold(HashMap::new(), |mut acc, test| {
+                acc.entry(test.owner.clone()).or_default().push(test);
+                acc
+            });
+
+    for team in state.db.get_teams().await? {
+        let id = team.id;
+        let mut entry = TeamStatistics {
+            team: id.clone(),
+            tests_per_category: HashMap::new(),
+            finalized_tasks_per_category: HashMap::new(),
+        };
+        for test in tests.get(&id).unwrap_or(&Vec::new()) {
+            entry.absorb(test);
+        }
+        for category in state.test_config.categories.keys() {
+            let task = state.db.fetch_finalized_task(&id, category).await?;
+
+            if let Some(summary) = task {
+                entry
+                    .finalized_tasks_per_category
+                    .insert(category.clone(), summary.into());
+            }
+        }
+
+        entries.push(entry);
+    }
+
+    Ok(Json(entries))
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -173,4 +224,106 @@ pub struct SnapshotResponse {
 pub struct RerunResponse {
     pub errors: Vec<String>,
     pub submitted: Vec<(TeamId, TaskId)>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TeamStatistics {
+    pub team: TeamId,
+    pub tests_per_category: HashMap<String, TestClassification>,
+    pub finalized_tasks_per_category: HashMap<String, FinalizedTask>,
+}
+
+impl TeamStatistics {
+    pub fn absorb(&mut self, test: &Test) {
+        let category = test.category.clone();
+        let compiler_error = test
+            .compiler_modifiers
+            .iter()
+            .any(|it| matches!(it, TestModifier::ShouldFail { .. }));
+        let runtime_error = test
+            .binary_modifiers
+            .iter()
+            .any(|it| matches!(it, TestModifier::ShouldCrash { .. }));
+        let exit_code = test.binary_modifiers.iter().any(|it| {
+            matches!(
+                it,
+                TestModifier::ExitCode { .. } | TestModifier::ShouldSucceed
+            )
+        });
+        let non_termination = test
+            .binary_modifiers
+            .iter()
+            .any(|it| matches!(it, TestModifier::ShouldTimeout));
+        let compiler_succeed_no_exec = test
+            .compiler_modifiers
+            .iter()
+            .any(|it| matches!(it, TestModifier::ShouldSucceed))
+            && test.binary_modifiers.is_empty();
+
+        let entry = self.tests_per_category.entry(category).or_default();
+        if runtime_error {
+            entry.runtime_error += 1;
+        } else if compiler_error {
+            entry.compile_error += 1;
+        } else if exit_code {
+            entry.exit_code += 1;
+        } else if non_termination {
+            entry.non_termination += 1;
+        } else if compiler_succeed_no_exec {
+            entry.compiler_succeed_no_exec += 1;
+        } else {
+            entry.unclassified.push(test.id.clone());
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TestClassification {
+    pub runtime_error: usize,
+    pub compile_error: usize,
+    pub exit_code: usize,
+    pub non_termination: usize,
+    pub compiler_succeed_no_exec: usize,
+    pub unclassified: Vec<TestId>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FinalizedTask {
+    pub task_id: TaskId,
+    pub passed_tests: usize,
+    pub total_tests: usize,
+}
+
+impl From<FinishedCompilerTaskSummary> for FinalizedTask {
+    fn from(value: FinishedCompilerTaskSummary) -> Self {
+        let task_id = value.info().task_id.clone().into();
+        let (passed_tests, total_tests) = match value {
+            FinishedCompilerTaskSummary::BuildFailed { .. } => (0, 0),
+            FinishedCompilerTaskSummary::RanTests { tests, .. } => {
+                // TODO: This is all a bit wrong as it ignores the category and instead counts
+                // all tests. And it also does not consider provisional correctly
+                // (provisional => removed, even if for old category).
+                let passed = tests
+                    .iter()
+                    .filter(|it| it.output == ExecutionExitStatus::Success)
+                    .filter(|it| it.provisional_for_category.is_none())
+                    .count();
+                let total = tests
+                    .iter()
+                    .filter(|it| it.provisional_for_category.is_none())
+                    .count();
+
+                (passed, total)
+            }
+        };
+
+        Self {
+            task_id,
+            passed_tests,
+            total_tests,
+        }
+    }
 }

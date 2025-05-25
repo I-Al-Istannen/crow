@@ -256,6 +256,19 @@ impl Database {
         .await
     }
 
+    pub async fn fetch_finalized_task(
+        &self,
+        team_id: &TeamId,
+        category: &str,
+    ) -> Result<Option<FinishedCompilerTaskSummary>> {
+        let pool = self.read_lock().await;
+        task::fetch_finalized_task(
+            &mut *pool.acquire().await.context(SqlxSnafu)?,
+            team_id,
+            category,
+        )
+        .await
+    }
     pub async fn add_test(
         &self,
         test: Test,
