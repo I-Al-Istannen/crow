@@ -17,6 +17,7 @@
     <SnapshotState />
     <RerunSubmissions />
     <RehashTests />
+    <TeamStatistics />
   </PageContainer>
 </template>
 
@@ -27,6 +28,7 @@ import PageContainer from '@/components/PageContainer.vue'
 import RehashTests from '@/components/admin/RehashTests.vue'
 import RerunSubmissions from '@/components/admin/RerunSubmissions.vue'
 import SnapshotState from '@/components/admin/SnapshotState.vue'
+import TeamStatistics from '@/components/admin/TeamStatistics.vue'
 import UserTable from '@/components/admin/UserTable.vue'
 import { queryUsers } from '@/data/network.ts'
 

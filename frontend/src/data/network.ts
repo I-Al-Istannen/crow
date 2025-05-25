@@ -32,6 +32,8 @@ import {
   TeamIdSchema,
   type TeamInfo,
   TeamInfoSchema,
+  type TeamStatistics,
+  TeamStatisticsSchema,
   type TestId,
   type TestModifier,
   type TestWithTestTasting,
@@ -528,4 +530,20 @@ export async function fetchRehashTests(): Promise<void> {
   await fetchWithAuth(`/admin/rehash_tests`, {
     method: 'POST',
   })
+}
+
+export function queryTeamStatistics() {
+  return useQuery({
+    queryKey: ['team-statistics'],
+    queryFn: fetchTeamStatistics,
+    meta: {
+      purpose: 'fetching team statistics',
+    },
+    enabled: isLoggedIn() && storeToRefs(useUserStore()).isAdmin,
+  })
+}
+
+export async function fetchTeamStatistics(): Promise<TeamStatistics[]> {
+  const response = await fetchWithAuth('/admin/team_statistics')
+  return TeamStatisticsSchema.array().parse(await response.json())
 }

@@ -338,6 +338,27 @@ export const RerunResponseSchema = z.object({
   submitted: z.array(z.tuple([TeamIdSchema, TaskIdSchema])),
 })
 
+export const TestClassificationSchema = z.object({
+  runtimeError: z.number(),
+  compileError: z.number(),
+  exitCode: z.number(),
+  nonTermination: z.number(),
+  compilerSucceedNoExec: z.number(),
+  unclassified: z.string().array(),
+})
+
+export const AdminFinalizedTaskSchema = z.object({
+  taskId: TaskIdSchema,
+  passedTests: z.number(),
+  totalTests: z.number(),
+})
+
+export const TeamStatisticsSchema = z.object({
+  team: TeamIdSchema,
+  testsPerCategory: z.record(z.string(), TestClassificationSchema),
+  finalizedTasksPerCategory: z.record(z.string(), AdminFinalizedTaskSchema),
+})
+
 export type AbortedExecution = z.infer<typeof AbortedExecutionSchema>
 export type ExecutingTest = z.infer<typeof ExecutingTestSchema>
 export type ExecutionExitStatus = z.infer<typeof ExecutionExitStatusSchema>
@@ -386,6 +407,9 @@ export type FullUserForAdmin = z.infer<typeof FullUserForAdminSchema>
 export type AdminUserInfo = z.infer<typeof AdminUserInfoSchema>
 export type SnapshotResponse = z.infer<typeof SnapshotResponseSchema>
 export type RerunResponse = z.infer<typeof RerunResponseSchema>
+export type TestClassification = z.infer<typeof TestClassificationSchema>
+export type TeamStatistics = z.infer<typeof TeamStatisticsSchema>
+export type AdminFinalizedTask = z.infer<typeof AdminFinalizedTaskSchema>
 
 export function toExecutionStatus(output: TestExecutionOutput): ExecutionExitStatus {
   switch (output.type) {
