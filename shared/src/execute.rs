@@ -285,7 +285,7 @@ pub fn execute_locally(
         &mut child.stdout.take().expect("stdout"),
         &mut child.stderr.take().expect("stderr"),
         &mut child,
-        timeout.unwrap_or(Duration::from_secs(10)),
+        timeout.unwrap_or(Duration::from_secs(5 * 60)), // Default to 5 minutes
     );
     let (stdout, stderr, status, runtime) = match res {
         Ok((stdout, stderr, status, runtime)) => (stdout, stderr, status.into(), runtime),
