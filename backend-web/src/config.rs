@@ -96,7 +96,7 @@ impl TestCategory {
 
     pub fn is_running(&self) -> bool {
         let now = Timestamp::now();
-        self.starts_at.timestamp() < now && now < self.tests_end_at.timestamp()
+        self.starts_at.timestamp() < now && now < self.labs_end_at.timestamp()
     }
 }
 

@@ -215,7 +215,11 @@ pub async fn get_work(
             binary_arguments: state.execution_config.binary_arguments.clone(),
             binary_modifiers: test.binary_modifiers,
             compiler_modifiers: test.compiler_modifiers,
-            provisional_for_category: test.provisional_for_category,
+            // we leave it out if the category is not active, so it is not marked as provisional
+            // on new runs after the category finished.
+            provisional_for_category: test
+                .provisional_for_category
+                .filter(|it| current_categories.contains(&it.as_str())),
         })
         .collect();
 
