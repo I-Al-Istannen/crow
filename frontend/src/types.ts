@@ -85,6 +85,21 @@ export const FinishedTestSchema = z.object({
   output: TestExecutionOutputSchema,
 })
 
+export const CountWithProvisionalSchema = z.object({
+  normal: z.number(),
+  provisional: z.number(),
+  total: z.number().describe('count + provisional'),
+})
+
+export const FinishedCompilerTaskStatisticsSchema = z.object({
+  abort: CountWithProvisionalSchema,
+  error: CountWithProvisionalSchema,
+  failure: CountWithProvisionalSchema,
+  success: CountWithProvisionalSchema,
+  timeout: CountWithProvisionalSchema,
+  total: CountWithProvisionalSchema,
+})
+
 export const FinishedCompilerTaskSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('BuildFailed'),
@@ -97,6 +112,7 @@ export const FinishedCompilerTaskSchema = z.discriminatedUnion('type', [
     buildOutput: FinishedExecutionSchema,
     tests: z.array(FinishedTestSchema),
     outdated: z.array(TestIdSchema),
+    statistics: FinishedCompilerTaskStatisticsSchema,
   }),
 ])
 
@@ -116,11 +132,12 @@ export const FinishedCompilerTaskSummarySchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('RanTests'),
     info: FinishedTaskInfoSchema,
-    tests: z.array(FinishedTestSummarySchema),
     outdated: z.array(TestIdSchema),
+    statistics: FinishedCompilerTaskStatisticsSchema,
   }),
 ])
 
+// You can not nicely extend discriminated unions in Zod, so we duplicate it here
 export const ApiFinishedCompilerTaskSummarySchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('BuildFailed'),
@@ -131,8 +148,8 @@ export const ApiFinishedCompilerTaskSummarySchema = z.discriminatedUnion('type',
   z.object({
     type: z.literal('RanTests'),
     info: FinishedTaskInfoSchema,
-    tests: z.array(FinishedTestSummarySchema),
     outdated: z.array(TestIdSchema),
+    statistics: FinishedCompilerTaskStatisticsSchema,
     teamName: z.string(),
   }),
 ])
@@ -349,8 +366,7 @@ export const TestClassificationSchema = z.object({
 
 export const AdminFinalizedTaskSchema = z.object({
   taskId: TaskIdSchema,
-  passedTests: z.number(),
-  totalTests: z.number(),
+  statistics: FinishedCompilerTaskStatisticsSchema,
 })
 
 export const TeamStatisticsSchema = z.object({
@@ -410,6 +426,8 @@ export type RerunResponse = z.infer<typeof RerunResponseSchema>
 export type TestClassification = z.infer<typeof TestClassificationSchema>
 export type TeamStatistics = z.infer<typeof TeamStatisticsSchema>
 export type AdminFinalizedTask = z.infer<typeof AdminFinalizedTaskSchema>
+export type CountWithProvisional = z.infer<typeof CountWithProvisionalSchema>
+export type FinishedCompilerTaskStatistics = z.infer<typeof FinishedCompilerTaskStatisticsSchema>
 
 export function toExecutionStatus(output: TestExecutionOutput): ExecutionExitStatus {
   switch (output.type) {

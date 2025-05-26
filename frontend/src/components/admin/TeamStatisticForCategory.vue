@@ -24,7 +24,9 @@
               :to="{ name: 'task-detail', params: { taskId: stat.finalizedTask.taskId } }"
               class="hover:underline"
             >
-              {{ stat.finalizedTask.passedTests }}/{{ stat.finalizedTask.totalTests }}
+              {{ stat.finalizedTask.statistics.success.normal }}/{{
+                stat.finalizedTask.statistics.total.normal
+              }}
             </RouterLink>
             <span v-else>-</span>
           </TableCell>

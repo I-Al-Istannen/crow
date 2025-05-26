@@ -2,8 +2,8 @@ use super::{Json, Path};
 use crate::auth::Claims;
 use crate::error::{Result, WebError};
 use crate::types::{
-    AppState, ExecutorInfo, FinishedCompilerTaskSummary, QueuedTaskStatus, RunnerForFrontend,
-    TaskId, TeamId, TestId, WorkItem,
+    AppState, ExecutorInfo, FinishedCompilerTaskStatistics, FinishedCompilerTaskSummary,
+    QueuedTaskStatus, RunnerForFrontend, TaskId, TeamId, TestId, WorkItem,
 };
 use axum::extract::State;
 use axum::response::{IntoResponse, Response};
@@ -12,7 +12,9 @@ use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use shared::FinishedCompilerTask;
+use shared::{
+    ExecutionOutput, FinishedCompilerTask, FinishedExecution, FinishedTaskInfo, FinishedTest,
+};
 use snafu::location;
 use std::collections::HashMap;
 use std::time::SystemTime;
@@ -256,16 +258,47 @@ pub struct IntegrationTaskStatusResponse {
 }
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FinishedCompilerTaskWithOutdated {
-    #[serde(flatten)]
-    pub task: FinishedCompilerTask,
-    pub outdated: Vec<TestId>,
+#[serde(tag = "type")]
+pub enum FinishedCompilerTaskWithOutdated {
+    #[serde(rename_all = "camelCase")]
+    BuildFailed {
+        info: FinishedTaskInfo,
+        build_output: ExecutionOutput,
+        outdated: Vec<TestId>,
+    },
+    #[serde(rename_all = "camelCase")]
+    RanTests {
+        info: FinishedTaskInfo,
+        build_output: FinishedExecution,
+        tests: Vec<FinishedTest>,
+        outdated: Vec<TestId>,
+        statistics: FinishedCompilerTaskStatistics,
+    },
 }
 
 impl From<(FinishedCompilerTask, Vec<TestId>)> for FinishedCompilerTaskWithOutdated {
     fn from((task, outdated): (FinishedCompilerTask, Vec<TestId>)) -> Self {
-        Self { task, outdated }
+        match task {
+            FinishedCompilerTask::BuildFailed { info, build_output } => Self::BuildFailed {
+                info,
+                build_output,
+                outdated,
+            },
+            FinishedCompilerTask::RanTests {
+                info,
+                build_output,
+                tests,
+            } => {
+                let statistics = tests.as_slice().into();
+                Self::RanTests {
+                    info,
+                    build_output,
+                    tests,
+                    outdated,
+                    statistics,
+                }
+            }
+        }
     }
 }
 

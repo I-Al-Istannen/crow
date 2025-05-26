@@ -2,8 +2,8 @@ use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::{Result, WebError};
 use crate::types::{
-    AppState, ExecutionExitStatus, FinishedCompilerTaskSummary, TaskId, TeamId, Test, TestId,
-    WorkItem,
+    AppState, FinishedCompilerTaskStatistics, FinishedCompilerTaskSummary, TaskId, TeamId, Test,
+    TestId, WorkItem,
 };
 use axum::extract::{Path, State};
 use serde::Serialize;
@@ -293,37 +293,20 @@ pub struct TestClassification {
 #[serde(rename_all = "camelCase")]
 pub struct FinalizedTask {
     pub task_id: TaskId,
-    pub passed_tests: usize,
-    pub total_tests: usize,
+    pub statistics: FinishedCompilerTaskStatistics,
 }
 
 impl From<FinishedCompilerTaskSummary> for FinalizedTask {
     fn from(value: FinishedCompilerTaskSummary) -> Self {
         let task_id = value.info().task_id.clone().into();
-        let (passed_tests, total_tests) = match value {
-            FinishedCompilerTaskSummary::BuildFailed { .. } => (0, 0),
-            FinishedCompilerTaskSummary::RanTests { tests, .. } => {
-                // TODO: This is all a bit wrong as it ignores the category and instead counts
-                // all tests. And it also does not consider provisional correctly
-                // (provisional => removed, even if for old category).
-                let passed = tests
-                    .iter()
-                    .filter(|it| it.output == ExecutionExitStatus::Success)
-                    .filter(|it| it.provisional_for_category.is_none())
-                    .count();
-                let total = tests
-                    .iter()
-                    .filter(|it| it.provisional_for_category.is_none())
-                    .count();
-
-                (passed, total)
-            }
+        let statistics = match value {
+            FinishedCompilerTaskSummary::BuildFailed { .. } => Default::default(),
+            FinishedCompilerTaskSummary::RanTests { statistics, .. } => statistics,
         };
 
         Self {
             task_id,
-            passed_tests,
-            total_tests,
+            statistics,
         }
     }
 }

@@ -1,28 +1,28 @@
 <template>
-  <span v-if="tests && stats" class="space-x-2">
-    <span>{{ tests.length }} tests</span>
-    <span v-if="stats.finish + stats.finishProv > 0" class="text-green-500">
-      {{ stats.finish }}
-      <span v-if="stats.finishProv > 0">(+{{ stats.finishProv }})</span> finished
+  <span v-if="stats" class="space-x-2">
+    <span>{{ stats.total.total }} tests</span>
+    <span v-if="stats.success.total > 0" class="text-green-500">
+      {{ stats.success.normal }}
+      <span v-if="stats.success.provisional > 0">(+{{ stats.success.provisional }})</span> finished
     </span>
-    <span v-if="stats.failure + stats.failureProv > 0" class="text-red-500">
-      {{ stats.failure }}
-      <span v-if="stats.failureProv > 0">(+{{ stats.failureProv }})</span>
+    <span v-if="stats.failure.total > 0" class="text-red-500">
+      {{ stats.failure.normal }}
+      <span v-if="stats.failure.provisional > 0">(+{{ stats.failure.provisional }})</span>
       failures
     </span>
-    <span v-if="stats.error + stats.errorProv > 0" class="text-red-400">
-      {{ stats.error }}
-      <span v-if="stats.errorProv > 0">(+{{ stats.errorProv }})</span>
+    <span v-if="stats.error.total > 0" class="text-red-400">
+      {{ stats.error.normal }}
+      <span v-if="stats.error.provisional > 0">(+{{ stats.error.provisional }})</span>
       internal errors
     </span>
-    <span v-if="stats.timeout + stats.timeoutProv > 0" class="text-orange-500">
-      {{ stats.timeout }}
-      <span v-if="stats.timeoutProv > 0">(+{{ stats.timeoutProv }})</span>
+    <span v-if="stats.timeout.total > 0" class="text-orange-500">
+      {{ stats.timeout.normal }}
+      <span v-if="stats.timeout.provisional > 0">(+{{ stats.timeout.provisional }})</span>
       timeouts
     </span>
-    <span v-if="stats.abort + stats.abortProv > 0" class="text-gray-500">
-      {{ stats.abort }}
-      <span v-if="stats.abortProv > 0">(+{{ stats.abortProv }})</span>
+    <span v-if="stats.abort.total > 0" class="text-gray-500">
+      {{ stats.abort.normal }}
+      <span v-if="stats.abort.provisional > 0">(+{{ stats.abort.provisional }})</span>
       aborted
     </span>
     <span v-if="outdatedTests.length > 0" class="text-muted-foreground">
@@ -47,44 +47,8 @@ const props = defineProps<{
 }>()
 const { task } = toRefs(props)
 
-const tests = computed(() => (task.value.type === 'RanTests' ? task.value.tests : undefined))
+const stats = computed(() => (task.value.type === 'RanTests' ? task.value.statistics : undefined))
 
-const stats = computed(() => {
-  if (tests.value === undefined || task.value.type === 'BuildFailed') {
-    return undefined
-  }
-
-  const abortArr = tests.value.filter((test) => test.output === 'Aborted')
-  const errorArr = tests.value.filter((test) => test.output === 'Error')
-  const failureArr = tests.value.filter((test) => test.output === 'Failure')
-  const finishArr = tests.value.filter((test) => test.output === 'Success')
-  const timeoutArr = tests.value.filter((test) => test.output === 'Timeout')
-
-  const abort = abortArr.filter((test) => test.provisionalForCategory === null).length
-  const error = errorArr.filter((test) => test.provisionalForCategory === null).length
-  const failure = failureArr.filter((test) => test.provisionalForCategory === null).length
-  const finish = finishArr.filter((test) => test.provisionalForCategory === null).length
-  const timeout = timeoutArr.filter((test) => test.provisionalForCategory === null).length
-
-  const abortProv = abortArr.filter((test) => test.provisionalForCategory !== null).length
-  const errorProv = errorArr.filter((test) => test.provisionalForCategory !== null).length
-  const failureProv = failureArr.filter((test) => test.provisionalForCategory !== null).length
-  const finishProv = finishArr.filter((test) => test.provisionalForCategory !== null).length
-  const timeoutProv = timeoutArr.filter((test) => test.provisionalForCategory !== null).length
-
-  return {
-    abort,
-    abortProv,
-    error,
-    errorProv,
-    failure,
-    failureProv,
-    finish,
-    finishProv,
-    timeout,
-    timeoutProv,
-  }
-})
 const outdatedTests = computed(() => {
   if (task.value.type !== 'RanTests') {
     return []

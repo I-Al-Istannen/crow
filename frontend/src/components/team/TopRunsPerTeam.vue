@@ -24,11 +24,7 @@
 </template>
 
 <script setup lang="ts">
-import {
-  type ApiFinishedCompilerTaskSummary,
-  type FinishedCompilerTaskSummary,
-  type TeamId,
-} from '@/types.ts'
+import { type ApiFinishedCompilerTaskSummary, type TeamId } from '@/types.ts'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
 import FinishedTaskOverview from '@/components/task-overview/FinishedTaskOverview.vue'
@@ -46,7 +42,7 @@ const sortedTeams = computed(() => {
     return undefined
   }
   const result: TaskWithFinishedTests = Array.from(topTasks.value.entries()).map(([team, task]) => [
-    finishedTests(task),
+    task.type === 'RanTests' ? task.statistics.total.total : 0,
     [team, task],
   ])
 
@@ -60,9 +56,4 @@ const sortedTeams = computed(() => {
 
   return result.map(([_, it]) => it)
 })
-
-function finishedTests(task: FinishedCompilerTaskSummary): number {
-  const tests = task.type === 'RanTests' ? task.tests : undefined
-  return tests?.filter((test) => test.output === 'Success')?.length || 0
-}
 </script>

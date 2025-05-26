@@ -20,6 +20,16 @@ impl From<FinishedTest> for FinishedTestSummary {
     }
 }
 
+impl From<&FinishedTest> for FinishedTestSummary {
+    fn from(value: &FinishedTest) -> Self {
+        Self {
+            test_id: value.test_id.clone().into(),
+            output: (&value.output).into(),
+            provisional_for_category: value.provisional_for_category.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum FinishedCompilerTaskSummary {
@@ -31,8 +41,8 @@ pub enum FinishedCompilerTaskSummary {
     #[serde(rename_all = "camelCase")]
     RanTests {
         info: FinishedTaskInfo,
-        tests: Vec<FinishedTestSummary>,
         outdated: Vec<TestId>,
+        statistics: FinishedCompilerTaskStatistics,
     },
 }
 
@@ -52,12 +62,74 @@ impl From<(FinishedCompilerTask, Vec<TestId>)> for FinishedCompilerTaskSummary {
                 info,
                 status: (&build_output).into(),
             },
-            FinishedCompilerTask::RanTests { info, tests, .. } => Self::RanTests {
-                info,
-                tests: tests.into_iter().map(Into::into).collect(),
-                outdated,
-            },
+            FinishedCompilerTask::RanTests { info, tests, .. } => {
+                let statistics = tests.as_slice().into();
+                Self::RanTests {
+                    info,
+                    outdated,
+                    statistics,
+                }
+            }
         }
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CountWithProvisional {
+    pub normal: usize,
+    pub provisional: usize,
+    pub total: usize,
+}
+
+impl CountWithProvisional {
+    pub fn inc(&mut self, provisional: bool) {
+        if provisional {
+            self.provisional += 1;
+        } else {
+            self.normal += 1;
+        }
+        self.total += 1;
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FinishedCompilerTaskStatistics {
+    abort: CountWithProvisional,
+    error: CountWithProvisional,
+    failure: CountWithProvisional,
+    success: CountWithProvisional,
+    timeout: CountWithProvisional,
+    total: CountWithProvisional,
+}
+
+impl From<&[FinishedTestSummary]> for FinishedCompilerTaskStatistics {
+    fn from(tests: &[FinishedTestSummary]) -> Self {
+        let mut statistics = Self::default();
+        for test in tests {
+            let provisional = test.provisional_for_category.is_some();
+            match test.output {
+                ExecutionExitStatus::Aborted => statistics.abort.inc(provisional),
+                ExecutionExitStatus::Error => statistics.error.inc(provisional),
+                ExecutionExitStatus::Failure => statistics.failure.inc(provisional),
+                ExecutionExitStatus::Success => statistics.success.inc(provisional),
+                ExecutionExitStatus::Timeout => statistics.timeout.inc(provisional),
+            }
+            statistics.total.inc(provisional);
+        }
+
+        statistics
+    }
+}
+
+impl From<&[FinishedTest]> for FinishedCompilerTaskStatistics {
+    fn from(tests: &[FinishedTest]) -> Self {
+        tests
+            .iter()
+            .map(FinishedTestSummary::from)
+            .collect::<Vec<_>>()
+            .as_slice()
+            .into()
     }
 }
 

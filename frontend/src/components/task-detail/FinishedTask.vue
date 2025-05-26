@@ -79,9 +79,7 @@ import {
   type FinishedCompilerTask,
   type FinishedCompilerTaskSummary,
   type FinishedTest,
-  type FinishedTestSummary,
   type TaskId,
-  toExecutionStatus,
 } from '@/types.ts'
 import { computed, ref, watch } from 'vue'
 import BuildOutputOverview from '@/components/task-detail/BuildOutputOverview.vue'
@@ -144,16 +142,11 @@ function toSummary(task: FinishedCompilerTask): FinishedCompilerTaskSummary {
     }
   }
 
-  const tests: FinishedTestSummary[] = task.tests.map((test) => ({
-    output: toExecutionStatus(test.output),
-    testId: test.testId,
-    provisionalForCategory: test.provisionalForCategory,
-  }))
   return {
     type: 'RanTests',
-    tests,
     info: task.info,
     outdated: task.outdated,
+    statistics: task.statistics,
   }
 }
 

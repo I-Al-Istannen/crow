@@ -615,10 +615,11 @@ async fn get_task_summary(
     .await
     .context(SqlxSnafu)?;
 
+    let statistics = tests.as_slice().into();
     Ok(FinishedCompilerTaskSummary::RanTests {
         info,
-        tests,
         outdated: get_outdated_tests(con, task_id).await?,
+        statistics,
     })
 }
 
@@ -776,7 +777,7 @@ async fn get_top_task_for_team_and_category(
             AND TestResults.status = ?
             AND Tasks.queue_time BETWEEN ? AND ?
             AND Tests.category = ?
-            AND Tests.provisional_for_category IS NULL
+            AND Tests.provisional_for_category != ?
         GROUP BY Tasks.task_id
         ORDER BY COUNT(test_id) DESC, Tasks.queue_time DESC
         LIMIT 1
@@ -785,6 +786,7 @@ async fn get_top_task_for_team_and_category(
         ExecutionExitStatus::Success,
         starts_at,
         ends_at,
+        category,
         category,
     )
     .fetch_optional(&mut *con)
