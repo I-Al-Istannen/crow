@@ -294,8 +294,13 @@ pub fn execute_locally(
             stderr,
             runtime,
             ..
-        }) => (stdout, stderr, CrowExitStatus::Timeout, runtime),
+        }) => {
+            child.kill().map_err(Box::new)?;
+            (stdout, stderr, CrowExitStatus::Timeout, runtime)
+        }
         Err(e) => {
+            // Make sure it is dead on error
+            child.kill().map_err(Box::new)?;
             return Err(Box::new(e));
         }
     };
