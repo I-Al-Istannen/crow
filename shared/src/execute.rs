@@ -10,7 +10,7 @@ use std::error::Error;
 use std::io::Read;
 use std::os::fd::AsRawFd;
 use std::path::Path;
-use std::process::{Child, ChildStderr, ChildStdout, Command, ExitStatus, Stdio};
+use std::process::{Child, ChildStderr, ChildStdout, ExitStatus};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -265,55 +265,6 @@ fn gather_arguments(
     }
 
     Ok(args)
-}
-
-pub fn execute_locally(
-    path: &Path,
-    cmd: &[String],
-    timeout: Option<Duration>,
-) -> Result<CommandResult, Box<dyn Error + Sync + Send>> {
-    let mut child = Command::new(path)
-        .args(cmd)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(Box::new)?;
-
-    let res = run_with_timeout(
-        Arc::new(AtomicBool::new(false)),
-        &mut child.stdout.take().expect("stdout"),
-        &mut child.stderr.take().expect("stderr"),
-        &mut child,
-        timeout.unwrap_or(Duration::from_secs(5 * 60)), // Default to 5 minutes
-    );
-    let (stdout, stderr, status, runtime) = match res {
-        Ok((stdout, stderr, status, runtime)) => (stdout, stderr, status.into(), runtime),
-        Err(RunWithTimeoutError::Timeout {
-            stdout,
-            stderr,
-            runtime,
-            ..
-        }) => {
-            child.kill().map_err(Box::new)?;
-            (stdout, stderr, CrowExitStatus::Timeout, runtime)
-        }
-        Err(e) => {
-            // Make sure it is dead on error
-            child.kill().map_err(Box::new)?;
-            return Err(Box::new(e));
-        }
-    };
-
-    Ok(CommandResult::Unprocessed((
-        status,
-        FinishedExecution {
-            stdout,
-            stderr,
-            runtime,
-            exit_status: status.code(),
-        },
-    )))
 }
 
 #[derive(Debug, Snafu)]

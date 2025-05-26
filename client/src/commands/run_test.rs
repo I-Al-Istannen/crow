@@ -7,7 +7,7 @@ use console::style;
 use jiff::{Timestamp, Unit};
 use rayon::ThreadPoolBuilder;
 use shared::execute::execute_test;
-use shared::{execute, CompilerTest, TestExecutionOutput};
+use shared::{CompilerTest, ExecutionOutput, FinishedExecution, TestExecutionOutput, TestModifier};
 use snafu::{ensure, location, IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
@@ -255,7 +255,7 @@ fn run_test(args: CliRunTestArgs) -> Result<(bool, TestExecutionOutput), CrowCli
         tempdir.path(),
         &tempdir.path().join("out.🦆"),
         tempdir.path(),
-        execute::execute_locally,
+        crate::util::execute_locally,
     );
 
     Ok((matches!(res, TestExecutionOutput::Success { .. }), res))

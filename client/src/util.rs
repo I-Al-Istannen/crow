@@ -1,7 +1,17 @@
 use console::style;
-use shared::{indent, ExecutionOutput, TestExecutionOutput};
+use shared::execute::{run_with_timeout, CommandResult, RunWithTimeoutError};
+use shared::exit::CrowExitStatus;
+use shared::{indent, ExecutionOutput, FinishedExecution, TestExecutionOutput};
+use std::collections::HashSet;
+use std::error::Error;
 use std::fmt::{Display, Formatter};
+use std::os::unix::process::CommandExt;
 use std::path::Path;
+use std::process::{Command, Stdio};
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+use std::time::Duration;
+use sysinfo::{Pid, ProcessRefreshKind, RefreshKind};
 use tracing::{error, info};
 
 #[derive(Debug, Clone, Default)]
@@ -192,4 +202,87 @@ fn execution_output_to_string(output: &ExecutionOutput) -> String {
             )
         }
     }
+}
+
+pub fn execute_locally(
+    path: &Path,
+    cmd: &[String],
+    timeout: Option<Duration>,
+) -> Result<CommandResult, Box<dyn Error + Sync + Send>> {
+    let mut child = Command::new(path)
+        .args(cmd)
+        .process_group(0)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(Box::new)?;
+
+    let res = run_with_timeout(
+        Arc::new(AtomicBool::new(false)),
+        &mut child.stdout.take().expect("stdout"),
+        &mut child.stderr.take().expect("stderr"),
+        &mut child,
+        timeout.unwrap_or(Duration::from_secs(5 * 60)), // Default to 5 minutes
+    );
+    let (stdout, stderr, status, runtime) = match res {
+        Ok((stdout, stderr, status, runtime)) => (stdout, stderr, status.into(), runtime),
+        Err(RunWithTimeoutError::Timeout {
+            stdout,
+            stderr,
+            runtime,
+            ..
+        }) => {
+            kill_tree(Pid::from_u32(child.id()));
+            (stdout, stderr, CrowExitStatus::Timeout, runtime)
+        }
+        Err(e) => {
+            // Make sure it is dead on error
+            kill_tree(Pid::from_u32(child.id()));
+            return Err(Box::new(e));
+        }
+    };
+
+    Ok(CommandResult::Unprocessed((
+        status,
+        FinishedExecution {
+            stdout,
+            stderr,
+            runtime,
+            exit_status: status.code(),
+        },
+    )))
+}
+
+fn kill_tree(root: Pid) {
+    let system = sysinfo::System::new_with_specifics(
+        RefreshKind::nothing().with_processes(ProcessRefreshKind::nothing().with_tasks()),
+    );
+
+    let mut pids_in_tree = HashSet::new();
+    pids_in_tree.insert(root);
+    while find_descendants(&system, &mut pids_in_tree) {}
+
+    for pid in pids_in_tree {
+        if let Some(process) = system.process(pid) {
+            process.kill();
+        }
+    }
+}
+
+fn find_descendants(system: &sysinfo::System, pids_in_tree: &mut HashSet<Pid>) -> bool {
+    let mut modified = false;
+
+    for (pid, process) in system.processes() {
+        if process.thread_kind().is_some() {
+            continue; // Skip threads
+        }
+        if let Some(ppid) = process.parent() {
+            if pids_in_tree.contains(&ppid) {
+                modified |= pids_in_tree.insert(*pid);
+            }
+        }
+    }
+
+    modified
 }
