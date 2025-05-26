@@ -27,7 +27,13 @@
         <span v-else>A quick summary of the most important points</span>
       </CardDescription>
     </CardHeader>
-    <CardContent v-if="isLoading">Loading task data...</CardContent>
+    <CardContent v-if="isLoading">
+      <DataLoadingExplanation
+        :isLoading="isLoading"
+        :failureReason="failureReason"
+        :failureCount="failureCount"
+      />
+    </CardContent>
     <CardContent v-if="isFetched && task === null">
       Task not found yet. Try waiting a few seconds.
     </CardContent>
@@ -84,6 +90,7 @@ import {
 import { computed, ref, watch } from 'vue'
 import BuildOutputOverview from '@/components/task-detail/BuildOutputOverview.vue'
 import { Button } from '@/components/ui/button'
+import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
 import FinishedTestDetailDialog from '@/components/test-view/FinishedTestDetailDialog.vue'
 import TaskExternalLinkIcon from '@/components/task-detail/TaskExternalLinkIcon.vue'
 import TaskQuickOverview from '@/components/task-overview/TaskQuickOverview.vue'
@@ -105,7 +112,7 @@ const dialogOpen = ref<boolean>(false)
 const showTableView = ref<boolean>(props.initialView !== 'matrix')
 
 const { isAdmin } = storeToRefs(useUserStore())
-const { data: task, isFetched, isLoading } = queryTask(taskId)
+const { data: task, isFetched, isLoading, failureReason, failureCount } = queryTask(taskId)
 const taskSummary = computed(() => (task.value ? toSummary(task.value) : undefined))
 
 const title = useTitle(undefined, { restoreOnUnmount: false, titleTemplate: '%s - crow' })
