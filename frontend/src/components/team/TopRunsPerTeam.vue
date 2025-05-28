@@ -33,27 +33,38 @@ import { computed } from 'vue'
 import { queryTopTaskPerTeam } from '@/data/network.ts'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
 
-type TaskWithFinishedTests = [number, [TeamId, ApiFinishedCompilerTaskSummary]][]
+type TaskWithFinishedTest = {
+  passingTests: number
+  task: ApiFinishedCompilerTaskSummary
+  team: TeamId
+}
 
 const { data: topTasks, isLoading, failureCount, failureReason } = queryTopTaskPerTeam()
 
-const sortedTeams = computed(() => {
+const sortedTeams = computed<[TeamId, ApiFinishedCompilerTaskSummary][] | undefined>(() => {
   if (!topTasks.value) {
     return undefined
   }
-  const result: TaskWithFinishedTests = Array.from(topTasks.value.entries()).map(([team, task]) => [
-    task.type === 'RanTests' ? task.statistics.total.total : 0,
-    [team, task],
-  ])
+  const result: TaskWithFinishedTest[] = Array.from(topTasks.value.entries()).map(
+    ([team, task]) => ({
+      passingTests: task.type === 'RanTests' ? task.statistics.success.total : 0,
+      task,
+      team,
+    }),
+  )
 
   result.sort((a, b) => {
-    const cmp = b[0] - a[0]
+    let cmp = b.passingTests - a.passingTests
     if (cmp !== 0) {
       return cmp
     }
-    return a[1][0].localeCompare(b[1][0])
+    cmp = a.task.info.start.getTime() - b.task.info.start.getTime()
+    if (cmp !== 0) {
+      return cmp
+    }
+    return a.team.localeCompare(b.team)
   })
 
-  return result.map(([_, it]) => it)
+  return result.map((it) => [it.team, it.task])
 })
 </script>
