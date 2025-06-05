@@ -65,14 +65,20 @@ pub fn judge_output(
         .collect::<Vec<String>>()
         .join("\n\n");
 
-    ExecutionOutput::Failure {
-        execution: FinishedExecution {
-            stdout: execution.stdout,
-            stderr: execution.stderr,
-            runtime: execution.runtime,
-            exit_status: execution.exit_status,
-        },
-        accumulated_errors: Some(problems.clone()),
+    let execution = FinishedExecution {
+        stdout: execution.stdout,
+        stderr: execution.stderr,
+        runtime: execution.runtime,
+        exit_status: execution.exit_status,
+    };
+
+    if matches!(exit_status, CrowExitStatus::Timeout) {
+        ExecutionOutput::Timeout(execution)
+    } else {
+        ExecutionOutput::Failure {
+            execution,
+            accumulated_errors: Some(problems.clone()),
+        }
     }
 }
 
