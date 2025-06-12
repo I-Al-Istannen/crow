@@ -310,7 +310,7 @@ pub fn run_with_timeout(
     let mut stderr_buf = Vec::new();
     let mut exit_status: Result<ExitStatus, ()> = Err(());
 
-    while Instant::now() < start + timeout {
+    let mut read_output = || {
         let mut tmpbuf = [0_u8; 1024];
         if let Ok(count) = stdout.read(&mut tmpbuf) {
             stdout_buf.extend_from_slice(&tmpbuf[..count]);
@@ -319,6 +319,10 @@ pub fn run_with_timeout(
         if let Ok(count) = stderr.read(&mut tmpbuf) {
             stderr_buf.extend_from_slice(&tmpbuf[..count]);
         }
+    };
+
+    while Instant::now() < start + timeout {
+        read_output();
 
         if aborted.load(Ordering::Relaxed) {
             return Err(AbortedSnafu {
@@ -342,6 +346,10 @@ pub fn run_with_timeout(
             }
         }
     }
+
+    // It could happen that we read, the process writes more and then the process exits
+    // before our next loop iteration. In this case, we would miss output!
+    read_output();
 
     let stdout = String::from_utf8_lossy(&stdout_buf).to_string();
     let stderr = String::from_utf8_lossy(&stderr_buf).to_string();

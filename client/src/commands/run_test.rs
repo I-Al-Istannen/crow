@@ -7,7 +7,7 @@ use console::style;
 use jiff::{Timestamp, Unit};
 use rayon::ThreadPoolBuilder;
 use shared::execute::execute_test;
-use shared::{CompilerTest, ExecutionOutput, FinishedExecution, TestExecutionOutput, TestModifier};
+use shared::{CompilerTest, TestExecutionOutput};
 use snafu::{ensure, location, IntoError, Location, NoneError, Report, ResultExt, Snafu};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
