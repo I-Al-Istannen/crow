@@ -777,7 +777,7 @@ async fn get_top_task_for_team_and_category(
             AND TestResults.status = ?
             AND Tasks.queue_time BETWEEN ? AND ?
             AND Tests.category = ?
-            AND Tests.provisional_for_category != ?
+            AND (Tests.provisional_for_category IS NULL OR Tests.provisional_for_category != ?)
         GROUP BY Tasks.task_id
         ORDER BY COUNT(test_id) DESC, Tasks.queue_time DESC
         LIMIT 1
