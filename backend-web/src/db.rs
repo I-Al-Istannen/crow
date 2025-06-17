@@ -51,7 +51,13 @@ impl Database {
 
         sqlx::migrate!().run(&pool).await?;
 
+        // This might duplicate the database according to the docs:
+        // https://sqlite.org/lang_vacuum.html#how_vacuum_works
         query!("VACUUM")
+            .execute(&mut *pool.acquire().await?)
+            .await?;
+        // Therefore, we now also checkpoint it
+        query("PRAGMA WAL_CHECKPOINT(TRUNCATE)")
             .execute(&mut *pool.acquire().await?)
             .await?;
 
