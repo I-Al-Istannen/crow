@@ -154,6 +154,11 @@ export const ApiFinishedCompilerTaskSummarySchema = z.discriminatedUnion('type',
   }),
 ])
 
+export const GradingPointsSchema = z.object({
+  points: z.number(),
+  formula: z.string(),
+})
+
 export const FinalSelectedTaskSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('AutomaticallySelected'),
@@ -162,6 +167,7 @@ export const FinalSelectedTaskSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('Finalized'),
     summary: FinishedCompilerTaskSummarySchema,
+    points: GradingPointsSchema.nullable(),
   }),
   z.object({
     type: z.literal('ManuallyOverridden'),
@@ -428,6 +434,7 @@ export type TeamStatistics = z.infer<typeof TeamStatisticsSchema>
 export type AdminFinalizedTask = z.infer<typeof AdminFinalizedTaskSchema>
 export type CountWithProvisional = z.infer<typeof CountWithProvisionalSchema>
 export type FinishedCompilerTaskStatistics = z.infer<typeof FinishedCompilerTaskStatisticsSchema>
+export type GradingPoints = z.infer<typeof GradingPointsSchema>
 
 export function toExecutionStatus(output: TestExecutionOutput): ExecutionExitStatus {
   switch (output.type) {

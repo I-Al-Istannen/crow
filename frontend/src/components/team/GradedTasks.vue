@@ -14,10 +14,38 @@
         :failure-reason="failureReason"
       />
       <div v-if="tasks" class="space-y-2 -mt-2">
-        <div v-for="[category, task] in sortedTasks" :key="category" class="flex flex-col">
-          <span class="font-medium mb-1">{{ category }}:</span>
-          <FinishedTaskOverview :task="task.summary" class="ml-2" />
-        </div>
+        <TooltipProvider>
+          <div v-for="[category, task] in sortedTasks" :key="category" class="flex flex-col">
+            <span class="font-medium mb-1">
+              {{ category }}:
+              <Tooltip v-if="task.type === 'Finalized' && task.points">
+                <TooltipTrigger as-child>
+                  <span class="text-muted-foreground text-sm ml-2">
+                    You got {{ task.points.points }} points, hover for details.
+                    <span v-if="task.points.points >= 80"
+                      ><span class="gradient-primary">Perfect!</span> 🐞</span
+                    >
+                    <span v-else-if="task.points.points >= 60" class="text-gray-700">
+                      Nice one!
+                    </span>
+                    <span v-else-if="task.points.points >= 40" class="text-gray-700">
+                      Well done!
+                    </span>
+                    <span v-else-if="task.points.points >= 20" class="text-gray-700">
+                      Good start, keep going!
+                    </span>
+                    <span v-else class="text-gray-700">You can do better, I believe in you :)</span>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  The rating formula for this lab is
+                  <span class="font-mono ml-1">{{ task.points.formula }}</span>
+                </TooltipContent>
+              </Tooltip>
+            </span>
+            <FinishedTaskOverview :task="task.summary" class="ml-2" />
+          </div>
+        </TooltipProvider>
       </div>
     </CardContent>
   </Card>
@@ -25,6 +53,7 @@
 
 <script setup lang="ts">
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import DataLoadingExplanation from '@/components/DataLoadingExplanation.vue'
 import FinishedTaskOverview from '@/components/task-overview/FinishedTaskOverview.vue'
 import { computed } from 'vue'
