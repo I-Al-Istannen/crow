@@ -1,0 +1,44 @@
+{
+  "db_name": "SQLite",
+  "query": "\n        SELECT\n            test_id as \"test_id!: TestId\",\n            (\n                SELECT result FROM ExecutionResults\n                WHERE execution_id = binary_exec_id\n            ) as \"binary_status?: ExecutionExitStatus\",\n            (\n                SELECT result FROM ExecutionResults\n                WHERE execution_id = compiler_exec_id\n            ) as \"compiler_status!: ExecutionExitStatus\",\n            provisional_for_category as \"provisional_for_category?\",\n            (SELECT category FROM Tests WHERE id = test_id) as \"category?\"\n        FROM TestResults\n        WHERE task_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "test_id!: TestId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "binary_status?: ExecutionExitStatus",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "compiler_status!: ExecutionExitStatus",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "provisional_for_category?",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "category?",
+        "ordinal": 4,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "b3cff23f3881edff2c290d944eca6f35ce9e59e5799149f76c8de719faeda64b"
+}

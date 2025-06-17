@@ -47,6 +47,7 @@ mod config;
 mod db;
 mod endpoints;
 mod error;
+mod grading_formulas;
 mod integration;
 mod storage;
 mod types;

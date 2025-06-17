@@ -8,6 +8,7 @@ pub struct FinishedTestSummary {
     pub test_id: TestId,
     pub output: ExecutionExitStatus,
     pub provisional_for_category: Option<String>,
+    pub category: Option<String>,
 }
 
 impl From<FinishedTest> for FinishedTestSummary {
@@ -16,6 +17,7 @@ impl From<FinishedTest> for FinishedTestSummary {
             test_id: value.test_id.into(),
             output: (&value.output).into(),
             provisional_for_category: value.provisional_for_category,
+            category: value.category,
         }
     }
 }
@@ -26,6 +28,7 @@ impl From<&FinishedTest> for FinishedTestSummary {
             test_id: value.test_id.clone().into(),
             output: (&value.output).into(),
             provisional_for_category: value.provisional_for_category.clone(),
+            category: value.category.clone(),
         }
     }
 }

@@ -8,6 +8,11 @@ jwt_secret = "A very cool JWT secret."
 starts_at = "2025-04-20 14:00:00[Europe/Berlin]"
 labs_end_at = "2025-05-26 14:00:00[Europe/Berlin]"
 tests_end_at = "2025-05-26 14:00:00[Europe/Berlin]"
+# See https://crates.io/crates/evalexpr for operators
+# Variables: `passed_{slugify(category name)}`,
+#            `total_{slugify(category name)}`,
+# E.g. `passed_lab_1` for `Lab 1`
+grading_formula = "ceil( ((passed_lab_1 - 314) / (total_lab_1 - 314)) * 80 )"
 
 [test.categories."Task 2"]
 starts_at = "2025-04-21 14:00:00[Europe/Berlin]"

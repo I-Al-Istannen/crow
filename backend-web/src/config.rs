@@ -76,6 +76,16 @@ impl TestConfig {
             .map(|(name, _)| name.as_str())
             .collect()
     }
+
+    /// Sorted by end time of lab
+    pub fn sorted_categories(&self) -> Vec<&str> {
+        let mut categories = self.categories.iter().collect::<Vec<_>>();
+        categories.sort_by_key(|(_, meta)| &meta.labs_end_at);
+        categories
+            .into_iter()
+            .map(|(name, _)| name.as_str())
+            .collect::<Vec<_>>()
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -83,6 +93,7 @@ pub struct TestCategory {
     pub starts_at: Zoned,
     pub labs_end_at: Zoned,
     pub tests_end_at: Zoned,
+    pub grading_formula: Option<evalexpr::Node>,
 }
 
 impl TestCategory {

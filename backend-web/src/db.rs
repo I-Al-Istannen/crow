@@ -12,9 +12,9 @@ use crate::config::{TeamEntry, TestCategory};
 use crate::error::{Result, SqlxSnafu, WebError};
 use crate::types::{
     CreatedExternalRun, ExternalRunId, ExternalRunStatus, FinalSubmittedTask,
-    FinishedCompilerTaskSummary, FullUserForAdmin, OwnUser, Repo, TaskId, Team, TeamId,
-    TeamIntegrationToken, Test, TestId, TestSummary, TestWithTasteTesting, User, UserId, UserRole,
-    WorkItem,
+    FinishedCompilerTaskSummary, FinishedTestSummary, FullUserForAdmin, OwnUser, Repo, TaskId,
+    Team, TeamId, TeamIntegrationToken, Test, TestId, TestSummary, TestWithTasteTesting, User,
+    UserId, UserRole, WorkItem,
 };
 use jiff::Timestamp;
 use shared::{indent, FinishedCompilerTask, TestExecutionOutput};
@@ -193,6 +193,15 @@ impl Database {
     pub async fn get_task(&self, task_id: &TaskId) -> Result<(FinishedCompilerTask, Vec<TestId>)> {
         let pool = self.read_lock().await;
         task::get_task(&*pool, task_id).await
+    }
+
+    pub async fn get_finished_test_summaries(
+        &self,
+        task_id: &TaskId,
+    ) -> Result<Vec<FinishedTestSummary>> {
+        let pool = self.read_lock().await;
+        task::get_finished_test_summaries(&mut *pool.acquire().await.context(SqlxSnafu)?, task_id)
+            .await
     }
 
     pub async fn get_recent_tasks(

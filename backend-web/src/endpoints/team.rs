@@ -1,13 +1,16 @@
 use super::{Json, Path};
 use crate::auth::Claims;
 use crate::config::TestCategory;
+use crate::db::Database;
 use crate::error::{Result, WebError};
+use crate::grading_formulas;
+use crate::grading_formulas::GradingPoints;
 use crate::storage::GitError;
 use crate::types::{
     AppState, FinalSubmittedTask, FinishedCompilerTaskSummary, Repo, TaskId, TeamId, TeamInfo,
 };
 use axum::extract::State;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use snafu::{location, Report};
 use std::collections::{HashMap, HashSet};
 use tracing::{info, instrument};
@@ -104,8 +107,15 @@ pub async fn get_tasks_for_team(
 pub async fn get_final_tasks(
     State(state): State<AppState>,
     claims: Claims,
-) -> Result<Json<HashMap<String, FinalSubmittedTask>>> {
+) -> Result<Json<HashMap<String, FinalSubmittedTaskWithPoints>>> {
     let mut result = HashMap::new();
+
+    let categories = state
+        .test_config
+        .sorted_categories()
+        .into_iter()
+        .map(str::to_string)
+        .collect::<Vec<_>>();
 
     for (name, meta) in state.test_config.categories {
         if let Some(task) = state
@@ -113,11 +123,61 @@ pub async fn get_final_tasks(
             .get_final_submitted_task_for_team_and_category(&claims.team, &name, &meta, true)
             .await?
         {
-            result.insert(name, task);
+            let points = get_grading_points(&state.db, &categories, &name, &meta, &task).await?;
+            result.insert(name, FinalSubmittedTaskWithPoints { task, points });
         }
     }
 
     Ok(Json(result))
+}
+
+async fn get_grading_points(
+    db: &Database,
+    categories: &[String],
+    category_name: &str,
+    meta: &TestCategory,
+    task: &FinalSubmittedTask,
+) -> Result<Option<GradingPoints>> {
+    // Only calculate points for finalized tasks
+    if !matches!(task, FinalSubmittedTask::Finalized { .. }) {
+        return Ok(None);
+    }
+    // If we have no grading formula, we cannot calculate points
+    let Some(grading_formula) = &meta.grading_formula else {
+        return Ok(None);
+    };
+
+    let allowed_provisional = categories
+        .iter()
+        .take_while(|c| c != &category_name)
+        .collect::<Vec<_>>();
+
+    let summary = db
+        .get_finished_test_summaries(&task.task_id())
+        .await?
+        .into_iter()
+        .filter(|it| {
+            let Some(provisional) = &it.provisional_for_category else {
+                return true; // Include tests that are not provisional
+            };
+            // And everything that came before us
+            allowed_provisional.contains(&provisional)
+        })
+        .collect::<Vec<_>>();
+
+    // Fetch grading points for the task using the grading formula
+    let points = grading_formulas::get_points_for_task(grading_formula, &summary);
+    let points = match points {
+        Ok(points) => Some(points),
+        Err(e) => {
+            return Err(WebError::internal_error(
+                Report::from_error(&e).to_string(),
+                location!(),
+            ));
+        }
+    };
+
+    Ok(points)
 }
 
 #[instrument(skip_all)]
@@ -247,4 +307,12 @@ pub struct TeamPatchPayload {
 pub struct SetFinalTaskPayload {
     task_id: TaskId,
     categories: HashSet<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FinalSubmittedTaskWithPoints {
+    #[serde(flatten)]
+    pub task: FinalSubmittedTask,
+    pub points: Option<GradingPoints>,
 }

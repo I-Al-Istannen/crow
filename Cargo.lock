@@ -336,6 +336,7 @@ dependencies = [
  "clap",
  "crypto_box",
  "derive_more",
+ "evalexpr",
  "futures-util",
  "jiff",
  "jsonwebtoken",
@@ -1055,6 +1056,15 @@ dependencies = [
  "cfg-if",
  "home",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "evalexpr"
+version = "12.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02a3229bec56a977f174b32fe7b8d89e8c79ebb4493d10ad763b6676dc2dc0c9"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

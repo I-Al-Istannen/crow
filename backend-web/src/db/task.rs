@@ -588,7 +588,24 @@ async fn get_task_summary(
         });
     }
 
-    let tests = query!(
+    let tests = get_finished_test_summaries(con, task_id)
+        .instrument(info_span!("sqlx_get_task_summary_tests"))
+        .await?;
+
+    let statistics = tests.as_slice().into();
+    Ok(FinishedCompilerTaskSummary::RanTests {
+        info,
+        outdated: get_outdated_tests(con, task_id).await?,
+        statistics,
+    })
+}
+
+#[instrument(skip_all)]
+pub async fn get_finished_test_summaries(
+    con: &mut SqliteConnection,
+    task_id: &TaskId,
+) -> Result<Vec<FinishedTestSummary>> {
+    query!(
         r#"
         SELECT
             test_id as "test_id!: TestId",
@@ -600,7 +617,8 @@ async fn get_task_summary(
                 SELECT result FROM ExecutionResults
                 WHERE execution_id = compiler_exec_id
             ) as "compiler_status!: ExecutionExitStatus",
-            provisional_for_category as "provisional_for_category?"
+            provisional_for_category as "provisional_for_category?",
+            (SELECT category FROM Tests WHERE id = test_id) as "category?"
         FROM TestResults
         WHERE task_id = ?"#,
         task_id
@@ -609,18 +627,12 @@ async fn get_task_summary(
         test_id: it.test_id,
         output: it.binary_status.unwrap_or(it.compiler_status),
         provisional_for_category: it.provisional_for_category,
+        category: it.category,
     })
     .fetch_all(&mut *con)
     .instrument(info_span!("sqlx_get_task_summary_tests"))
     .await
-    .context(SqlxSnafu)?;
-
-    let statistics = tests.as_slice().into();
-    Ok(FinishedCompilerTaskSummary::RanTests {
-        info,
-        outdated: get_outdated_tests(con, task_id).await?,
-        statistics,
-    })
+    .context(SqlxSnafu)
 }
 
 async fn get_outdated_tests(con: &mut SqliteConnection, task_id: &TaskId) -> Result<Vec<TestId>> {
