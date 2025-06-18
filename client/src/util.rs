@@ -2,17 +2,20 @@ use console::style;
 use shared::execute::{run_with_timeout, CommandResult, RunWithTimeoutError};
 use shared::exit::CrowExitStatus;
 use shared::{indent, ExecutionOutput, FinishedExecution, TestExecutionOutput};
+use snafu::Report;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
+use std::io::Write;
 use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::thread;
 use std::time::Duration;
 use sysinfo::{Pid, ProcessRefreshKind, RefreshKind};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 #[derive(Debug, Clone, Default)]
 pub struct StyledText(String);
@@ -208,15 +211,19 @@ pub fn execute_locally(
     path: &Path,
     cmd: &[String],
     timeout: Option<Duration>,
+    stdin: String,
 ) -> Result<CommandResult, Box<dyn Error + Sync + Send>> {
     let mut child = Command::new(path)
         .args(cmd)
         .process_group(0)
-        .stdin(Stdio::null())
+        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .map_err(Box::new)?;
+
+    let mut stdin_pipe = child.stdin.take().expect("stdin");
+    let stdin_res = thread::spawn(move || stdin_pipe.write_all(stdin.as_bytes()));
 
     let res = run_with_timeout(
         Arc::new(AtomicBool::new(false)),
@@ -242,6 +249,15 @@ pub fn execute_locally(
             return Err(Box::new(e));
         }
     };
+
+    if !stdin_res.is_finished() {
+        info!(
+            "Writing input to stdin did not finish before execution ended. \
+            This can be likely ignored, but maybe your program crashed before consuming all input."
+        )
+    } else if let Ok(Err(e)) = stdin_res.join() {
+        warn!(error = %Report::from_error(e), "Writing to stdin failed")
+    }
 
     Ok(CommandResult::Unprocessed((
         status,

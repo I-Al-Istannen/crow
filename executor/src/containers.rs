@@ -8,6 +8,7 @@ use shared::{
     InternalError, TestExecutionOutput,
 };
 use snafu::{ensure, location, IntoError, Location, NoneError, Report, ResultExt, Snafu};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStderr, ChildStdout, Command, ExitStatus, Stdio};
 use std::sync::atomic::AtomicBool;
@@ -15,7 +16,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::{fs, io};
 use tempfile::{TempDir, TempPath};
-use tracing::{debug, error, warn};
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 pub const CROW_SIGNAL_SHIM_MAGIC: &str = "crow-internal_KILLED_BY_SIGNAL: ";
@@ -169,8 +170,8 @@ pub enum TestRunError {
         location: Location,
     },
     #[snafu(display("Could not pass test into container via stdin at {location}"))]
-    PassInputToContainerDriver {
-        source: serde_json::Error,
+    PassInputToContainer {
+        source: io::Error,
         #[snafu(implicit)]
         location: Location,
     },
@@ -564,10 +565,16 @@ impl TaskContainer<Built> {
             &test_container.rootfs.clone(),
             &output_binary_path,
             Path::new("/"),
-            |path, cmd, override_timeout| {
+            |path, cmd, override_timeout, stdin| {
                 let timeout = override_timeout.unwrap_or(timeout);
-                let res =
-                    test_container.execute_command(path, cmd, aborted.clone(), timeout, limits);
+                let res = test_container.execute_command(
+                    path,
+                    cmd,
+                    aborted.clone(),
+                    timeout,
+                    limits,
+                    stdin,
+                );
                 match res {
                     Ok(res) => Ok(res),
                     Err(e) => Err(Box::new(e)),
@@ -620,6 +627,7 @@ impl<'a> TaskContainer<ForTest<'a>> {
         aborted: Arc<AtomicBool>,
         timeout: Duration,
         limits: &LimitsConfig,
+        stdin: String,
     ) -> Result<CommandResult, TestRunError> {
         let mut full_command = vec![
             format!("/{CROW_SHIM_IN_CONTAINER_PATH}"),
@@ -643,6 +651,15 @@ impl<'a> TaskContainer<ForTest<'a>> {
         let mut process =
             start_container(&self.workdir, &self.container_id).context(ExecutionStartSnafu)?;
 
+        // Do this in a new thread to ensure it does not block ourselves, which would prevent
+        // us from advancing the stdout of the child, creating a deadlock.
+        let mut stdin_pipe = process.stdin.take().expect("stdin was piped");
+        let stdin_error = std::thread::spawn(move || {
+            stdin_pipe
+                .write_all(stdin.as_bytes())
+                .context(PassInputToContainerSnafu)
+        });
+
         let res = wait_for_container(
             aborted,
             &self.container_id,
@@ -651,6 +668,21 @@ impl<'a> TaskContainer<ForTest<'a>> {
             &mut process,
             timeout,
         );
+
+        // If we finished the stdin writing, and it had an error, we probably want to report it.
+        // If it did not finish, something weird happened, and it will finish at some point, as
+        // the child process should be dead by now. The OS just might take a bit to communicate
+        // that.
+        if stdin_error.is_finished() {
+            if let Ok(res) = stdin_error.join() {
+                res?;
+            }
+        } else {
+            info!(
+                container_id = %self.container_id,
+                "Stdin writing did not finish before waiting for container"
+            );
+        }
 
         wait_result_to_command_result(&self.container_id, res)
     }

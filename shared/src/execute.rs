@@ -78,6 +78,7 @@ pub fn execute_test(
         &Path,
         &[String],
         Option<Duration>,
+        String,
     ) -> Result<CommandResult, Box<dyn Error + Sync + Send>>,
 ) -> TestExecutionOutput {
     impl_execute_test(
@@ -102,6 +103,7 @@ fn impl_execute_test(
         &Path,
         &[String],
         Option<Duration>,
+        String,
     ) -> Result<CommandResult, Box<dyn Error + Sync + Send>>,
 ) -> Result<TestExecutionOutput, ExecuteInternalError> {
     let should_run_binary = !test.binary_modifiers.is_empty();
@@ -130,6 +132,7 @@ fn impl_execute_test(
         Path::new(&test.compile_command[0]),
         &compiler_commands,
         None,
+        test.compiler_modifiers.as_slice().full_input(),
     )
     .context(CompilerSnafu {
         runtime: start.elapsed(),
@@ -173,11 +176,16 @@ fn impl_execute_test(
     } else {
         None
     };
-    let binary_result = run_cmd(Path::new(&output_binary_run_path), &run_commands, timeout)
-        .context(BinarySnafu {
-            runtime: start.elapsed(),
-            compiler_output: compiler_output.clone(),
-        })?;
+    let binary_result = run_cmd(
+        Path::new(&output_binary_run_path),
+        &run_commands,
+        timeout,
+        test.binary_modifiers.as_slice().full_input(),
+    )
+    .context(BinarySnafu {
+        runtime: start.elapsed(),
+        compiler_output: compiler_output.clone(),
+    })?;
 
     let binary_output = match binary_result {
         CommandResult::ProcessedFailed(ExecutionOutput::Timeout(execution)) => {
