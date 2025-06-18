@@ -6,6 +6,7 @@
         <TableRow>
           <TableHead>Team</TableHead>
           <TableHead>Task</TableHead>
+          <TableHead>Points</TableHead>
           <TableHead>Total Tests</TableHead>
           <TableHead>Compile error</TableHead>
           <TableHead>Runtime error</TableHead>
@@ -29,6 +30,13 @@
               }}
             </RouterLink>
             <span v-else>-</span>
+          </TableCell>
+          <TableCell class="text-muted-foreground">
+            <span v-if="!stat.points">-</span>
+            <span v-else-if="stat.points.points == 80" class="text-green-600">
+              {{ stat.points?.points }}
+            </span>
+            <span v-else>{{ stat.points?.points }}</span>
           </TableCell>
           <TableCell>{{ stat.classification ? sumTests(stat.classification) : 0 }}</TableCell>
           <TableCell>{{ stat.classification?.compileError ?? 0 }}</TableCell>
