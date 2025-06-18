@@ -1,6 +1,7 @@
-use crate::types::{TeamId, UserId};
+use crate::types::{FinishedTestSummary, TeamId, UserId};
 use jiff::{Timestamp, Zoned};
 use serde::{Deserialize, Deserializer};
+use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -84,6 +85,44 @@ impl TestConfig {
         categories
             .into_iter()
             .map(|(name, _)| name.as_str())
+            .collect::<Vec<_>>()
+    }
+
+    /// Returns all categories up to, but excluding, the given category.
+    pub fn previous_categories(&self, category_name: &str) -> Vec<String> {
+        self.sorted_categories()
+            .into_iter()
+            .take_while(|c| c != &category_name)
+            .map(str::to_string)
+            .collect::<Vec<_>>()
+    }
+
+    /// Returns all tests that count towards the given category.
+    pub fn get_counting_tests<'a>(
+        &self,
+        category_name: &'_ str,
+        test_summaries: &'a [impl Borrow<FinishedTestSummary>],
+    ) -> Vec<&'a FinishedTestSummary> {
+        let previous_categories = self.previous_categories(category_name);
+
+        test_summaries
+            .iter()
+            .filter(|it| {
+                let it: &FinishedTestSummary = (*it).borrow();
+                let Some(category) = &it.category else {
+                    // we do not know what it belongs to (i.e. it was deleted),
+                    // so ignore it. If it is from this or a previous category, deletions can only
+                    // be done by admins.
+                    return false;
+                };
+                // If it is from the current category, it must not be provisional
+                if category == category_name {
+                    return it.provisional_for_category.is_none();
+                }
+                // Otherwise accept it if it is from a previous category
+                previous_categories.contains(category)
+            })
+            .map(|it| it.borrow())
             .collect::<Vec<_>>()
     }
 }

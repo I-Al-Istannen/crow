@@ -378,7 +378,10 @@ export const AdminFinalizedTaskSchema = z.object({
 export const TeamStatisticsSchema = z.object({
   team: TeamIdSchema,
   testsPerCategory: z.record(z.string(), TestClassificationSchema),
-  finalizedTasksPerCategory: z.record(z.string(), AdminFinalizedTaskSchema),
+  finalizedTasksPerCategory: z.record(
+    z.string(),
+    z.tuple([AdminFinalizedTaskSchema, GradingPointsSchema.nullable()]),
+  ),
 })
 
 export type AbortedExecution = z.infer<typeof AbortedExecutionSchema>

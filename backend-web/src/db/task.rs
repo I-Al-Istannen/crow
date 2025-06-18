@@ -842,12 +842,12 @@ pub(super) async fn finalize_submission(
 }
 
 #[instrument(skip_all)]
-pub(super) async fn fetch_finalized_task(
+pub(super) async fn fetch_finalized_task_id(
     con: &mut SqliteConnection,
     team_id: &TeamId,
     category: &str,
-) -> Result<Option<FinishedCompilerTaskSummary>> {
-    let task_id = query!(
+) -> Result<Option<TaskId>> {
+    query!(
         r#"
         SELECT task_id as "task_id: TaskId"
         FROM FinalizedSubmittedTasks
@@ -858,9 +858,20 @@ pub(super) async fn fetch_finalized_task(
     )
     .map(|it| it.task_id)
     .fetch_optional(&mut *con)
-    .instrument(info_span!("sqlx_get_finalized_task"))
+    .instrument(info_span!("sqlx_fetch_finalized_task_id"))
     .await
-    .context(SqlxSnafu)?;
+    .context(SqlxSnafu)
+}
+
+#[instrument(skip_all)]
+pub(super) async fn fetch_finalized_task(
+    con: &mut SqliteConnection,
+    team_id: &TeamId,
+    category: &str,
+) -> Result<Option<FinishedCompilerTaskSummary>> {
+    let task_id = fetch_finalized_task_id(con, team_id, category)
+        .instrument(info_span!("sqlx_fetch_finalized_task_id_inner"))
+        .await?;
 
     if let Some(task_id) = task_id {
         let summary = get_task_summary(con, &task_id)

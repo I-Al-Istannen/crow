@@ -46,6 +46,7 @@
 <script setup lang="ts">
 import {
   type AdminFinalizedTask,
+  type GradingPoints,
   type TeamId,
   type TeamStatistics,
   type TestClassification,
@@ -63,7 +64,8 @@ import { computed } from 'vue'
 type StatForTeam = {
   teamId: TeamId
   classification: TestClassification
-  finalizedTask: AdminFinalizedTask
+  finalizedTask: AdminFinalizedTask | null
+  points: GradingPoints | null
 }
 
 const props = defineProps<{
@@ -76,7 +78,8 @@ const stats = computed<StatForTeam[]>(() => {
     .map((stat) => ({
       teamId: stat.team,
       classification: stat.testsPerCategory[props.category]!,
-      finalizedTask: stat.finalizedTasksPerCategory[props.category]!,
+      finalizedTask: stat.finalizedTasksPerCategory[props.category]?.[0],
+      points: stat.finalizedTasksPerCategory[props.category]?.[1],
     }))
     .sort((a, b) => a.teamId.localeCompare(b.teamId))
 })

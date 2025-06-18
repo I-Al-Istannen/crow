@@ -1,6 +1,7 @@
 use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::{Result, WebError};
+use crate::grading_formulas::{get_grading_points_for_task, GradingPoints};
 use crate::types::{
     AppState, FinishedCompilerTaskStatistics, FinishedCompilerTaskSummary, TaskId, TeamId, Test,
     TestId, WorkItem,
@@ -198,13 +199,24 @@ pub async fn team_statistics(
         for test in tests.get(&id).unwrap_or(&Vec::new()) {
             entry.absorb(test);
         }
-        for category in state.test_config.categories.keys() {
-            let task = state.db.fetch_finalized_task(&id, category).await?;
+        for (category, meta) in &state.test_config.categories {
+            let finalized_task = state.db.fetch_finalized_task_id(&id, category).await?;
 
-            if let Some(summary) = task {
+            if let Some(finalized_task) = finalized_task {
+                let summaries = state
+                    .db
+                    .get_finished_test_summaries(&finalized_task)
+                    .await?;
+                let summaries = state.test_config.get_counting_tests(category, &summaries);
+                let points =
+                    get_grading_points_for_task(&state.test_config, category, meta, &summaries)?;
+                let finalized_task = FinalizedTask {
+                    task_id: finalized_task,
+                    statistics: FinishedCompilerTaskStatistics::from(summaries.as_slice()),
+                };
                 entry
                     .finalized_tasks_per_category
-                    .insert(category.clone(), summary.into());
+                    .insert(category.clone(), (finalized_task, points));
             }
         }
 
@@ -231,7 +243,7 @@ pub struct RerunResponse {
 pub struct TeamStatistics {
     pub team: TeamId,
     pub tests_per_category: HashMap<String, TestClassification>,
-    pub finalized_tasks_per_category: HashMap<String, FinalizedTask>,
+    pub finalized_tasks_per_category: HashMap<String, (FinalizedTask, Option<GradingPoints>)>,
 }
 
 impl TeamStatistics {

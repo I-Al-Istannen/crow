@@ -1,6 +1,7 @@
 use crate::types::{ExecutionExitStatus, TaskId, TestId, UserId};
 use serde::{Deserialize, Serialize};
 use shared::{FinishedCompilerTask, FinishedTaskInfo, FinishedTest};
+use std::borrow::Borrow;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -106,12 +107,12 @@ pub struct FinishedCompilerTaskStatistics {
     total: CountWithProvisional,
 }
 
-impl From<&[FinishedTestSummary]> for FinishedCompilerTaskStatistics {
-    fn from(tests: &[FinishedTestSummary]) -> Self {
+impl<T: Borrow<FinishedTestSummary>> From<&[T]> for FinishedCompilerTaskStatistics {
+    fn from(tests: &[T]) -> Self {
         let mut statistics = Self::default();
         for test in tests {
-            let provisional = test.provisional_for_category.is_some();
-            match test.output {
+            let provisional = test.borrow().provisional_for_category.is_some();
+            match &test.borrow().output {
                 ExecutionExitStatus::Aborted => statistics.abort.inc(provisional),
                 ExecutionExitStatus::Error => statistics.error.inc(provisional),
                 ExecutionExitStatus::Failure => statistics.failure.inc(provisional),

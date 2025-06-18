@@ -1,9 +1,12 @@
+use crate::config::{TestCategory, TestConfig};
+use crate::error::WebError;
 use crate::types::{ExecutionExitStatus, FinishedTestSummary};
 use evalexpr::{
     ContextWithMutableVariables, DefaultNumericTypes, HashMapContext, Node, Operator, Value,
 };
 use serde::Serialize;
-use snafu::{ResultExt, Whatever};
+use snafu::{location, Report, ResultExt, Whatever};
+use std::borrow::Borrow;
 use std::collections::HashMap;
 
 #[derive(Debug, Default)]
@@ -36,7 +39,7 @@ impl GradingPoints {
 /// Evaluates the grading formula for a task based on the provided tests.
 pub fn get_points_for_task(
     formula: &Node,
-    tests: &[FinishedTestSummary],
+    tests: &[impl Borrow<FinishedTestSummary>],
 ) -> Result<GradingPoints, Whatever> {
     if tests.is_empty() {
         return Ok(GradingPoints::new(0.0, formula_to_string(formula)));
@@ -44,17 +47,19 @@ pub fn get_points_for_task(
 
     let categories: HashMap<String, CategoryInfo> =
         tests.iter().fold(HashMap::new(), |mut acc, test| {
-            let Some(category) = &test.category else {
+            let Some(category) = &test.borrow().category else {
                 return acc;
             };
-            if let Some(provisional_category) = &test.provisional_for_category {
+            if let Some(provisional_category) = &test.borrow().provisional_for_category {
                 // This test was provisional for its category, so we do not count it.
                 if provisional_category == category {
                     return acc;
                 }
             }
 
-            acc.entry(category.clone()).or_default().update(test);
+            acc.entry(category.clone())
+                .or_default()
+                .update(test.borrow());
             acc
         });
 
@@ -155,4 +160,35 @@ fn formula_to_string(formula: &Node) -> String {
         Operator::VariableIdentifierRead { .. } => format!("{operator}{}", children.join(" ")),
         Operator::FunctionIdentifier { .. } => format!("{operator}{}", children.join(", ")),
     }
+}
+
+/// This answers the question: "This task was submitted in category X, how many points does it get?"
+/// To answer this, we need to look at all test results for this task and then only count those
+/// where the test category is either from *earlier* or the test is not provisional.
+pub fn get_grading_points_for_task(
+    test_config: &TestConfig,
+    category_name: &str,
+    meta: &TestCategory,
+    summaries: &[impl Borrow<FinishedTestSummary>],
+) -> Result<Option<GradingPoints>, WebError> {
+    // If we have no grading formula, we cannot calculate points
+    let Some(grading_formula) = &meta.grading_formula else {
+        return Ok(None);
+    };
+
+    let summaries = test_config.get_counting_tests(category_name, summaries);
+
+    // Fetch grading points for the task using the grading formula
+    let points = get_points_for_task(grading_formula, &summaries);
+    let points = match points {
+        Ok(points) => Some(points),
+        Err(e) => {
+            return Err(WebError::internal_error(
+                Report::from_error(&e).to_string(),
+                location!(),
+            ));
+        }
+    };
+
+    Ok(points)
 }
