@@ -94,7 +94,8 @@ fn get_points(
 
     let res = res
         .as_float()
-        .whatever_context("grading formula did not return a float")?;
+        .or(res.as_int().map(|i| i as f64))
+        .whatever_context("grading formula did not return am int/float")?;
 
     // Let's not return negative points
     Ok(GradingPoints::new(res.max(0.0), formula_to_string(formula)))
