@@ -87,9 +87,6 @@ const columnHelper = createColumnHelper<FinishedTest>()
 const isMultiSorting = computed(() => {
   return table.getState().sorting.length > 1
 })
-const allStatusValues = computed(() =>
-  Array.from(new Set(tests.value.map((test) => test.output.type))).sort(),
-)
 
 function boolFilterFn(row: Row<unknown>, columnId: string, filterValue: boolean | boolean[]) {
   const cellValue = row.getValue<boolean>(columnId)
@@ -117,6 +114,7 @@ const columns: ColumnDef<FinishedTest, never>[] = [
       h(DataTableColumnHeader<FinishedTest>, {
         column: column.column,
         title: 'Name',
+        hideValueFilter: true,
       }),
     id: 'testId',
     meta: {
@@ -128,7 +126,6 @@ const columns: ColumnDef<FinishedTest, never>[] = [
       h(DataTableColumnHeader<FinishedTest>, {
         column: column.column,
         title: 'Status',
-        potentialValues: allStatusValues,
       }),
     id: 'status',
     meta: {

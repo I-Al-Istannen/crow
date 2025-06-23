@@ -37,8 +37,8 @@
           <LucideArrowDownZA class="mr-2 h-3.5 w-3.5 text-muted-foreground/70" />
           Desc
         </DropdownMenuCheckboxItem>
-        <DropdownMenuSeparator v-if="uniqueValues.length > 1" />
-        <DropdownMenuGroup v-if="uniqueValues.length > 1">
+        <DropdownMenuSeparator v-if="uniqueValues.length > 1 && !hideValueFilter" />
+        <DropdownMenuGroup v-if="uniqueValues.length > 1 && !hideValueFilter">
           <DropdownMenuLabel class="text-xs">Filter</DropdownMenuLabel>
           <DropdownMenuCheckboxItem
             v-for="value in uniqueValues"
@@ -81,14 +81,14 @@ import {
   LucideArrowUpDown,
   LucideFilter,
 } from 'lucide-vue-next'
-import { type Ref, computed } from 'vue'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { computed } from 'vue'
 
 interface DataTableColumnHeaderProps {
   column: Column<T>
   title: string
-  potentialValues?: Ref<string[]>
+  hideValueFilter?: boolean
 }
 
 defineOptions({

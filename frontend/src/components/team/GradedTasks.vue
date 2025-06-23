@@ -22,8 +22,8 @@
                 <TooltipTrigger as-child>
                   <span class="text-muted-foreground text-sm ml-2">
                     You got {{ task.points.points }} points, hover for details.
-                    <span v-if="task.points.points >= 80"
-                      ><span class="gradient-primary">Perfect!</span> 🐞</span
+                    <span v-if="task.points.points >= 80">
+                      <span class="gradient-primary">Perfect!</span> 🐞</span
                     >
                     <span v-else-if="task.points.points >= 60" class="text-gray-700">
                       Nice one!
