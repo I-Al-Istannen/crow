@@ -439,6 +439,26 @@ export type CountWithProvisional = z.infer<typeof CountWithProvisionalSchema>
 export type FinishedCompilerTaskStatistics = z.infer<typeof FinishedCompilerTaskStatisticsSchema>
 export type GradingPoints = z.infer<typeof GradingPointsSchema>
 
+export type ModifierValue<T extends TestModifier> = T extends { type: 'ExitCode' }
+  ? T['code']
+  : T extends { type: 'ExpectedOutput' }
+    ? T['output']
+    : T extends { type: 'ProgramArgument' }
+      ? T['arg']
+      : T extends { type: 'ProgramArgumentFile' }
+        ? T['contents']
+        : T extends { type: 'ProgramInput' }
+          ? T['input']
+          : T extends { type: 'ShouldCrash' }
+            ? T['signal']
+            : T extends { type: 'ShouldFail' }
+              ? T['reason']
+              : T extends { type: 'ShouldSucceed' }
+                ? undefined
+                : T extends { type: 'ShouldTimeout' }
+                  ? undefined
+                  : 'ERROR, not exhaustive!'
+
 export function toExecutionStatus(output: TestExecutionOutput): ExecutionExitStatus {
   switch (output.type) {
     case 'CompilerFailed':
