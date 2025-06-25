@@ -37,6 +37,7 @@ pub async fn set_test(
     let mut owner = claims.team.clone();
     let mut admin_authored = claims.is_admin();
     let mut limited_to_category = false;
+    let mut provisional_for_category = None;
 
     if let Some(existing) = db.fetch_test(&test_id).await? {
         if existing.owner != claims.team && !claims.is_admin() {
@@ -46,6 +47,7 @@ pub async fn set_test(
         owner = existing.owner;
         admin_authored = existing.admin_authored;
         limited_to_category = existing.limited_to_category;
+        provisional_for_category = existing.provisional_for_category;
     }
 
     let Some(category_meta) = state.test_config.categories.get(&payload.category) else {
@@ -63,11 +65,16 @@ pub async fn set_test(
             ));
         }
     }
-    let provisional_for_category = if provisional {
-        Some(payload.category.clone())
-    } else {
-        None
-    };
+    // Admins just keep the existing provisional state (or default to None).
+    // When they edit a test it is always assumed correct and does not constitute an
+    // update.
+    if !claims.is_admin() {
+        provisional_for_category = if provisional {
+            Some(payload.category.clone())
+        } else {
+            None
+        };
+    }
 
     let test = Test {
         id: test_id,
