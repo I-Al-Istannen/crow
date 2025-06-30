@@ -263,8 +263,7 @@ fn judge_program_should_timeout(exit_status: CrowExitStatus) -> Option<JudgeProb
             } else {
                 Some(JudgeProblem {
                     message: format!(
-                        "Program should have timed out, but it exited with {}.",
-                        exit_status
+                        "Program should have timed out, but it exited with {exit_status}."
                     ),
                     modifier_name: "ShouldTimeout".to_string(),
                 })

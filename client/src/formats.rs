@@ -395,12 +395,13 @@ fn require_value(name: &str, maybe_value: Option<String>) -> Result<String, Form
 
 fn parse_crash_signal(val: &str) -> Result<CrashSignal, FormatError> {
     match val {
+        "Abort" => Ok(CrashSignal::Abort),
         "SegmentationFault" => Ok(CrashSignal::SegmentationFault),
         "FloatingPointException" => Ok(CrashSignal::FloatingPointException),
         other => Err(FormatError::MalformedModifier {
             message: format!(
                 "Unknown crash signal `{other}`. \
-                Valid are `SegmentationFault` and `FloatingPointException`"
+                Valid are `Abort`, `SegmentationFault`, and `FloatingPointException`"
             ),
             location: location!(),
         }),

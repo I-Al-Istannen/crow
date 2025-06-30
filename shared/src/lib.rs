@@ -44,6 +44,7 @@ pub struct CompilerTest {
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub enum CrashSignal {
+    Abort,
     SegmentationFault,
     FloatingPointException,
 }
@@ -51,6 +52,7 @@ pub enum CrashSignal {
 impl Display for CrashSignal {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Abort => write!(f, "Abort"),
             Self::SegmentationFault => write!(f, "SegmentationFault"),
             Self::FloatingPointException => write!(f, "FloatingPointException"),
         }
@@ -91,6 +93,7 @@ impl CompilerFailReason {
 impl CrashSignal {
     pub fn linux_signal_name(&self) -> &'static str {
         match self {
+            Self::Abort => "SIGABRT",
             Self::SegmentationFault => "SIGSEGV",
             Self::FloatingPointException => "SIGFPE",
         }
@@ -98,6 +101,7 @@ impl CrashSignal {
 
     pub fn signal_number(&self) -> i32 {
         match self {
+            Self::Abort => 6,
             Self::SegmentationFault => 11,
             Self::FloatingPointException => 8,
         }
@@ -343,7 +347,7 @@ impl FromStr for TestExecutionOutputType {
             "BinaryFailed" => Ok(Self::BinaryFailed),
             "Success" => Ok(Self::Success),
             "Error" => Ok(Self::Error),
-            _ => Err(format!("Invalid TestExecutionOutputType: `{}`", s)),
+            _ => Err(format!("Invalid TestExecutionOutputType: `{s}`")),
         }
     }
 }
@@ -522,7 +526,7 @@ pub fn indent(string: &str, count: usize) -> String {
         .join("\n");
 
     if string.ends_with("\n") {
-        format!("{}\n", indented)
+        format!("{indented}\n")
     } else {
         indented
     }
