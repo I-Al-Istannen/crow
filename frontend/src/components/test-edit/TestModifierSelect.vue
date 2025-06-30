@@ -101,7 +101,7 @@
         <SelectContent>
           <SelectGroup>
             <SelectItem
-              v-for="arg in ['FloatingPointException', 'SegmentationFault']"
+              v-for="arg in ['FloatingPointException', 'SegmentationFault', 'Abort']"
               :value="arg"
               :key="arg"
             >
@@ -201,7 +201,7 @@ interface ModifierHandler<T extends TestModifier> {
   label: string
   argType: 'short-string' | 'long-string' | 'number' | 'select-fail' | 'select-crash' | 'none'
   init: (modifier: Partial<TestModifier> & T) => void
-  valueLabel?: (modifier: TestModifier & T) => string
+  valueLabel?: (modifier: (TestModifier & T) | ModifierValue<T>) => string
   placeholder?: string
 }
 
@@ -226,7 +226,10 @@ const ALL_MODIFIERS: {
     applicableTo: ['compiler'],
     label: 'Should fail',
     argType: 'select-fail',
-    valueLabel: (mod) => (mod.reason === 'Parsing' ? 'Parsing' : 'Semantic analysis'),
+    valueLabel: (mod) => {
+      const val = typeof mod === 'string' ? mod : mod.reason
+      return val === 'Parsing' ? 'Parsing' : 'Semantic analysis'
+    },
   },
   ShouldCrash: {
     update: (modifier, val) => (modifier.signal = val),
@@ -235,8 +238,14 @@ const ALL_MODIFIERS: {
     applicableTo: ['binary'],
     label: 'Should crash',
     argType: 'select-crash',
-    valueLabel: (mod) =>
-      mod.signal === 'FloatingPointException' ? 'Floating point exception' : 'Segmentation fault',
+    valueLabel: (mod) => {
+      const val = typeof mod === 'string' ? mod : mod.signal
+      return val === 'FloatingPointException'
+        ? 'Floating point exception'
+        : val === 'Abort'
+          ? 'Program aborted'
+          : 'Segmentation fault'
+    },
   },
   ShouldTimeout: {
     update: () => {},

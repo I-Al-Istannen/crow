@@ -263,6 +263,7 @@ export const ShowMyselfResponseSchema = z.object({
 })
 
 export const CrashSignalSchema = z.union([
+  z.literal('Abort'),
   z.literal('SegmentationFault'),
   z.literal('FloatingPointException'),
 ])
