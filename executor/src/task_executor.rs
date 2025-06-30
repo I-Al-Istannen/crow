@@ -248,7 +248,7 @@ fn task_run_error_to_task(
         info,
         build_output: ExecutionOutput::Error(InternalError {
             runtime: start_monotonic.elapsed(),
-            message: format!("Internal error while building task:\n{}", report),
+            message: format!("Internal error while building task:\n{report}"),
         }),
     }
 }
@@ -276,7 +276,7 @@ fn test_run_error_to_output(
 
     ExecutionOutput::Error(InternalError {
         runtime: start_monotonic.elapsed(),
-        message: format!("Internal error while running test:\n{}", report),
+        message: format!("Internal error while running test:\n{report}"),
     })
 }
 
@@ -315,7 +315,7 @@ pub fn run_test(
             TestExecutionOutput::Error {
                 output_so_far: ExecutionOutput::Error(InternalError {
                     runtime: start.elapsed(),
-                    message: format!("Internal error while setting up test:\n{}", report),
+                    message: format!("Internal error while setting up test:\n{report}"),
                 }),
             }
         }

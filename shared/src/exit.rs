@@ -45,9 +45,9 @@ impl Display for CrowExitStatus {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::WithSignal { signal } => {
-                write!(f, "killed by signal {}", signal)
+                write!(f, "killed by signal {signal}")
             }
-            Self::Original(exit_status) => write!(f, "exit code {}", exit_status),
+            Self::Original(exit_status) => write!(f, "exit code {exit_status}"),
             Self::Timeout => write!(f, "timed out"),
         }
     }

@@ -275,11 +275,10 @@ impl LimitsConfig {
                 &format!(
                     r#"
                    "memory": {{
-                       "limit": {},
-                       "swap": {}
+                       "limit": {memory},
+                       "swap": {memory}
                    }},
-                   "#,
-                    memory, memory
+                   "#
                 ),
             )
         } else {

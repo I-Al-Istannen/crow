@@ -208,11 +208,11 @@ pub fn command_run_tests(args: CliRunTestsArgs) -> Result<bool, CrowClientError>
     info!(
         "{}{}{}{}{}{}{}",
         style("Tests finished. ").bright().cyan(),
-        style(format!("{} passed", successes)).green(),
+        style(format!("{successes} passed")).green(),
         style(", ").bright().cyan(),
-        style(format!("{} failed", failures)).yellow(),
+        style(format!("{failures} failed")).yellow(),
         style(", ").bright().cyan(),
-        style(format!("{} errored", errors)).red(),
+        style(format!("{errors} errored")).red(),
         style(".").bright().cyan()
     );
 
@@ -279,7 +279,7 @@ fn verify_test_dir(args: &CliRunTestArgs) -> Result<(), RunTestError> {
 }
 
 fn find_test(test_dir: &Path, test_id: &str) -> Result<FullTest, RunTestError> {
-    let target_file_name = format!("{}.crow-test.md", test_id);
+    let target_file_name = format!("{test_id}.crow-test.md");
     let mut test_file = None;
 
     for file in WalkDir::new(test_dir).max_depth(2) {

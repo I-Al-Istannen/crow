@@ -192,14 +192,11 @@ fn ensure_added_categories_not_past_due(
             .categories
             .get(new_category)
             .ok_or_else(|| {
-                WebError::named_not_found(format!("category `{}`", new_category), location!())
+                WebError::named_not_found(format!("category `{new_category}`"), location!())
             })?;
         if category.is_after_labs_deadline() {
             return Err(WebError::named_unauthorized(
-                format!(
-                    "submit solution, as `{}` is already past the deadline",
-                    new_category
-                ),
+                format!("submit solution, as `{new_category}` is already past the deadline"),
                 location!(),
             ));
         }
@@ -222,7 +219,7 @@ async fn ensure_removed_categories_not_past_due(
             if let Some(current_submitted_task) = current_submitted_task {
                 if current_submitted_task.task_id() == payload.task_id {
                     return Err(WebError::named_unauthorized(
-                        format!("change the solution, as `{}` was already due", name),
+                        format!("change the solution, as `{name}` was already due"),
                         location!(),
                     ));
                 }

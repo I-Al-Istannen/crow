@@ -122,14 +122,14 @@ struct Endpoints {
 impl Endpoints {
     pub fn new(base: &str) -> Self {
         Self {
-            done: format!("{}/executor/done", base),
-            done_taste_test: format!("{}/executor/done-taste-test", base),
-            ping: format!("{}/executor/ping", base),
-            register: format!("{}/executor/register", base),
-            tar: format!("{}/executor/request-tar", base),
-            update: format!("{}/executor/update", base),
-            work: format!("{}/executor/request-work", base),
-            work_taste_test: format!("{}/executor/request-work-taste-test", base),
+            done: format!("{base}/executor/done"),
+            done_taste_test: format!("{base}/executor/done-taste-test"),
+            ping: format!("{base}/executor/ping"),
+            register: format!("{base}/executor/register"),
+            tar: format!("{base}/executor/request-tar"),
+            update: format!("{base}/executor/update"),
+            work: format!("{base}/executor/request-work"),
+            work_taste_test: format!("{base}/executor/request-work-taste-test"),
         }
     }
 }

@@ -118,7 +118,7 @@ pub fn validate_token(
     backend_url: &str,
 ) -> Result<LoginResult, AuthError> {
     let res = client
-        .get(format!("{}/users/me", backend_url))
+        .get(format!("{backend_url}/users/me"))
         .header("Authorization", format!("Bearer {token}"))
         .send()
         .context(ReqwestSnafu)?;

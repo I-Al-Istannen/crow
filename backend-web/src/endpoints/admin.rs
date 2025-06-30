@@ -48,7 +48,7 @@ async fn snapshot(state: &AppState) -> Result<SnapshotResponse> {
     let tmp_export_folder = state
         .grading_config
         .snapshot_path
-        .join(format!(".{}", start_time));
+        .join(format!(".{start_time}"));
 
     tokio::fs::create_dir_all(&tmp_export_folder)
         .await
@@ -85,7 +85,7 @@ async fn snapshot(state: &AppState) -> Result<SnapshotResponse> {
     let export_folder = state
         .grading_config
         .snapshot_path
-        .join(format!("{}", start_time));
+        .join(format!("{start_time}"));
     tokio::fs::rename(&tmp_export_folder, &export_folder)
         .await
         .map_err(|e| WebError::internal_error(Report::from_error(&e).to_string(), location!()))?;
@@ -108,7 +108,7 @@ pub async fn rerun_submissions(
         .categories
         .get(&category_name)
         .ok_or_else(|| {
-            WebError::named_not_found(format!("Category `{}`", category_name), location!())
+            WebError::named_not_found(format!("Category `{category_name}`"), location!())
         })?;
 
     let mut new_tasks = HashMap::new();
@@ -150,7 +150,7 @@ pub async fn rerun_submissions(
                 id: task_id.clone(),
                 team: team.clone(),
                 revision,
-                commit_message: format!("Grading rerun for category `{}`", category_name),
+                commit_message: format!("Grading rerun for category `{category_name}`"),
                 insert_time: SystemTime::now(),
             })
             .await?;

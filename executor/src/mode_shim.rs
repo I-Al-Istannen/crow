@@ -42,7 +42,7 @@ pub fn run_shim(args: CliShimArgs) -> Result<(), AnyError> {
     };
 
     if let Some(signal) = result.signal() {
-        eprintln!("{}{}", CROW_SIGNAL_SHIM_MAGIC, signal);
+        eprintln!("{CROW_SIGNAL_SHIM_MAGIC}{signal}");
     }
 
     if let Some(code) = result.code() {
