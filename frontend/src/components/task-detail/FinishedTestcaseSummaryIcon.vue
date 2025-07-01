@@ -1,40 +1,27 @@
 <template>
-  <Tooltip>
-    <TooltipTrigger
-      class="w-[2em] h-[2em] flex justify-center items-center text-white rounded cursor-pointer"
-      :class="[statusColor(testType(test), 'bg')]"
-      v-bind="$attrs"
-      @click.prevent="'output' in test ? handleTestClick(test) : undefined"
-    >
-      <LucideCheck v-if="testType(test) === 'Success'" />
-      <LucideX v-else-if="testType(test) === 'Failure'" />
-      <LucideFlame v-else-if="testType(test) === 'Error'" />
-      <LucideUnplug v-else-if="testType(test) === 'Aborted'" />
-      <LucideClockAlert v-else-if="testType(test) === 'Timeout'" />
-      <span v-else-if="testType(test) === 'Queued'" />
-      <RocketIcon class="animate-pulse" v-else-if="testType(test) === 'Started'" />
-    </TooltipTrigger>
-    <TooltipContent class="w-96 text-sm">
-      <span class="font-medium"> {{ test.testId }} </span>:
-      <span :class="[statusColor(testType(test), 'text')]">{{ testType(test) }}</span>
-      <br />
-      <span class="text-sm text-muted-foreground" v-if="isFinished">
-        Click the test square to see more details
-      </span>
-      <span class="text-sm text-muted-foreground" v-else>
-        Wait for the run to finish to view more details
-      </span>
-    </TooltipContent>
-  </Tooltip>
+  <div
+    class="w-[2em] h-[2em] flex justify-center items-center text-white rounded cursor-pointer"
+    :class="[statusColor(testType(test), 'bg')]"
+    v-bind="$attrs"
+    @click.prevent="'output' in test ? handleTestClick(test) : undefined"
+    :title="tooltip"
+  >
+    <LucideCheck v-if="testType(test) === 'Success'" />
+    <LucideX v-else-if="testType(test) === 'Failure'" />
+    <LucideFlame v-else-if="testType(test) === 'Error'" />
+    <LucideUnplug v-else-if="testType(test) === 'Aborted'" />
+    <LucideClockAlert v-else-if="testType(test) === 'Timeout'" />
+    <span v-else-if="testType(test) === 'Queued'" />
+    <RocketIcon class="animate-pulse" v-else-if="testType(test) === 'Started'" />
+  </div>
 </template>
 
 <script setup lang="ts">
 import { type ExecutingTest, type FinishedTestSummary } from '@/types.ts'
 import { LucideCheck, LucideClockAlert, LucideFlame, LucideUnplug, LucideX } from 'lucide-vue-next'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { computed, toRefs } from 'vue'
 import { RocketIcon } from '@radix-icons/vue'
 import { statusColor } from '@/lib/utils.ts'
-import { toRefs } from 'vue'
 
 const props = defineProps<{
   test: FinishedTestSummary | ExecutingTest
@@ -42,6 +29,16 @@ const props = defineProps<{
 }>()
 
 const { test } = toRefs(props)
+
+const tooltip = computed<string>(() => {
+  let text = test.value.testId
+  if (props.isFinished) {
+    text += '\nClick the test square to see more details'
+  } else {
+    text += '\nWait for the run to finish to view more details'
+  }
+  return text
+})
 
 const emit = defineEmits<{
   testClicked: [test: FinishedTestSummary]

@@ -40,11 +40,7 @@
         <CardDescription>Information about individual tests</CardDescription>
       </CardHeader>
       <CardContent>
-        <TestOverviewMatrix
-          of-whom="yours"
-          :tests="Array.from(tests.values())"
-          :is-finished="false"
-        />
+        <TestOverviewMatrix of-whom="yours" :tests="tests" :is-finished="false" />
       </CardContent>
     </Card>
   </div>
@@ -57,12 +53,13 @@ import {
   type ExecutionOutput,
   type FinishedExecution,
   type FinishedTestSummary,
+  type RunnerUpdate,
   RunnerUpdateMessageSchema,
   type TaskId,
   type TestId,
 } from '@/types.ts'
-import { computed, ref } from 'vue'
-import { useIntervalFn, useTitle, useWebSocket } from '@vueuse/core'
+import { type Ref, computed, markRaw, ref, shallowRef } from 'vue'
+import { useDebounceFn, useIntervalFn, useTitle, useWebSocket } from '@vueuse/core'
 import { BACKEND_URL } from '@/data/fetching.ts'
 import BuildOutputOverview from '@/components/task-detail/BuildOutputOverview.vue'
 import TestOverviewMatrix from '@/components/task-detail/TestOverviewMatrix.vue'
@@ -73,7 +70,8 @@ import { vAutoAnimate } from '@formkit/auto-animate/vue'
 
 const buildStatus = ref<'Started' | FinishedExecution | null>(null)
 const testingStarted = ref(false)
-const tests = ref<Map<TestId, FinishedTestSummary | ExecutingTest>>(new Map())
+const testIndices = shallowRef<Map<TestId, number>>(new Map())
+const tests = shallowRef<Ref<FinishedTestSummary | ExecutingTest>[]>([])
 const animatedWaitingDotsCounter = ref(-3)
 const animatedWaitingDots = computed(() =>
   '.'.repeat(3 - Math.abs(animatedWaitingDotsCounter.value)),
@@ -87,12 +85,14 @@ const finishedTests = computed(() => {
   }
   return finished
 })
+const pendingUpdates = markRaw<RunnerUpdate[]>([])
+const processUpdates = useDebounceFn(processPendingUpdatesNotDebounced, 50)
 
 useTitle(
   computed(() => {
     if (testingStarted.value) {
       if (finishedTests.value > 0) {
-        const total = tests.value.size
+        const total = testIndices.value.size
         return `Testing (${finishedTests.value}/${total})`
       }
       return 'Testing'
@@ -161,6 +161,13 @@ const { status } = useWebSocket(websocketUrl, {
     }
     const event = RunnerUpdateMessageSchema.parse(data)
     const update = event.update
+    pendingUpdates.push(update)
+    processUpdates(ws)
+  },
+})
+
+function processPendingUpdatesNotDebounced(ws: WebSocket) {
+  for (const update of pendingUpdates.splice(0, pendingUpdates.length)) {
     switch (update.type) {
       case 'Done': {
         toast.success('Task completed')
@@ -176,8 +183,11 @@ const { status } = useWebSocket(websocketUrl, {
         break
       }
       case 'AllTests': {
-        for (const testId of update.tests.sort((a, b) => a.localeCompare(b))) {
-          tests.value.set(testId, {
+        tests.value = []
+        testIndices.value.clear()
+        for (const [index, testId] of update.tests.sort((a, b) => a.localeCompare(b)).entries()) {
+          testIndices.value.set(testId, index)
+          tests.value[index] = shallowRef({
             testId,
             status: 'Queued',
           })
@@ -187,17 +197,17 @@ const { status } = useWebSocket(websocketUrl, {
       case 'StartedTest': {
         testingStarted.value = true
 
-        tests.value.set(update.testId, {
+        tests.value[testIndices.value.get(update.testId)!].value = {
           status: 'Started',
           testId: update.testId,
-        })
+        }
         break
       }
       case 'FinishedTest': {
-        tests.value.set(update.result.testId, update.result)
+        tests.value[testIndices.value.get(update.result.testId)!].value = update.result
         break
       }
     }
-  },
-})
+  }
+}
 </script>

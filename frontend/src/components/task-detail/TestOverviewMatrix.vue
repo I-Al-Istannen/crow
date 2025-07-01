@@ -4,9 +4,9 @@
     <TooltipProvider>
       <FinishedTestcaseIcon
         v-for="test in tests"
-        v-memo="[test.testId, testType(test)]"
-        :key="test.testId"
-        :test="test"
+        v-memo="[testType(toValue(test))]"
+        :key="toValue(test).testId"
+        :test="toValue(test)"
         @test-clicked="emit('testClicked', $event)"
         :is-finished="isFinished"
       />
@@ -16,12 +16,13 @@
 
 <script setup lang="ts">
 import { type ExecutingTest, type FinishedTestSummary } from '@/types.ts'
+import { toRefs, toValue } from 'vue'
 import FinishedTestcaseIcon from '@/components/task-detail/FinishedTestcaseSummaryIcon.vue'
+import type { MaybeRef } from '@vueuse/core'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { toRefs } from 'vue'
 
 const props = defineProps<{
-  tests: (FinishedTestSummary | ExecutingTest)[]
+  tests: MaybeRef<FinishedTestSummary | ExecutingTest>[]
   isFinished?: boolean
 }>()
 

@@ -85,8 +85,10 @@ import {
   type FinishedCompilerTask,
   type FinishedCompilerTaskSummary,
   type FinishedTest,
+  type FinishedTestSummary,
   type TaskId,
   type TestId,
+  toFinishedTestSummary,
 } from '@/types.ts'
 import { computed, ref, watch } from 'vue'
 import BuildOutputOverview from '@/components/task-detail/BuildOutputOverview.vue'
@@ -123,7 +125,7 @@ watch(task, (newTask) => {
   }
 })
 
-const tests = computed(() => {
+const tests = computed<Map<TestId, FinishedTest> | undefined>(() => {
   if (!task.value || task.value.type !== 'RanTests') {
     return undefined
   }
@@ -134,11 +136,13 @@ const tests = computed(() => {
   return tests
 })
 
-const sortedTestSummaries = computed(() => {
+const sortedTestSummaries = computed<FinishedTestSummary[] | undefined>(() => {
   if (!tests.value) {
     return undefined
   }
-  return Array.from(tests.value.values()).sort((a, b) => a.testId.localeCompare(b.testId))
+  return Array.from(tests.value.values())
+    .sort((a, b) => a.testId.localeCompare(b.testId))
+    .map(toFinishedTestSummary)
 })
 
 const outdatedTests = computed(() => {
