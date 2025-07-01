@@ -15,23 +15,23 @@
 </template>
 
 <script setup lang="ts">
-import { type ExecutingTest, type FinishedTest, toExecutionStatus } from '@/types.ts'
+import { type ExecutingTest, type FinishedTestSummary } from '@/types.ts'
 import FinishedTestcaseIcon from '@/components/task-detail/FinishedTestcaseSummaryIcon.vue'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { toRefs } from 'vue'
 
 const props = defineProps<{
-  tests: (FinishedTest | ExecutingTest)[]
+  tests: (FinishedTestSummary | ExecutingTest)[]
   isFinished?: boolean
 }>()
 
 const { tests } = toRefs(props)
 
 const emit = defineEmits<{
-  testClicked: [test: FinishedTest]
+  testClicked: [test: FinishedTestSummary]
 }>()
 
-function testType(test: FinishedTest | ExecutingTest) {
-  return 'output' in test ? toExecutionStatus(test.output) : test.status
+function testType(test: FinishedTestSummary | ExecutingTest) {
+  return 'output' in test ? test.output : test.status
 }
 </script>

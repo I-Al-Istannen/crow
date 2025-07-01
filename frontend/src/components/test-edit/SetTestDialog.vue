@@ -93,7 +93,7 @@
                 />
                 <TooltipProvider v-if="failedTestTasting !== null">
                   <FinishedTestcaseSummaryIcon
-                    :test="failedTestTasting"
+                    :test="toFinishedTestSummary(failedTestTasting)"
                     @test-clicked="handleFailedTastingClick"
                     is-finished
                   />
@@ -134,7 +134,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { type FinishedTest, type Test, type TestId, type TestModifier } from '@/types.ts'
+import {
+  type FinishedTest,
+  type Test,
+  type TestId,
+  type TestModifier,
+  toFinishedTestSummary,
+} from '@/types.ts'
 import {
   FormControl,
   FormDescription,
@@ -319,8 +325,8 @@ const deleteTest = async () => {
   dialogOpen.value = false
 }
 
-const handleFailedTastingClick = (test: FinishedTest) => {
-  clickedTest.value = test
+function handleFailedTastingClick() {
+  clickedTest.value = failedTestTasting.value
   failedTastingDialogOpen.value = true
 }
 </script>

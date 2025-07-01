@@ -56,7 +56,7 @@ import {
   type ExecutingTest,
   type ExecutionOutput,
   type FinishedExecution,
-  type FinishedTest,
+  type FinishedTestSummary,
   RunnerUpdateMessageSchema,
   type TaskId,
   type TestId,
@@ -73,7 +73,7 @@ import { vAutoAnimate } from '@formkit/auto-animate/vue'
 
 const buildStatus = ref<'Started' | FinishedExecution | null>(null)
 const testingStarted = ref(false)
-const tests = ref<Map<TestId, FinishedTest | ExecutingTest>>(new Map())
+const tests = ref<Map<TestId, FinishedTestSummary | ExecutingTest>>(new Map())
 const animatedWaitingDotsCounter = ref(-3)
 const animatedWaitingDots = computed(() =>
   '.'.repeat(3 - Math.abs(animatedWaitingDotsCounter.value)),

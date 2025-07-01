@@ -29,7 +29,7 @@
 </template>
 
 <script setup lang="ts">
-import { type ExecutingTest, type FinishedTest, toExecutionStatus } from '@/types.ts'
+import { type ExecutingTest, type FinishedTestSummary } from '@/types.ts'
 import { LucideCheck, LucideClockAlert, LucideFlame, LucideUnplug, LucideX } from 'lucide-vue-next'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { RocketIcon } from '@radix-icons/vue'
@@ -37,21 +37,21 @@ import { statusColor } from '@/lib/utils.ts'
 import { toRefs } from 'vue'
 
 const props = defineProps<{
-  test: FinishedTest | ExecutingTest
+  test: FinishedTestSummary | ExecutingTest
   isFinished?: boolean
 }>()
 
 const { test } = toRefs(props)
 
 const emit = defineEmits<{
-  testClicked: [test: FinishedTest]
+  testClicked: [test: FinishedTestSummary]
 }>()
 
-function testType(test: FinishedTest | ExecutingTest) {
-  return 'output' in test ? toExecutionStatus(test.output) : test.status
+function testType(test: FinishedTestSummary | ExecutingTest) {
+  return 'output' in test ? test.output : test.status
 }
 
-const handleTestClick = (test: FinishedTest) => {
+const handleTestClick = (test: FinishedTestSummary) => {
   emit('testClicked', test)
 }
 </script>

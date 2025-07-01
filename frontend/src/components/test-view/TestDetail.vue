@@ -13,7 +13,7 @@
         />
         <TooltipProvider>
           <FinishedTestcaseSummaryIcon
-            :test="testTastingError"
+            :test="toFinishedTestSummary(testTastingError)!"
             class="ml-2"
             @test-clicked="failedTastingDialogOpen = true"
             is-finished
@@ -43,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import type { FinishedTest, TestId } from '@/types.ts'
+import { type FinishedTest, type TestId, toFinishedTestSummary } from '@/types.ts'
 import { computed, ref, toRefs } from 'vue'
 import FinishedTestDetailDialog from '@/components/test-view/FinishedTestDetailDialog.vue'
 import FinishedTestcaseSummaryIcon from '@/components/task-detail/FinishedTestcaseSummaryIcon.vue'

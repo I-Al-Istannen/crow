@@ -1,10 +1,10 @@
 use crate::types::queue::Queue;
-use crate::types::{TeamId, TestId};
+use crate::types::{FinishedTestSummary, TeamId, TestId};
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
 use shared::{
     deserialize_system_time, serialize_system_time, ExecutionOutput, FinishedCompilerTask,
-    FinishedExecution, FinishedTest, RunnerId, RunnerInfo, TestExecutionOutput,
+    FinishedExecution, RunnerId, RunnerInfo, TestExecutionOutput,
 };
 use snafu::{ensure, Location, Snafu};
 use std::collections::{HashMap, HashSet};
@@ -87,7 +87,7 @@ pub enum RunnerUpdate {
         test_id: String,
     },
     FinishedTest {
-        result: FinishedTest,
+        result: FinishedTestSummary,
     },
     Done,
 }
@@ -98,7 +98,9 @@ impl From<shared::RunnerUpdate> for RunnerUpdate {
             shared::RunnerUpdate::StartedBuild => Self::StartedBuild,
             shared::RunnerUpdate::FinishedBuild { result } => Self::FinishedBuild { result },
             shared::RunnerUpdate::StartedTest { test_id } => Self::StartedTest { test_id },
-            shared::RunnerUpdate::FinishedTest { result } => Self::FinishedTest { result },
+            shared::RunnerUpdate::FinishedTest { result } => Self::FinishedTest {
+                result: result.into(),
+            },
             shared::RunnerUpdate::Done => Self::Done,
         }
     }

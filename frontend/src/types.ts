@@ -242,7 +242,7 @@ export const RunnerUpdateSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('StartedBuild') }),
   z.object({ type: z.literal('FinishedBuild'), result: FinishedExecutionSchema }),
   z.object({ type: z.literal('StartedTest'), testId: TestIdSchema }),
-  z.object({ type: z.literal('FinishedTest'), result: FinishedTestSchema }),
+  z.object({ type: z.literal('FinishedTest'), result: FinishedTestSummarySchema }),
   z.object({ type: z.literal('Done') }),
 ])
 
@@ -470,6 +470,14 @@ export function toExecutionStatus(output: TestExecutionOutput): ExecutionExitSta
       return output.outputSoFar.type
     case 'Success':
       return 'Success'
+  }
+}
+
+export function toFinishedTestSummary(finishedTest: FinishedTest): FinishedTestSummary {
+  return {
+    testId: finishedTest.testId,
+    provisionalForCategory: finishedTest.provisionalForCategory,
+    output: toExecutionStatus(finishedTest.output),
   }
 }
 

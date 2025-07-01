@@ -67,13 +67,13 @@
       <TestOverviewTable
         v-if="showTableView"
         :outdated="outdatedTests"
-        :tests="tests"
-        @test-clicked="handleTestClicked"
+        :tests="Array.from(tests.values())"
+        @test-clicked="handleTestClicked($event.testId)"
       />
       <TestOverviewMatrix
         v-else
-        :tests="sortedTests!"
-        @test-clicked="handleTestClicked"
+        :tests="sortedTestSummaries!"
+        @test-clicked="handleTestClicked($event.testId)"
         is-finished
       />
     </CardContent>
@@ -86,6 +86,7 @@ import {
   type FinishedCompilerTaskSummary,
   type FinishedTest,
   type TaskId,
+  type TestId,
 } from '@/types.ts'
 import { computed, ref, watch } from 'vue'
 import BuildOutputOverview from '@/components/task-detail/BuildOutputOverview.vue'
@@ -126,11 +127,18 @@ const tests = computed(() => {
   if (!task.value || task.value.type !== 'RanTests') {
     return undefined
   }
-  return task.value.tests
+  const tests = new Map()
+  for (const test of task.value.tests) {
+    tests.set(test.testId, test)
+  }
+  return tests
 })
 
-const sortedTests = computed(() => {
-  return tests.value?.slice()?.sort((a, b) => a.testId.localeCompare(b.testId))
+const sortedTestSummaries = computed(() => {
+  if (!tests.value) {
+    return undefined
+  }
+  return Array.from(tests.value.values()).sort((a, b) => a.testId.localeCompare(b.testId))
 })
 
 const outdatedTests = computed(() => {
@@ -157,7 +165,11 @@ function toSummary(task: FinishedCompilerTask): FinishedCompilerTaskSummary {
   }
 }
 
-function handleTestClicked(test: FinishedTest) {
+function handleTestClicked(id: TestId) {
+  const test = tests.value?.get(id)
+  if (!test) {
+    return
+  }
   clickedTest.value = test
   dialogOpen.value = true
 }
