@@ -139,14 +139,14 @@ const columns: ColumnDef<AdminUserInfo, never>[] = [
       isMultiSorting: isMultiSorting,
     },
     cell: (cell) => {
-      const team = cell.row.original.team as AdminUserInfo['team']
+      const team = cell.row.original.team
       if (!team) {
         return h('span', { class: 'text-red-500' }, 'No team')
       }
       return h(
         RouterLink,
         {
-          class: cell.getValue() ? 'hover:cursor-pointer hover:underline' : 'text-red-500',
+          class: 'hover:cursor-pointer hover:underline',
           to: {
             name: 'team-info',
             params: { teamId: team.id },
@@ -167,10 +167,12 @@ const columns: ColumnDef<AdminUserInfo, never>[] = [
       h(
         'a',
         {
-          class: cell.getValue() ? 'hover:underline cursor-pointer' : 'text-muted-foreground',
+          class: cell.getValue<string | undefined>()
+            ? 'hover:underline cursor-pointer'
+            : 'text-muted-foreground',
           href: cell.getValue(),
         },
-        cell.getValue() || 'No repo',
+        cell.getValue<string | undefined>() ?? 'No repo',
       ),
     meta: {
       isMultiSorting: isMultiSorting,

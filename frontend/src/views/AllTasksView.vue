@@ -83,7 +83,10 @@ const { CTRL_F } = useMagicKeys({
   },
 })
 
-watch(CTRL_F, (pressed) => {
+// Watch for CTRL+F key press to focus the search input
+// https://github.com/vueuse/vueuse/issues/4822 for eslint ignore
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+watch(CTRL_F!, (pressed) => {
   if (pressed) {
     searchInput.value?.focus()
   }

@@ -1,12 +1,12 @@
 import { useUserStore } from '@/stores/user.ts'
 
-export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+export const BACKEND_URL: string = import.meta.env.VITE_BACKEND_URL
 
 export class FetchError extends Error {
   readonly status: number
 
   constructor(message: string, status: number) {
-    super(`(HTTP ${status}) ${message}`)
+    super(`(HTTP ${status.toString()}) ${message}`)
     this.status = status
   }
 }
@@ -22,10 +22,7 @@ export async function fetchWithError(
     url = BACKEND_URL + (url.startsWith('/') ? '' : '/') + url
   }
   const response = await fetch(url, init)
-  if (
-    !response.ok &&
-    !(extra?.extraSuccessStatus && extra.extraSuccessStatus.includes(response.status))
-  ) {
+  if (!response.ok && !extra?.extraSuccessStatus.includes(response.status)) {
     // TODO: Prettify WebErrors
     let text = await response.text().catch(() => 'unknown')
     try {
@@ -44,11 +41,13 @@ export async function fetchWithAuth(
     extraSuccessStatus: number[]
   },
 ): Promise<Response> {
-  const token = useUserStore()?.token
-  const requestConfig = init || {}
+  const token = useUserStore().token
+  const requestConfig = init ?? {}
   requestConfig.headers = {
-    ...requestConfig.headers,
-    Authorization: `Bearer ${token}`,
+    ...(requestConfig.headers as Record<string, string>),
+  }
+  if (token) {
+    requestConfig.headers.Authorization = `Bearer ${token}`
   }
 
   return fetchWithError(url, requestConfig, extra)

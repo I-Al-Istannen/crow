@@ -93,7 +93,7 @@ useTitle(
     if (testingStarted.value) {
       if (finishedTests.value > 0) {
         const total = testIndices.value.size
-        return `Testing (${finishedTests.value}/${total})`
+        return `Testing (${finishedTests.value.toString()}/${total.toString()})`
       }
       return 'Testing'
     }
@@ -103,10 +103,7 @@ useTitle(
     if (buildStatus.value === 'Started') {
       return 'Building'
     }
-    if (buildStatus.value === null) {
-      return 'Transferring data'
-    }
-    return 'Running task'
+    return 'Transferring data'
   }),
   { restoreOnUnmount: false, titleTemplate: '%s - crow' },
 )
@@ -146,11 +143,13 @@ const websocketUrl = computed(
 const { status } = useWebSocket(websocketUrl, {
   autoReconnect: true,
   immediate: true,
-  onDisconnected: async () => {
+  onDisconnected: () => {
     emit('connectionLost')
   },
   onConnected: (ws) => {
-    // login
+    // log in. We only reach this if the user is logged in. If not, we want to crash
+    // (or display a nice error)
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     ws.send(token.value!)
   },
   onMessage: (ws, wsEvent) => {
@@ -162,7 +161,7 @@ const { status } = useWebSocket(websocketUrl, {
     const event = RunnerUpdateMessageSchema.parse(data)
     const update = event.update
     pendingUpdates.push(update)
-    processUpdates(ws)
+    void processUpdates(ws)
   },
 })
 
@@ -197,14 +196,18 @@ function processPendingUpdatesNotDebounced(ws: WebSocket) {
       case 'StartedTest': {
         testingStarted.value = true
 
-        tests.value[testIndices.value.get(update.testId)!].value = {
+        // We assume the backend did not send us a test that wasn't in initial
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        tests.value[testIndices.value.get(update.testId)!]!.value = {
           status: 'Started',
           testId: update.testId,
         }
         break
       }
       case 'FinishedTest': {
-        tests.value[testIndices.value.get(update.result.testId)!].value = update.result
+        // We assume the backend did not send us a test that wasn't in initial
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        tests.value[testIndices.value.get(update.result.testId)!]!.value = update.result
         break
       }
     }

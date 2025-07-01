@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-base-to-string,@typescript-eslint/no-unnecessary-condition,@typescript-eslint/no-non-null-assertion */
 import { type HTMLAttributes, computed, onMounted, onUnmounted, ref } from 'vue'
 import { ListboxItem, useForwardPropsEmits, useId } from 'reka-ui'
 import type { ListboxItemEmits, ListboxItemProps } from 'reka-ui'

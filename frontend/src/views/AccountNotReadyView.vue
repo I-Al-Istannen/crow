@@ -63,6 +63,7 @@ import { useUserStore } from '@/stores/user.ts'
 const { loggedIn } = storeToRefs(useUserStore())
 const crows = shallowRef<Crow[]>([])
 const lastAnimationTime = ref<number>(0)
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 const crowContainer = ref<InstanceType<typeof PageContainer> | null>(null)
 const mousePos = ref<{ x: number; y: number }>({ x: -100, y: -100 })
 
@@ -83,7 +84,7 @@ const saveFromUrl = () => {
   sessionStorage.setItem(PRE_LOGIN_URL_SESSION_STORAGE_KEY, currentRoute.fullPath)
 }
 
-type Crow = {
+interface Crow {
   id: string
   currentDirection: 'left' | 'right'
   bounds: {
@@ -101,7 +102,7 @@ type Crow = {
   }
 }
 
-type Bounds = {
+interface Bounds {
   width: number
   height: number
 }
@@ -248,7 +249,7 @@ function moveCrow(crow: Crow, bounds: Bounds) {
   crow.position.x += crow.velocity.dx
   crow.position.y += crow.velocity.dy
 
-  const crowElement = crow.img ? crow.img : document.getElementById(crow.id)!
+  const crowElement = crow.img ?? document.getElementById(crow.id)
   if (!crowElement) {
     return
   }
@@ -263,8 +264,8 @@ function moveCrow(crow: Crow, bounds: Bounds) {
     crow.currentDirection = direction
   }
 
-  crowElement.style.top = `${crow.position.y}px`
-  crowElement.style.left = `${crow.position.x}px`
+  crowElement.style.top = `${crow.position.y.toString()}px`
+  crowElement.style.left = `${crow.position.x.toString()}px`
 }
 
 function spawnCrow(bounds: Bounds): Crow {

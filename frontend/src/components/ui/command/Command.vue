@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { type HTMLAttributes, computed, reactive, ref, watch } from 'vue'
 import { ListboxRoot, useFilter, useForwardPropsEmits } from 'reka-ui'
 import type { ListboxRootEmits, ListboxRootProps } from 'reka-ui'
@@ -31,7 +32,7 @@ const filterState = reactive({
     /** Map from visible item id to its search score. */
     items: new Map() as Map<string, number>,
     /** Set of groups with at least one visible item. */
-    groups: new Set() as Set<string>,
+    groups: new Set(),
   },
 })
 
@@ -76,7 +77,8 @@ watch(
 provideCommandContext({
   allItems,
   allGroups,
-  filterState,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  filterState: filterState as any,
 })
 </script>
 

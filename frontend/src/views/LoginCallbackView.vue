@@ -44,19 +44,21 @@ const error = ref<string | null>(null)
 watch(
   route,
   async (route) => {
-    const code = route.query['code'] as string
-    const state = route.query['state'] as string
+    const code = route.query.code as string
+    const state = route.query.state as string
 
     pending.value = true
     error.value = null
     try {
       await userStore.logIn(code, state)
       const originalLocation = sessionStorage.getItem(PRE_LOGIN_URL_SESSION_STORAGE_KEY)
-      await router.replace(originalLocation || '/')
+      await router.replace(originalLocation ?? '/')
     } catch (e) {
       if (e instanceof FetchError) {
         error.value = e.message
       } else {
+        // toString will do *something*
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         error.value = `Unknown error: ${e}`
       }
     } finally {

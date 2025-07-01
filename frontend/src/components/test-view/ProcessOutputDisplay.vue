@@ -108,17 +108,14 @@ const { ofWhom, output, subject } = toRefs(props)
 const buildOutput = computed(() => getBuildOutput(output.value))
 
 const accumulatedErrorLines = computed(() => {
-  return accumulatedErrors.value?.split('\n') || []
+  return accumulatedErrors.value?.split('\n') ?? []
 })
 
 const ofWhomText = computed(() => {
   if (ofWhom.value === 'reference') {
     return ' for the reference compiler'
   }
-  if (ofWhom.value === 'yours') {
-    return ' for your compiler'
-  }
-  return null
+  return ' for your compiler'
 })
 
 const accumulatedErrors = computed(() => {

@@ -116,15 +116,15 @@ const routes = computed(() =>
   router
     .getRoutes()
     .filter((route) => {
-      if (typeof route.meta?.hidden === 'function') {
+      if (typeof route.meta.hidden === 'function') {
         return !route.meta.hidden(isAdmin.value)
       }
-      return !route.meta?.hidden
+      return !route.meta.hidden
     })
     .map((route) => ({
       route: route,
-      title: (route.meta?.name || route.name) as string,
-      icon: route.meta?.icon || Home,
+      title: (route.meta.name ?? route.name) as string,
+      icon: route.meta.icon ?? Home,
     })),
 )
 

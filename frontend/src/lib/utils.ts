@@ -33,15 +33,15 @@ export function formatDuration(millis: number): string {
   const days = Math.floor(hours / 24)
 
   if (days > 0) {
-    return `${days}d ${hours % 24}h`
+    return `${days.toString()}d ${(hours % 24).toString()}h`
   } else if (hours > 0) {
-    return `${hours}h ${minutes % 60}m`
+    return `${hours.toString()}h ${(minutes % 60).toString()}m`
   } else if (minutes > 0) {
-    return `${minutes}m ${seconds % 60}s`
+    return `${minutes.toString()}m ${(seconds % 60).toString()}s`
   } else if (seconds > 0) {
-    return `${seconds}s`
+    return `${seconds.toString()}s`
   } else {
-    return `${millis}ms`
+    return `${millis.toString()}ms`
   }
 }
 
@@ -53,17 +53,17 @@ export function formatApproxDuration(currentTime: number, insertTime: number) {
 export function formatBusyDuration(currentTime: number, insertTime: number) {
   const millis = Math.max(currentTime - insertTime, 0)
   if (millis < 10 * 1000) {
-    return `${Math.floor(millis / 1000)}s`
+    return `${Math.floor(millis / 1000).toString()}s`
   }
 
   const seconds = Math.floor(millis / 1000)
   if (seconds < 60) {
-    return `> ${Math.floor(seconds / 10) * 10}s`
+    return `> ${(Math.floor(seconds / 10) * 10).toString()}s`
   }
 
   const minutes = Math.floor(seconds / 60)
   if (minutes < 60) {
-    return `> ${Math.floor(minutes)}m`
+    return `> ${Math.floor(minutes).toString()}m`
   }
 
   return `Since ${new Date(insertTime).toLocaleString()}`
@@ -132,12 +132,13 @@ export function useCommitUrl(
       return undefined
     }
 
-    const match = url.match(/github\.com[/:](?<user>[^/\n]+)\/(?<repo>[^/\n]+)(\.git)?/)
-    if (!match || !match.groups) {
+    const match = /github\.com[/:](?<user>[^/\n]+)\/(?<repo>[^/\n]+)(\.git)?/.exec(url)
+    if (!match?.groups) {
       return undefined
     }
 
-    return `https://github.com/${match.groups.user}/${match.groups.repo}/commit/${commit.value}`
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    return `https://github.com/${match.groups.user!}/${match.groups.repo!}/commit/${commit.value}`
   })
 
   return { commitUrl }

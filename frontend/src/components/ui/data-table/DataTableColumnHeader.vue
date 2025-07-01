@@ -124,12 +124,12 @@ function toggleSorting(dir: SortDirection) {
 }
 
 function isFiltered(value: string): boolean {
-  const filterValue = (props.column.getFilterValue() as string[]) || []
+  const filterValue = (props.column.getFilterValue() as string[] | undefined) ?? []
   return filterValue.includes(value)
 }
 
 function toggleFilterValue(value: string) {
-  const currentFilterValue = (props.column.getFilterValue() as string[]) || []
+  const currentFilterValue = (props.column.getFilterValue() as string[] | undefined) ?? []
 
   const newFilterValue = currentFilterValue.includes(value)
     ? currentFilterValue.filter((v) => v !== value)

@@ -8,7 +8,7 @@
     :total="data.length"
     show-edges
     @update:page="expandedTests = []"
-    v-show="showAlways || data.length > allowedItemsPerPage[0][0]"
+    v-show="showAlways || data.length > allowedItemsPerPage![0]![0]"
   >
     <PaginationList v-slot="{ items }" class="flex items-center gap-1">
       <PaginationFirst />
@@ -116,7 +116,7 @@ watch(
     if (newPage == oldPage && data == oldData && itemsPerPage != oldItemsPerPage) {
       // User changed the items per page. We probably want to keep displaying the same data...
       // To do this, we fix the first item. It will always appear in the resulting list.
-      const oldFirstItem = (oldPage - 1) * oldItemsPerPage!
+      const oldFirstItem = (oldPage - 1) * (oldItemsPerPage ?? 0)
       currentPage.value = Math.floor(oldFirstItem / itemsPerPage) + 1
       newPage = currentPage.value
     }

@@ -96,11 +96,7 @@ function boolFilterFn(row: Row<unknown>, columnId: string, filterValue: boolean 
   return cellValue === filterValue
 }
 
-function arrIncludesHandleNullFilterFn(
-  row: Row<unknown>,
-  columnId: string,
-  filterValue: unknown | unknown[],
-) {
+function arrIncludesHandleNullFilterFn(row: Row<unknown>, columnId: string, filterValue: unknown) {
   const cellValue = row.getValue<unknown>(columnId)
   if (Array.isArray(filterValue)) {
     return filterValue.some((v) => cellValue === v)
@@ -150,7 +146,8 @@ const columns: ColumnDef<FinishedTest, never>[] = [
     meta: {
       isMultiSorting: isMultiSorting,
     },
-    cell: (val) => h('span', { class: 'text-muted-foreground' }, val.getValue() ? 'Outdated' : '-'),
+    cell: (val) =>
+      h('span', { class: 'text-muted-foreground' }, val.getValue<boolean>() ? 'Outdated' : '-'),
   }),
   columnHelper.accessor((test) => test.provisionalForCategory, {
     header: (column) =>
@@ -164,9 +161,9 @@ const columns: ColumnDef<FinishedTest, never>[] = [
       h(
         'span',
         {
-          class: val.getValue() ? '' : 'text-muted-foreground',
+          class: val.getValue<string | undefined>() ? '' : 'text-muted-foreground',
         },
-        `${val.getValue() || '-'}`,
+        val.getValue<string | undefined>() ?? '-',
       ),
     meta: {
       isMultiSorting: isMultiSorting,
@@ -184,9 +181,9 @@ const columns: ColumnDef<FinishedTest, never>[] = [
       h(
         'span',
         {
-          class: val.getValue() ? '' : 'text-muted-foreground',
+          class: val.getValue<string | undefined>() ? '' : 'text-muted-foreground',
         },
-        `${val.getValue() || '-'}`,
+        val.getValue<string | undefined>() ?? '-',
       ),
     meta: {
       isMultiSorting: isMultiSorting,
@@ -197,7 +194,12 @@ const columns: ColumnDef<FinishedTest, never>[] = [
     cell: (val) =>
       h(
         Button,
-        { variant: 'link', onClick: () => emit('testClicked', val.row.original) },
+        {
+          variant: 'link',
+          onClick: () => {
+            emit('testClicked', val.row.original)
+          },
+        },
         () => 'Show details',
       ),
   }),

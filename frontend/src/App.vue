@@ -28,14 +28,14 @@ const pageTitle = useTitle(undefined, { restoreOnUnmount: false })
 watch(
   route,
   (newRoute) => {
-    if (newRoute.meta?.managesTitle) {
+    if (newRoute.meta.managesTitle) {
       return
     }
-    const title = (newRoute.meta?.title || newRoute.meta?.name) as string | undefined
-    if (newRoute.meta?.title as string | undefined) {
+    const title = (newRoute.meta.title ?? newRoute.meta.name) as string | undefined
+    if (newRoute.meta.title as string | undefined) {
       pageTitle.value = title
-    } else if (newRoute.meta?.name as string | undefined) {
-      pageTitle.value = `${title} - crow`
+    } else if (newRoute.meta.name as string | undefined) {
+      pageTitle.value = `${title ?? ''} - crow`
     } else {
       pageTitle.value = 'crow'
     }

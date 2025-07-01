@@ -28,7 +28,7 @@ app.use(VueQueryPlugin, {
     },
     queryCache: new QueryCache({
       onError: (error, query) => {
-        toast.error('Error ' + (query.meta?.purpose || 'during request'), {
+        toast.error('Error ' + ((query.meta?.purpose as string | undefined) ?? 'during request'), {
           description: error.message,
           duration: 5000,
         })
@@ -37,10 +37,13 @@ app.use(VueQueryPlugin, {
     }),
     mutationCache: new MutationCache({
       onError: (error, _vars, _context, mutation) => {
-        toast.error('Error ' + (mutation.meta?.purpose || 'during mutation'), {
-          description: error.message,
-          duration: 5000,
-        })
+        toast.error(
+          'Error ' + ((mutation.meta?.purpose as string | undefined) ?? 'during mutation'),
+          {
+            description: error.message,
+            duration: 5000,
+          },
+        )
         console.log('Error during mutation', mutation, error)
       },
     }),

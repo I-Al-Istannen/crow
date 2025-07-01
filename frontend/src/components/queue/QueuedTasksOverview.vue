@@ -72,14 +72,14 @@ const { queue, runners, currentTime } = toRefs(props)
 const router = useRouter()
 
 function getRunner(runners: Runner[], taskId: TaskId) {
-  return runners.find((it) => it.workingOn?.type === 'Testing' && it.workingOn?.id === taskId)
+  return runners.find((it) => it.workingOn?.type === 'Testing' && it.workingOn.id === taskId)
 }
 
 // Sadly table rows can not be wrapped in `<a>` tags, so we need to emulate links using JS...
 function openDetails(item: WorkItem, newTab: boolean) {
   const data = { name: 'task-detail', params: { taskId: item.id } }
   if (!newTab) {
-    router.push(data)
+    void router.push(data)
   } else {
     window.open(router.resolve(data).href, '_blank')
   }

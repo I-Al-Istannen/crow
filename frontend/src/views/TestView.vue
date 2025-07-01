@@ -105,7 +105,7 @@ const { data: testResp, isLoading, failureCount, failureReason } = queryTests()
 const allTests = computed(() => sortTests(testResp.value?.tests))
 
 const filteredTests = computed(() => {
-  return (allTests.value || [])
+  return (allTests.value ?? [])
     .slice()
     .filter((test) => doesTestMatchFilter(searchText.value, test))
 })

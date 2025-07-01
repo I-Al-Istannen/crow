@@ -233,7 +233,7 @@ const form = useForm({
         .string()
         .refine(
           (category) => categories.value?.includes(category),
-          'Select a valid category: ' + categories.value?.join(', '),
+          'Select a valid category: ' + (categories.value?.join(', ') ?? 'N/A'),
         ),
       testTasting: z.boolean(),
     }),
@@ -279,7 +279,7 @@ const idTaken = (id: TestId) => {
   if (tests.value === undefined || !team.value) {
     return false
   }
-  if (testToEdit?.value?.id === id) {
+  if (testToEdit.value?.id === id) {
     return false
   }
   return !!tests.value.find((it) => it.id === id)
@@ -295,7 +295,7 @@ const onSubmit = form.handleSubmit(async (values) => {
   })
 
   if (res.type == 'TestAdded') {
-    toast.success(testToEdit?.value !== undefined ? 'Test updated :)' : 'Test created :)')
+    toast.success(testToEdit.value !== undefined ? 'Test updated :)' : 'Test created :)')
     dialogOpen.value = false
   } else {
     toast.error('The test failed on the reference compiler')
@@ -315,12 +315,12 @@ const deleteTest = async () => {
     startDeleteResetTimeout()
     return
   }
-  if (!testToEdit?.value) {
+  if (!testToEdit.value) {
     return
   }
 
-  emit('test-deleted', testToEdit?.value?.id)
-  await mutateDelTest(testToEdit?.value?.id)
+  emit('test-deleted', testToEdit.value.id)
+  await mutateDelTest(testToEdit.value.id)
 
   dialogOpen.value = false
 }

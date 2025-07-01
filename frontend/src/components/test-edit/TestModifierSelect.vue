@@ -165,7 +165,7 @@ const props = defineProps<{
 }>()
 const { modifierTarget } = toRefs(props)
 
-const modifierType = computed<TestModifier['type']>(() => modifier.value?.type ?? 'ShouldSucceed')
+const modifierType = computed<TestModifier['type']>(() => modifier.value.type)
 
 function showModifier(modifierType: TestModifier['type']): boolean {
   if (ALL_MODIFIERS[modifierType].applicableTo.includes(modifierTarget.value)) {
@@ -209,16 +209,19 @@ const ALL_MODIFIERS: {
   [modifier in TestModifier['type']]: ModifierHandler<Extract<TestModifier, { type: modifier }>>
 } = {
   ShouldSucceed: {
-    update: () => {},
+    update: () => {
+      // No update needed for this modifier
+    },
     value: () => undefined,
-    init: () => {},
+    init: () => {
+      // No initialization needed for this modifier
+    },
     applicableTo: ['compiler', 'binary'],
     label: 'Should succeed',
     argType: 'none',
   },
   ShouldFail: {
     update: (modifier, val) => {
-      console.log('UPDATING MODIFIER')
       modifier.reason = val
     },
     value: (modifier) => modifier.reason,
@@ -248,9 +251,13 @@ const ALL_MODIFIERS: {
     },
   },
   ShouldTimeout: {
-    update: () => {},
+    update: () => {
+      // No update needed for this modifier
+    },
     value: () => undefined,
-    init: () => {},
+    init: () => {
+      // No initialization needed for this modifier
+    },
     applicableTo: ['binary'],
     label: 'Should not terminate',
     argType: 'none',

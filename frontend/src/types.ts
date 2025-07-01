@@ -503,6 +503,6 @@ export function toBinaryOutput(output: TestExecutionOutput): ExecutionOutput | u
     case 'Error':
       return output.outputSoFar
     case 'Success':
-      return output.binaryOutput || undefined
+      return output.binaryOutput ?? undefined
   }
 }

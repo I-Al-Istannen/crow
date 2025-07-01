@@ -92,7 +92,7 @@ function goto(taskId: TaskId, event: MouseEvent) {
     window.open(router.resolve({ name: 'task-detail', params: { taskId } }).href, '_blank')
     return
   }
-  router.push({
+  void router.push({
     name: 'task-detail',
     params: { taskId },
   })

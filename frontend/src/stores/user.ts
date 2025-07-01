@@ -24,8 +24,8 @@ export const useUserStore = defineStore('user', () => {
       },
     )
     const json = await res.json()
-    user.value = OwnUserSchema.parse(json['user'])
-    token.value = json['token']
+    user.value = OwnUserSchema.parse(json.user)
+    token.value = json.token
 
     localStorage.setItem('userStore', JSON.stringify({ token: token.value }))
   }
@@ -52,8 +52,9 @@ export const useUserStore = defineStore('user', () => {
       return
     }
     try {
-      const payload = JSON.parse(atob(parts[1]))
-      const expiry = new Date(payload['exp'] * 1000)
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const payload = JSON.parse(atob(parts[1]!))
+      const expiry = new Date(payload.exp * 1000)
       const secondsToExpiry = (expiry.getTime() - new Date().getTime()) / 1000
       if (secondsToExpiry < 15 * 60) {
         console.log(

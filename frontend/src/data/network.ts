@@ -49,11 +49,11 @@ import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user.ts'
 import { z } from 'zod'
 
-type RepoPatch = {
+interface RepoPatch {
   repoUrl: string
 }
 
-type TestPatch = {
+interface TestPatch {
   id: TestId
   compilerModifiers: TestModifier[]
   binaryModifiers: TestModifier[]
@@ -99,6 +99,8 @@ export function queryRepo(team: MaybeRefOrGetter<TeamId | undefined>) {
   const enabled = computed(() => !!toRef(team).value)
   return useQuery({
     queryKey: ['repo', team],
+    // we only enable it then
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     queryFn: () => fetchRepo(toValue(team)!),
     meta: {
       purpose: 'fetching your repository',
@@ -120,8 +122,8 @@ async function fetchSetRepo(team: TeamId, repo: RepoPatch): Promise<Repo> {
 export function mutateRepo(queryClient: QueryClient) {
   return useMutation({
     mutationFn: ([team, repo]: [TeamId, RepoPatch]) => fetchSetRepo(team, repo),
-    onSuccess: (_, args, __) => {
-      const ___ = queryClient.invalidateQueries({ queryKey: ['repo', args[0]] })
+    onSuccess: async (_, args, __) => {
+      await queryClient.invalidateQueries({ queryKey: ['repo', args[0]] })
     },
     meta: {
       purpose: 'updating your repository',
@@ -130,7 +132,7 @@ export function mutateRepo(queryClient: QueryClient) {
 }
 
 export async function fetchGetRecentTasks(count: number): Promise<FinishedCompilerTaskSummary[]> {
-  const response = await fetchWithAuth(`/team/recent-tasks/${count}`)
+  const response = await fetchWithAuth(`/team/recent-tasks/${count.toString()}`)
   const json = await response.json()
   return z.array(FinishedCompilerTaskSummarySchema).parse(json)
 }
@@ -138,7 +140,7 @@ export async function fetchGetRecentTasks(count: number): Promise<FinishedCompil
 export function queryRecentTasks(count?: number) {
   return useQuery({
     queryKey: ['recent-tasks'],
-    queryFn: () => fetchGetRecentTasks(count == undefined ? 10 : count),
+    queryFn: () => fetchGetRecentTasks(count ?? 10),
     refetchInterval: 2 * 60 * 1000, // 2 minutes
     meta: {
       purpose: 'fetching recent tasks',
@@ -164,6 +166,8 @@ export function queryTask(taskId: MaybeRefOrGetter<TaskId | undefined>) {
 
   return useQuery({
     queryKey: ['task', taskId],
+    // we only enable it then
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     queryFn: () => fetchTask(toValue(taskId)!),
     enabled: computed(() => enabled.value && loggedIn.value),
     meta: {
@@ -187,6 +191,8 @@ export function queryTeamInfo(teamId: MaybeRefOrGetter<TeamId | undefined>) {
 
   return useQuery({
     queryKey: ['team', teamId],
+    // we only enable it then
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     queryFn: () => fetchTeamInfo(toValue(teamId)!),
     enabled: computed(() => enabled.value && loggedIn.value),
     meta: {
@@ -228,6 +234,8 @@ export function queryTest(testId: MaybeRefOrGetter<TestId | undefined>, refetchO
 
   return useQuery({
     queryKey: ['tests', testId],
+    // we only enable it then
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     queryFn: () => fetchTestDetail(toValue(testId)!),
     enabled: computed(() => enabled.value && loggedIn.value),
     refetchOnMount,
@@ -255,9 +263,9 @@ export async function fetchSetTest(test: TestPatch): Promise<SetTestResponse> {
 export function mutateTest(queryClient: QueryClient) {
   return useMutation({
     mutationFn: (test: TestPatch) => fetchSetTest(test),
-    onSuccess: (_, args, __) => {
-      const ___ = queryClient.invalidateQueries({ queryKey: ['tests', args.id] })
-      const ____ = queryClient.invalidateQueries({ queryKey: ['tests'] })
+    onSuccess: async (_, args, __) => {
+      await queryClient.invalidateQueries({ queryKey: ['tests', args.id] })
+      await queryClient.invalidateQueries({ queryKey: ['tests'] })
     },
     meta: {
       purpose: 'updating a test',
@@ -275,9 +283,9 @@ export async function fetchDeleteTest(testId: TestId): Promise<boolean> {
 export function mutateDeleteTest(queryClient: QueryClient) {
   return useMutation({
     mutationFn: (testId: TestId) => fetchDeleteTest(testId),
-    onSuccess: (_, args, __) => {
-      const ___ = queryClient.invalidateQueries({ queryKey: ['tests', args] })
-      const ____ = queryClient.invalidateQueries({ queryKey: ['tests'] })
+    onSuccess: async (_, args, __) => {
+      await queryClient.invalidateQueries({ queryKey: ['tests', args] })
+      await queryClient.invalidateQueries({ queryKey: ['tests'] })
     },
     meta: {
       purpose: 'deleting a test',
@@ -354,8 +362,8 @@ export async function fetchRequestRevision(revision: string): Promise<RequestRev
 export function mutateRequestRevision(queryClient: QueryClient) {
   return useMutation({
     mutationFn: (revision: string) => fetchRequestRevision(revision),
-    onSuccess: (_, __, ___) => {
-      const ____ = queryClient.invalidateQueries({ queryKey: ['queue'] })
+    onSuccess: async (_, __, ___) => {
+      await queryClient.invalidateQueries({ queryKey: ['queue'] })
     },
     meta: {
       purpose: 'requesting a revision',
@@ -440,8 +448,8 @@ export function mutateSetFinalSubmittedTask(queryClient: QueryClient) {
   return useMutation({
     mutationFn: ([task, categories]: [TaskId, string[]]) =>
       fetchSetFinalSubmittedTask(task, categories),
-    onSuccess: (_, __, ___) => {
-      queryClient.invalidateQueries({ queryKey: ['final-tasks'] }).then()
+    onSuccess: async (_, __, ___) => {
+      await queryClient.invalidateQueries({ queryKey: ['final-tasks'] })
     },
     meta: {
       purpose: 'requesting a revision',
@@ -450,13 +458,15 @@ export function mutateSetFinalSubmittedTask(queryClient: QueryClient) {
 }
 
 export function queryUsers() {
+  const loggedIn = isLoggedIn()
+  const isAdmin = storeToRefs(useUserStore()).isAdmin
   return useQuery({
     queryKey: ['users'],
     queryFn: fetchUsers,
     meta: {
       purpose: 'fetching users',
     },
-    enabled: isLoggedIn() && storeToRefs(useUserStore()).isAdmin,
+    enabled: computed(() => loggedIn.value && isAdmin.value),
   })
 }
 
@@ -466,14 +476,17 @@ export async function fetchUsers(): Promise<AdminUserInfo[]> {
 }
 
 export function queryTasksOfTeam(teamId: MaybeRefOrGetter<TeamId | undefined>) {
+  const loggedIn = isLoggedIn()
+  const isAdmin = storeToRefs(useUserStore()).isAdmin
   return useQuery({
     queryKey: ['tasks', teamId],
+    // we only enable it then
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     queryFn: () => fetchTasksOfTeam(toValue(teamId)!),
     meta: {
       purpose: 'fetching tasks of team',
     },
-    enabled:
-      isLoggedIn() && storeToRefs(useUserStore()).isAdmin && computed(() => !!toRef(teamId).value),
+    enabled: computed(() => loggedIn.value && isAdmin.value && !!toRef(teamId).value),
   })
 }
 
@@ -485,7 +498,6 @@ export async function fetchTasksOfTeam(teamId: TeamId): Promise<FinishedCompiler
 export function mutateCreateSnapshot() {
   return useMutation({
     mutationFn: fetchCreateSnapshot,
-    onSuccess: (_, __, ___) => {},
     meta: {
       purpose: 'creating a snapshot',
     },
@@ -502,7 +514,6 @@ export async function fetchCreateSnapshot(): Promise<SnapshotResponse> {
 export function mutateRerunForGrading() {
   return useMutation({
     mutationFn: fetchRerunForGrading,
-    onSuccess: (_, __, ___) => {},
     meta: {
       purpose: 'rerunning for grading',
     },
@@ -519,7 +530,6 @@ export async function fetchRerunForGrading(category: string): Promise<RerunRespo
 export function mutateRehashTests() {
   return useMutation({
     mutationFn: fetchRehashTests,
-    onSuccess: (_, __, ___) => {},
     meta: {
       purpose: 'rehashing tests',
     },
@@ -533,13 +543,15 @@ export async function fetchRehashTests(): Promise<void> {
 }
 
 export function queryTeamStatistics() {
+  const loggedIn = isLoggedIn()
+  const isAdmin = storeToRefs(useUserStore()).isAdmin
   return useQuery({
     queryKey: ['team-statistics'],
     queryFn: fetchTeamStatistics,
     meta: {
       purpose: 'fetching team statistics',
     },
-    enabled: isLoggedIn() && storeToRefs(useUserStore()).isAdmin,
+    enabled: computed(() => loggedIn.value && isAdmin.value),
   })
 }
 

@@ -123,7 +123,7 @@ const form = useForm({
         .string()
         .refine(
           (category) => categories.value?.includes(category),
-          'Select a valid category: ' + categories.value?.join(', '),
+          'Select a valid category: ' + (categories.value?.join(', ') ?? 'N/A'),
         ),
     }),
   ),

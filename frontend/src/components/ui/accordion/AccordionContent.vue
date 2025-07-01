@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-non-null-assertion,@typescript-eslint/restrict-template-expressions */
 import { AccordionContent, type AccordionContentProps } from 'reka-ui'
 import { type HTMLAttributes, computed, ref } from 'vue'
 import { useMutationObserver, useResizeObserver } from '@vueuse/core'

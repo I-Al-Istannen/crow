@@ -33,7 +33,7 @@ import { computed } from 'vue'
 import { queryTopTaskPerTeam } from '@/data/network.ts'
 import { vAutoAnimate } from '@formkit/auto-animate/vue'
 
-type TaskWithFinishedTest = {
+interface TaskWithFinishedTest {
   passingTests: number
   task: ApiFinishedCompilerTaskSummary
   team: TeamId

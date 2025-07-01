@@ -69,7 +69,7 @@ import {
 } from '@/components/ui/table'
 import { computed } from 'vue'
 
-type StatForTeam = {
+interface StatForTeam {
   teamId: TeamId
   classification: TestClassification
   finalizedTask: AdminFinalizedTask | null
@@ -83,12 +83,14 @@ const props = defineProps<{
 
 const stats = computed<StatForTeam[]>(() => {
   return props.statistics
-    .map((stat) => ({
-      teamId: stat.team,
-      classification: stat.testsPerCategory[props.category]!,
-      finalizedTask: stat.finalizedTasksPerCategory[props.category]?.[0],
-      points: stat.finalizedTasksPerCategory[props.category]?.[1],
-    }))
+    .map((stat) => {
+      return {
+        teamId: stat.team,
+        classification: stat.testsPerCategory[props.category],
+        finalizedTask: stat.finalizedTasksPerCategory[props.category]?.[0] ?? null,
+        points: stat.finalizedTasksPerCategory[props.category]?.[1] ?? null,
+      } as StatForTeam
+    })
     .sort((a, b) => a.teamId.localeCompare(b.teamId))
 })
 

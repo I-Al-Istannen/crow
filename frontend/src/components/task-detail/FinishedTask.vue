@@ -121,7 +121,7 @@ const taskSummary = computed(() => (task.value ? toSummary(task.value) : undefin
 const title = useTitle(undefined, { restoreOnUnmount: false, titleTemplate: '%s - crow' })
 watch(task, (newTask) => {
   if (newTask) {
-    title.value = newTask ? 'Task ' + newTask.info.revisionId.substring(0, 7) : 'Finished Task'
+    title.value = 'Task ' + newTask.info.revisionId.substring(0, 7)
   }
 })
 

@@ -85,7 +85,7 @@ import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user.ts'
 
 const route = useRoute()
-const taskId = computed(() => (route.params?.taskId ? (route.params.taskId as TaskId) : undefined))
+const taskId = computed(() => (route.params.taskId ? (route.params.taskId as TaskId) : undefined))
 const { loggedIn } = storeToRefs(useUserStore())
 
 const taskStatus = ref<'queued' | 'running' | 'finished' | null>(null)
@@ -101,8 +101,8 @@ const wasOnceRunning = ref(false)
 const { isAdmin } = storeToRefs(useUserStore())
 
 const { pause, resume } = useIntervalFn(
-  async () => {
-    await iteration()
+  () => {
+    void iteration()
   },
   2000,
   { immediateCallback: true },
