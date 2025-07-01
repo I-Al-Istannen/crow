@@ -10,11 +10,11 @@
         :failure-count="failureCount"
         :failure-reason="failureReason"
       />
-      <div v-if="topTasks" class="space-y-2 -mt-2">
+      <div v-if="topTasks" class="-mt-2 space-y-2">
         <TopTaskTable v-if="topTasks.size >= 2" :sorted-teams="sortedTeams || []" />
         <template v-else>
           <div v-for="[team, task] in sortedTeams" :key="team" class="flex flex-col">
-            <span class="font-medium mb-1">{{ task.teamName }}:</span>
+            <span class="mb-1 font-medium">{{ task.teamName }}:</span>
             <FinishedTaskOverview :task="task" class="ml-2" />
           </div>
         </template>

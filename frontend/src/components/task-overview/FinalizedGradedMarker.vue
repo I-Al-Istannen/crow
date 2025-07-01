@@ -2,7 +2,7 @@
   <TooltipProvider v-if="finalizedForCategory && finalizedForCategory.length > 0">
     <Tooltip>
       <TooltipTrigger class="flex items-center">
-        <LucideSend class="cursor-default h-4 w-4 inline-block text-blue-400" />
+        <LucideSend class="inline-block h-4 w-4 cursor-default text-blue-400" />
       </TooltipTrigger>
       <TooltipContent>
         <span class="text-white">crow</span> has locked in this task as your submission for

@@ -7,7 +7,7 @@
           :modifier="entry"
           :modifier-target="modifierTarget"
           @update:modifier="!readonly && Object.assign(entry, $event)"
-          class="flex-grow overflow-hidden min-w-1 hover:bg-gray-50"
+          class="min-w-1 flex-grow overflow-hidden hover:bg-gray-50"
         />
         <Button
           v-if="!readonly"
@@ -30,8 +30,8 @@
       <LucidePlus />
       Add modifier
     </Button>
-    <div v-if="showMultipleWarning" class="pl-2 text-xs text-orange-500 flex items-center">
-      <LucideTriangleAlert class="size-4 mr-2" />
+    <div v-if="showMultipleWarning" class="flex items-center pl-2 text-xs text-orange-500">
+      <LucideTriangleAlert class="mr-2 size-4" />
       Multiple inputs/outputs will be concatenated in order
     </div>
   </div>

@@ -6,12 +6,12 @@
     </CardHeader>
     <CardContent>
       <Button :disabled="snapshotPending" @click="createSnapshot">Create Snapshot</Button>
-      <div class="text-destructive mt-4" v-if="snapshotError">
+      <div class="mt-4 text-destructive" v-if="snapshotError">
         Snapshot failed
         <br />
         {{ snapshotError }}
       </div>
-      <ul class="mt-4 text-sm list-disc mx-4" v-if="snapshotResult">
+      <ul class="mx-4 mt-4 list-disc text-sm" v-if="snapshotResult">
         <li v-for="error in snapshotResult.errors" :key="error">
           <pre class="text-destructive">{{ error }}</pre>
         </li>

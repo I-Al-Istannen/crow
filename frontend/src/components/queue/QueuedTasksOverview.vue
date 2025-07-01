@@ -18,7 +18,7 @@
         @click.middle="openDetails(item, true)"
         @click.ctrl.left.capture.stop="openDetails(item, true)"
       >
-        <TableCell class="font-medium text-center">
+        <TableCell class="text-center font-medium">
           {{ index + 1 }}
         </TableCell>
         <TableCell>
@@ -43,7 +43,7 @@
       </TableRow>
     </TableBody>
   </Table>
-  <div v-else class="text-muted-foreground text-sm mb-2" :class="{ 'mt-6': runners.length > 0 }">
+  <div v-else class="mb-2 text-sm text-muted-foreground" :class="{ 'mt-6': runners.length > 0 }">
     The queue is empty! The perfect time for you to submit something :)
   </div>
 </template>

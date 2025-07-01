@@ -4,18 +4,18 @@
       <DropdownMenuTrigger as-child>
         <Button variant="ghost" size="xs" class="-ml-2 h-8 data-[state=open]:bg-accent">
           <span>{{ title }}</span>
-          <LucideArrowDownZA v-if="column.getIsSorted() === 'desc'" class="w-4 h-4" />
-          <LucideArrowUpAZ v-else-if="column.getIsSorted() === 'asc'" class="w-4 h-4" />
-          <LucideArrowUpDown v-else class="w-4 h-4" />
+          <LucideArrowDownZA v-if="column.getIsSorted() === 'desc'" class="h-4 w-4" />
+          <LucideArrowUpAZ v-else-if="column.getIsSorted() === 'asc'" class="h-4 w-4" />
+          <LucideArrowUpDown v-else class="h-4 w-4" />
           <span
-            class="-ml-[0.4rem] text-xs -translate-y-1 font-mono"
+            class="-ml-[0.4rem] -translate-y-1 font-mono text-xs"
             :class="{ 'opacity-0': !isMultiSorting || column.getSortIndex() < 0 }"
           >
             {{ column.getSortIndex() + 1 }}
           </span>
           <LucideFilter
             v-if="column.getFilterValue() !== undefined"
-            class="w-4 h-4"
+            class="h-4 w-4"
             :class="[!isMultiSorting || column.getSortIndex() < 0 ? '-ml-3' : '-ml-1']"
           />
         </Button>

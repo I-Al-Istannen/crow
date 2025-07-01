@@ -1,9 +1,9 @@
 <template>
-  <nav class="px-2 py-3 border-b border-border bg-background">
-    <div class="container flex items-center justify-between max-w-7xl max-sm:px-0">
-      <div class="flex md:space-x-6 flex-grow">
-        <router-link :to="{ name: 'home' }" class="flex items-center flex-shrink-0">
-          <div class="flex items-center justify-center flex-shrink-0">
+  <nav class="border-b border-border bg-background px-2 py-3">
+    <div class="container flex max-w-7xl items-center justify-between max-sm:px-0">
+      <div class="flex flex-grow md:space-x-6">
+        <router-link :to="{ name: 'home' }" class="flex flex-shrink-0 items-center">
+          <div class="flex flex-shrink-0 items-center justify-center">
             <img src="/src/crow1337.svg" alt="logo" class="h-[24px] flex-shrink-0" />
             <span class="ml-2 font-semibold max-md:hidden">crow</span>
           </div>
@@ -34,7 +34,7 @@
               :class="
                 // will-change-transform forces the avatar into its own layer, shaving of
                 // ~10ms in paint time
-                clsx(isAdmin && 'p-[2px] bg-gradient-primary rounded-md will-change-transform')
+                clsx(isAdmin && 'bg-gradient-primary rounded-md p-[2px] will-change-transform')
               "
             >
               <Button variant="outline" size="icon">

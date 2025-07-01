@@ -10,9 +10,9 @@
             v-bind="componentField"
           />
         </FormControl>
-        <div v-if="showSshWarning" class="pl-2 text-xs text-orange-500 flex items-center">
+        <div v-if="showSshWarning" class="flex items-center pl-2 text-xs text-orange-500">
           <div>
-            <LucideTriangleAlert class="size-4 mr-2" />
+            <LucideTriangleAlert class="mr-2 size-4" />
           </div>
           <div>
             Using an SSH URL (instead of https) likely requires SSH keys to be set up and should
@@ -24,10 +24,10 @@
       </FormItem>
     </FormField>
     <Button type="submit" :disabled="mutationPending">
-      <LoaderCircle class="animate-spin mr-2 -ml-2" v-if="mutationPending" />
+      <LoaderCircle class="-ml-2 mr-2 animate-spin" v-if="mutationPending" />
       Submit
     </Button>
-    <div v-if="error !== null" class="text-red-500 whitespace-pre">
+    <div v-if="error !== null" class="whitespace-pre text-red-500">
       {{ error }}
     </div>
   </form>

@@ -1,8 +1,8 @@
 <template>
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
-      <Button variant="outline" size="sm" class="h-8 ml-auto">
-        <MixerHorizontalIcon class="w-4 h-4 mr-2" />
+      <Button variant="outline" size="sm" class="ml-auto h-8">
+        <MixerHorizontalIcon class="mr-2 h-4 w-4" />
         View
       </Button>
     </DropdownMenuTrigger>
@@ -13,7 +13,7 @@
       <DropdownMenuCheckboxItem
         v-for="column in columns"
         :key="column.id"
-        class="capitalize cursor-pointer"
+        class="cursor-pointer capitalize"
         :modelValue="column.getIsVisible()"
         @update:modelValue="(value) => column.toggleVisibility(!!value)"
       >

@@ -2,9 +2,9 @@
   <div>
     <span v-if="isLoading">Loading test data...</span>
     <span v-if="isFetched && test === null">Test not found</span>
-    <div v-if="test" class="border p-2 mx-2 rounded flex flex-col gap-2">
+    <div v-if="test" class="mx-2 flex flex-col gap-2 rounded border p-2">
       <div v-if="testTastingError">
-        <div class="font-medium mb-2">Test tasting</div>
+        <div class="mb-2 font-medium">Test tasting</div>
         <FinishedTestDetailDialog
           :test="testTastingError"
           of-whom="reference"
@@ -20,7 +20,7 @@
           />
         </TooltipProvider>
       </div>
-      <div v-if="test" class="grid grid-cols-1 lg:grid-cols-2 gap-4 p-1">
+      <div v-if="test" class="grid grid-cols-1 gap-4 p-1 lg:grid-cols-2">
         <div>
           <span class="text-sm font-medium">Executing your compiler</span>
           <TestModifierList

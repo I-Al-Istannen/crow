@@ -13,14 +13,14 @@
         :failure-count="failureCount"
         :failure-reason="failureReason"
       />
-      <div v-if="tasks" class="space-y-2 -mt-2">
+      <div v-if="tasks" class="-mt-2 space-y-2">
         <TooltipProvider>
           <div v-for="[category, task] in sortedTasks" :key="category" class="flex flex-col">
-            <span class="font-medium mb-1">
+            <span class="mb-1 font-medium">
               {{ category }}:
               <Tooltip v-if="task.type === 'Finalized' && task.points">
                 <TooltipTrigger as-child>
-                  <span class="text-muted-foreground text-sm ml-2">
+                  <span class="ml-2 text-sm text-muted-foreground">
                     You got {{ task.points.points }} points, hover for details.
                     <span v-if="task.points.points >= 80">
                       <span class="gradient-primary">Perfect!</span> 🐞</span
@@ -39,7 +39,7 @@
                 </TooltipTrigger>
                 <TooltipContent>
                   The rating formula for this lab is
-                  <span class="font-mono ml-1">{{ task.points.formula }}</span>
+                  <span class="ml-1 font-mono">{{ task.points.formula }}</span>
                 </TooltipContent>
               </Tooltip>
             </span>

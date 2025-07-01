@@ -5,7 +5,7 @@
       <slot />
     </DialogTrigger>
     <DialogContent
-      class="max-w-[98dvw] md:max-w-[90dvw] lg:max-w-[80dvw] xl:max-w-[70dvw] max-h-[80dvh] overflow-y-auto"
+      class="max-h-[80dvh] max-w-[98dvw] overflow-y-auto md:max-w-[90dvw] lg:max-w-[80dvw] xl:max-w-[70dvw]"
     >
       <DialogHeader>
         <DialogTitle v-if="editingExisting">Edit a test</DialogTitle>
@@ -13,7 +13,7 @@
         <DialogDescription>Share a test with the world and break some compilers</DialogDescription>
       </DialogHeader>
       <div class="overflow-hidden">
-        <form novalidate @submit="onSubmit" class="grid grid-cols-1 lg:grid-cols-2 gap-4 p-1">
+        <form novalidate @submit="onSubmit" class="grid grid-cols-1 gap-4 p-1 lg:grid-cols-2">
           <FormField v-slot="{ componentField }" name="id">
             <FormItem v-auto-animate class="flex-grow">
               <FormLabel class="text-sm font-medium">Name</FormLabel>
@@ -83,7 +83,7 @@
                 </FormDescription>
                 <FormMessage />
               </div>
-              <div class="flex self-center justify-start ml-6 flex-grow" v-auto-animate>
+              <div class="ml-6 flex flex-grow justify-start self-center" v-auto-animate>
                 <FinishedTestDetailDialog
                   v-if="clickedTest"
                   :test="clickedTest"
@@ -101,9 +101,9 @@
               </div>
             </FormItem>
           </FormField>
-          <div class="flex items-center col-start-1">
+          <div class="col-start-1 flex items-center">
             <Button type="submit" :disabled="mutationPending">
-              <LoaderCircle class="animate-spin mr-2 -ml-2" v-show="editPending" />
+              <LoaderCircle class="-ml-2 mr-2 animate-spin" v-show="editPending" />
               Submit
             </Button>
             <Button
@@ -114,7 +114,7 @@
               v-if="testToEdit"
               v-auto-animate
             >
-              <LoaderCircle class="animate-spin mr-2 -ml-2" v-show="deletePending" />
+              <LoaderCircle class="-ml-2 mr-2 animate-spin" v-show="deletePending" />
               <span v-if="!inDeletionProcess">Delete</span>
               <span v-else>Confirm Deletion</span>
             </Button>

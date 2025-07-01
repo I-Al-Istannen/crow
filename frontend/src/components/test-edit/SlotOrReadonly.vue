@@ -2,7 +2,7 @@
   <div
     v-if="readonly"
     v-bind="$attrs"
-    class="self-stretch shrink-0 rounded-md h-7 px-2 shadow-sm border text-sm flex items-center justify-start"
+    class="flex h-7 shrink-0 items-center justify-start self-stretch rounded-md border px-2 text-sm shadow-sm"
   >
     <span>{{ label }}</span>
   </div>

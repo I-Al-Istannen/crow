@@ -14,7 +14,7 @@
       <AccordionItem value="error" v-if="buildOutput.error !== undefined">
         <AccordionTrigger>Internal error</AccordionTrigger>
         <AccordionContent>
-          <pre class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto">{{
+          <pre class="overflow-auto whitespace-pre-wrap rounded bg-accent p-2">{{
             buildOutput.error
           }}</pre>
         </AccordionContent>
@@ -29,7 +29,7 @@
           </span>
         </AccordionTrigger>
         <AccordionContent>
-          <pre class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto"><span
+          <pre class="overflow-auto whitespace-pre-wrap rounded bg-accent p-2"><span
             class="block"
             v-for="(line, index) in accumulatedErrorLines"
             :class="{
@@ -53,9 +53,9 @@
           <pre
             v-if="isAnsi(buildOutput.stdout)"
             v-html="asAnsi(buildOutput.stdout)"
-            class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto"
+            class="overflow-auto whitespace-pre-wrap rounded bg-accent p-2"
           />
-          <pre v-else class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto">{{
+          <pre v-else class="overflow-auto whitespace-pre-wrap rounded bg-accent p-2">{{
             buildOutput.stdout
           }}</pre>
         </AccordionContent>
@@ -73,9 +73,9 @@
           <pre
             v-html="asAnsi(buildOutput.stderr)"
             v-if="isAnsi(buildOutput.stderr)"
-            class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto"
+            class="overflow-auto whitespace-pre-wrap rounded bg-accent p-2"
           />
-          <pre v-else class="whitespace-pre-wrap bg-accent p-2 rounded overflow-auto">{{
+          <pre v-else class="overflow-auto whitespace-pre-wrap rounded bg-accent p-2">{{
             buildOutput.stderr
           }}</pre>
         </AccordionContent>

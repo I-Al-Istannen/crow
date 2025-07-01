@@ -87,9 +87,9 @@
     @apply bg-background text-foreground;
   }
   .gradient-primary {
-    @apply bg-gradient-to-r from-blue-500 via-violet-500 to-rose-600 bg-clip-text text-transparent animate-gradient-x;
+    @apply animate-gradient-x bg-gradient-to-r from-blue-500 via-violet-500 to-rose-600 bg-clip-text text-transparent;
   }
   .bg-gradient-primary {
-    @apply bg-gradient-to-r from-blue-500 via-violet-500 to-rose-600 animate-gradient-x;
+    @apply animate-gradient-x bg-gradient-to-r from-blue-500 via-violet-500 to-rose-600;
   }
 }

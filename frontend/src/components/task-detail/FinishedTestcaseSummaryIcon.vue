@@ -1,6 +1,6 @@
 <template>
   <div
-    class="w-[2em] h-[2em] flex justify-center items-center text-white rounded cursor-pointer"
+    class="flex h-[2em] w-[2em] cursor-pointer items-center justify-center rounded text-white"
     :class="[statusColor(testType(test), 'bg')]"
     v-bind="$attrs"
     @click.prevent="'output' in test ? handleTestClick(test) : undefined"

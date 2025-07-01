@@ -1,7 +1,7 @@
 <template>
   <PageContainer>
     <Card>
-      <CardHeader class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+      <CardHeader class="flex flex-col items-start justify-between sm:flex-row sm:items-center">
         <div class="flex flex-col gap-y-1.5">
           <CardTitle>All runs</CardTitle>
           <CardDescription>View all runs that ever ran against your code</CardDescription>
@@ -25,7 +25,7 @@
           />
         </div>
 
-        <div v-if="displayedTasks.length === 0" class="text-muted-foreground text-sm mb-2">
+        <div v-if="displayedTasks.length === 0" class="mb-2 text-sm text-muted-foreground">
           <span v-if="searchTerm.length === 0">No tasks found to display</span>
           <span v-else>No task matches your query</span>
         </div>

@@ -1,7 +1,7 @@
 <template>
   <PageContainer>
     <Card>
-      <CardHeader class="flex flex-row justify-between items-center">
+      <CardHeader class="flex flex-row items-center justify-between">
         <div class="flex flex-col gap-y-1.5">
           <CardTitle>Recent runs</CardTitle>
           <CardDescription>View your recent submissions</CardDescription>
@@ -19,7 +19,7 @@
       </CardContent>
       <CardContent class="space-y-1" v-else-if="data">
         <FinishedTaskOverview v-for="task in data" :task="task" :key="task.info.taskId" />
-        <div v-if="data.length === 0" class="text-muted-foreground text-sm mb-2">
+        <div v-if="data.length === 0" class="mb-2 text-sm text-muted-foreground">
           No tasks here yet :/ You need to submit some (or set up your repository :)
         </div>
       </CardContent>

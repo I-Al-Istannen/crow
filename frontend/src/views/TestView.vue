@@ -1,7 +1,7 @@
 <template>
   <PageContainer>
     <Card>
-      <CardHeader class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+      <CardHeader class="flex flex-col items-start justify-between sm:flex-row sm:items-center">
         <div class="flex flex-col gap-y-1.5">
           <CardTitle>Test all the things</CardTitle>
           <CardDescription>
@@ -39,7 +39,7 @@
                   <Button
                     v-if="canEdit(test)"
                     variant="ghost"
-                    class="h-full p-2 -m-2"
+                    class="-m-2 h-full p-2"
                     @click.stop="openEditDialog(test)"
                     :disabled="testToEditLoading"
                   >
@@ -57,7 +57,7 @@
             No test matches your search
           </div>
 
-          <div v-if="allTests.length === 0" class="text-muted-foreground text-sm mb-2">
+          <div v-if="allTests.length === 0" class="mb-2 text-sm text-muted-foreground">
             No tests yet. Create some!
           </div>
 

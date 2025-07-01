@@ -1,5 +1,5 @@
 <template>
-  <div class="flex gap-2 w-full flex-wrap">
+  <div class="flex w-full flex-wrap gap-2">
     <Input
       @update:model-value="table.setGlobalFilter($event)"
       placeholder="Search user attribute..."

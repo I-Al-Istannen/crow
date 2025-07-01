@@ -28,13 +28,13 @@
   </PageContainer>
   <PageContainer
     v-else
-    class="h-[calc(100dvh-49px)] overflow-clip relative max-w-full"
+    class="relative h-[calc(100dvh-49px)] max-w-full overflow-clip"
     ref="crowContainer"
     @mouseleave="mousePos = { x: -100, y: -100 }"
     @mousemove="mousePos = { x: $event.offsetX, y: $event.offsetY }"
   >
     <a :href="BACKEND_URL + '/login'" @click="saveFromUrl">
-      <Button class="absolute left-1/2 top-1/2 -translate-y-1/2 -translate-x-1/2">Log in</Button>
+      <Button class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">Log in</Button>
     </a>
     <img
       v-for="crow in crows"
@@ -42,7 +42,7 @@
       :id="crow.id"
       src="/src/crow1337.svg"
       alt="a crow"
-      class="h-[25px] w-[25px] absolute pointer-events-none"
+      class="pointer-events-none absolute h-[25px] w-[25px]"
     />
   </PageContainer>
 </template>

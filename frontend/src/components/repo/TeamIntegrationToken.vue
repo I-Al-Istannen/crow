@@ -4,7 +4,7 @@
     <code :class="cls" class="select-all">{{ teamIntegrationToken }}</code>
     <div class="mt-2 leading-relaxed">
       With this token you can access two special endpoints:
-      <ul class="list-disc list-inside ml-2 mb-1">
+      <ul class="mb-1 ml-2 list-inside list-disc">
         <li>
           <code :class="cls">PUT /integration/token/queue/rev/:revision</code>
           to submit a commit of your repository to the queue. Optionally, you can set the content

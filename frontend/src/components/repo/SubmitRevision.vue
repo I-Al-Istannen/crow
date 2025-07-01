@@ -12,7 +12,7 @@
     </FormField>
     <div class="flex items-center" v-auto-animate>
       <Button type="submit" :disabled="isPending">
-        <LoaderCircle class="animate-spin mr-2 -ml-2" v-show="isPending" />
+        <LoaderCircle class="-ml-2 mr-2 animate-spin" v-show="isPending" />
         Submit
       </Button>
       <Button variant="link" v-if="resultingTaskId">

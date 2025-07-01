@@ -8,7 +8,7 @@
     </CardHeader>
     <CardContent>
       <Button :disabled="rehashPending" @click="rehash">Rehash tests</Button>
-      <div class="text-destructive mt-4" v-if="rehashError">
+      <div class="mt-4 text-destructive" v-if="rehashError">
         Rehash failed
         <br />
         {{ rehashError }}

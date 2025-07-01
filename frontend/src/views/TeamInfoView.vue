@@ -3,7 +3,7 @@
     <Card>
       <CardHeader>
         <CardTitle>Team Overview</CardTitle>
-        <CardDescription class="flex justify-between flex-wrap">
+        <CardDescription class="flex flex-wrap justify-between">
           <span>Information about a team and its members</span>
           <a
             v-if="info && info.repoUrl"
@@ -24,7 +24,7 @@
         <span class="font-medium">{{ info.team.displayName }}</span>
         <span class="text-muted-foreground"> ({{ info.team.id }})</span>
         consists of
-        <ul class="list-disc list-inside">
+        <ul class="list-inside list-disc">
           <li v-for="member in info.members" :key="member.id">
             <UsernameDisplay :id="member.id" :display-name="member.displayName" :show-id="true" />
           </li>

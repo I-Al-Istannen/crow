@@ -11,11 +11,11 @@
           />
         </div>
         <span v-else>Task summary</span>
-        <div v-if="taskSummary" class="text-muted-foreground ml-5">
+        <div v-if="taskSummary" class="ml-5 text-muted-foreground">
           <RouterLink
             v-if="isAdmin"
             :to="{ name: 'team-info', params: { teamId: taskSummary.info.teamId } }"
-            class="hover:underline cursor-pointer"
+            class="cursor-pointer hover:underline"
           >
             by the {{ taskSummary.info.teamId }}
           </RouterLink>
@@ -51,7 +51,7 @@
   <BuildOutputOverview :task-or-output="task" v-if="task" />
 
   <Card v-if="tests && task">
-    <CardHeader class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+    <CardHeader class="flex flex-col items-start justify-between sm:flex-row sm:items-center">
       <div class="flex flex-col gap-y-1.5">
         <CardTitle>Test results</CardTitle>
         <CardDescription>Information about individual tests</CardDescription>

@@ -9,12 +9,12 @@
         <CardTitle>Failed to log in</CardTitle>
         <CardDescription>
           Something went wrong while logging you in. Please report this error and
-          <router-link class="underline text-black" to="/">go back.</router-link>
+          <router-link class="text-black underline" to="/">go back.</router-link>
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div v-if="pending">
-          <LoaderCircle class="animate-spin mr-2 -ml-2" />
+          <LoaderCircle class="-ml-2 mr-2 animate-spin" />
         </div>
         <div v-else-if="error !== null">
           <div class="text-red-500">{{ error }}</div>

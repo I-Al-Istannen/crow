@@ -2,7 +2,7 @@
   <TooltipProvider v-if="gradedForCategory && gradedForCategory.length > 0">
     <Tooltip>
       <TooltipTrigger>
-        <LucideSparkles class="cursor-default h-4 w-4 inline-block text-yellow-500" />
+        <LucideSparkles class="inline-block h-4 w-4 cursor-default text-yellow-500" />
       </TooltipTrigger>
       <TooltipContent>
         <span class="text-white">crow</span> will submit this task for

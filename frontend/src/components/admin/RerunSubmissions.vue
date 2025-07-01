@@ -13,7 +13,7 @@
       <form
         novalidate
         @submit="onSubmit"
-        class="grid grid-cols-1 lg:grid-cols-2 gap-4 p-1"
+        class="grid grid-cols-1 gap-4 p-1 lg:grid-cols-2"
         v-if="categories"
       >
         <FormField v-slot="{ componentField }" name="category">
@@ -39,20 +39,20 @@
             <FormDescription>The category to trigger a rerun for</FormDescription>
           </FormItem>
         </FormField>
-        <div class="flex items-center col-start-1">
+        <div class="col-start-1 flex items-center">
           <Button type="submit" :disabled="rerunPending">
-            <LoaderCircle class="animate-spin mr-2 -ml-2" v-show="rerunPending" />
+            <LoaderCircle class="-ml-2 mr-2 animate-spin" v-show="rerunPending" />
             Rerun submissions
           </Button>
         </div>
       </form>
 
-      <div class="text-destructive mt-4" v-if="rerunError">
+      <div class="mt-4 text-destructive" v-if="rerunError">
         Rerunning submissions failed
         <br />
         {{ rerunError }}
       </div>
-      <ul class="mt-4 text-sm list-disc mx-4" v-if="rerunResult">
+      <ul class="mx-4 mt-4 list-disc text-sm" v-if="rerunResult">
         <li v-for="error in rerunResult.errors" :key="error">
           <pre class="text-destructive">{{ error }}</pre>
         </li>
@@ -61,7 +61,7 @@
           <span class="text-muted-foreground">find it</span>
           <RouterLink
             :to="{ name: 'task-detail', params: { taskId: task } }"
-            class="hover:underline cursor:pointer"
+            class="cursor:pointer hover:underline"
           >
             here
           </RouterLink>

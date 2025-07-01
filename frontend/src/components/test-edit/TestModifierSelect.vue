@@ -1,9 +1,9 @@
 <template>
   <div
-    class="flex max-sm:flex-wrap items-center gap-1 p-1 rounded-md justify-start"
+    class="flex items-center justify-start gap-1 rounded-md p-1 max-sm:flex-wrap"
     :class="[readonly ? 'ml-3' : '']"
   >
-    <LucideGripVertical v-if="!readonly" class="h-5 flex-shrink-0 drag-handle cursor-grab" />
+    <LucideGripVertical v-if="!readonly" class="drag-handle h-5 flex-shrink-0 cursor-grab" />
     <SlotOrReadonly
       :readonly="readonly || false"
       :label="currentModifierData.label"
@@ -14,7 +14,7 @@
         @update:model-value="modifier.type = $event as TestModifier['type']"
         :class="[readonly ? 'ml-2' : '']"
       >
-        <SelectTrigger class="max-w-[20ch] py-0 h-7 flex-shrink-1 md:flex-shrink-0 min-w-1">
+        <SelectTrigger class="flex-shrink-1 h-7 min-w-1 max-w-[20ch] py-0 md:flex-shrink-0">
           <SelectValue placeholder="Select a modifier" />
         </SelectTrigger>
         <SelectContent>
@@ -38,7 +38,7 @@
       :model-value="currentValue"
       @update:model-value="currentModifierData.update(modifier as any, $event as string)"
       v-if="currentModifierData.argType === 'short-string'"
-      class="py-0 h-7 min-w-1 text-ellipsis"
+      class="h-7 min-w-1 text-ellipsis py-0"
     />
     <SlotOrReadonly
       :readonly="readonly || false"
@@ -51,7 +51,7 @@
         max="255"
         :model-value="currentValue"
         @update:model-value="currentModifierData.update(modifier as any, $event as number)"
-        class="py-0 h-7 min-w-1"
+        class="h-7 min-w-1 py-0"
         :class="[
           (currentValue as number) > 255 || (currentValue as number) < 0
             ? 'ring-1 !ring-destructive'
@@ -61,10 +61,10 @@
     </SlotOrReadonly>
     <Popover v-if="currentModifierData.argType === 'long-string'">
       <PopoverTrigger class="h-7 w-full" as-child>
-        <Button class="bg-transparent min-w-1 justify-start" variant="outline">
+        <Button class="min-w-1 justify-start bg-transparent" variant="outline">
           <span
             v-if="(currentValue as string).length > 0"
-            class="overflow-ellipsis overflow-hidden"
+            class="overflow-hidden overflow-ellipsis"
           >
             {{ currentValue }}
           </span>
@@ -73,11 +73,11 @@
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent class="w-[90dvw] sm:w-[70dvw] max-w-[120ch]">
+      <PopoverContent class="w-[90dvw] max-w-[120ch] sm:w-[70dvw]">
         <Textarea
           :model-value="currentValue"
           @update:model-value="currentModifierData.update(modifier as any, $event as string)"
-          class="font-mono whitespace-pre overflow-scroll max-h-[100dvh]"
+          class="max-h-[100dvh] overflow-scroll whitespace-pre font-mono"
           rows="10"
           :placeholder="currentModifierData.placeholder"
           :readonly="readonly || false"
@@ -95,7 +95,7 @@
         @update:model-value="currentModifierData.update(modifier as any, $event as CrashSignal)"
         required
       >
-        <SelectTrigger class="py-0 h-7 min-w-1">
+        <SelectTrigger class="h-7 min-w-1 py-0">
           <SelectValue placeholder="Select a crash argument" />
         </SelectTrigger>
         <SelectContent>
@@ -123,7 +123,7 @@
         "
         required
       >
-        <SelectTrigger class="py-0 h-7 min-w-1">
+        <SelectTrigger class="h-7 min-w-1 py-0">
           <SelectValue placeholder="Select a failure reason" />
         </SelectTrigger>
         <SelectContent>

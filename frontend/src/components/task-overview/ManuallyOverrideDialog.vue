@@ -24,7 +24,7 @@
         </Tooltip>
       </TooltipProvider>
     </PopoverTrigger>
-    <PopoverContent class="max-sm:w-[90dvw] w-[20em]">
+    <PopoverContent class="w-[20em] max-sm:w-[90dvw]">
       <DataLoadingExplanation
         :is-loading="isLoading"
         :failure-count="failureCount"

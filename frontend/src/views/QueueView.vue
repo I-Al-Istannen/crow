@@ -1,7 +1,7 @@
 <template>
   <PageContainer>
     <Card>
-      <CardHeader class="flex flex-row justify-between items-center">
+      <CardHeader class="flex flex-row items-center justify-between">
         <div class="flex flex-col gap-y-1.5">
           <CardTitle>Queue</CardTitle>
           <CardDescription>Everything you are waiting for</CardDescription>
@@ -19,9 +19,9 @@
         />
         <div v-if="queueResponse">
           <TooltipProvider>
-            <div class="flex gap-2 flex-wrap mb-4">
+            <div class="mb-4 flex flex-wrap gap-2">
               <div
-                class="p-2 leading-none tracking-tight flex flex-row gap-2 items-center"
+                class="flex flex-row items-center gap-2 p-2 leading-none tracking-tight"
                 :class="['rounded-xl', 'border', 'bg-card', 'text-card-foreground']"
                 v-for="runner in sortedRunners"
                 :key="runner.id"
@@ -39,21 +39,21 @@
                   <TooltipContent>This runner runs tests against your submissions</TooltipContent>
                 </Tooltip>
                 <div class="flex flex-col justify-center">
-                  <div class="mb-1 font-medium flex gap-2 items-center justify-between">
+                  <div class="mb-1 flex items-center justify-between gap-2 font-medium">
                     <span>
                       {{ runner.id }}
                     </span>
-                    <span class="sm:ml-4 text-sm text-muted-foreground">
+                    <span class="text-sm text-muted-foreground sm:ml-4">
                       pinged
-                      <span class="min-w-[3ch] inline-block text-end">
+                      <span class="inline-block min-w-[3ch] text-end">
                         {{ formatApproxDuration(currentTime, runner.lastSeen.getTime()) }}
                       </span>
                       ago
                     </span>
                   </div>
-                  <span class="text-sm text-muted-foreground flex justify-between">
+                  <span class="flex justify-between text-sm text-muted-foreground">
                     <span>{{ runner.info }}</span>
-                    <span v-if="runner.workingOn" class="font-medium gradient-primary">
+                    <span v-if="runner.workingOn" class="gradient-primary font-medium">
                       active
                     </span>
                     <span v-else>idle</span>

@@ -1,6 +1,6 @@
 <template>
   <div class="-mt-2" v-if="tests.length === 0">No tests were run during this task.</div>
-  <div class="flex flex-row gap-1 flex-wrap" v-else>
+  <div class="flex flex-row flex-wrap gap-1" v-else>
     <TooltipProvider>
       <FinishedTestcaseIcon
         v-for="test in tests"

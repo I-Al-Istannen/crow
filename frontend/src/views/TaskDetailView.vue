@@ -24,11 +24,11 @@
             />
           </div>
           <span v-else>Task detail</span>
-          <div v-if="queuedTask" class="text-muted-foreground ml-5">
+          <div v-if="queuedTask" class="ml-5 text-muted-foreground">
             <RouterLink
               v-if="isAdmin"
               :to="{ name: 'team-info', params: { teamId: queuedTask.team } }"
-              class="hover:underline cursor-pointer"
+              class="cursor-pointer hover:underline"
             >
               by the {{ queuedTask.team }}
             </RouterLink>

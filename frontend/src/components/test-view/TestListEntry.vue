@@ -48,7 +48,7 @@
           </TooltipContent>
         </Tooltip>
       </span>
-      <span class="flex flex-grow justify-end mr-2 items-center gap-2">
+      <span class="mr-2 flex flex-grow items-center justify-end gap-2">
         <slot name="actions" />
         <Badge variant="secondary">{{ test.category }}</Badge>
       </span>

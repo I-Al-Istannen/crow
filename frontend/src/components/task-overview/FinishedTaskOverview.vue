@@ -20,8 +20,8 @@
         )
       "
     >
-      <div class="flex flex-col justify-center max-w-full flex-wrap">
-        <div class="mb-1 flex items-stretch gap-1 flex-wrap mr-1 max-w-full">
+      <div class="flex max-w-full flex-col flex-wrap justify-center">
+        <div class="mb-1 mr-1 flex max-w-full flex-wrap items-stretch gap-1">
           <a
             v-if="commitUrl"
             :href="commitUrl"
@@ -34,7 +34,7 @@
           <span v-else class="text-muted-foreground"
             >{{ task.info.revisionId.substring(0, 7) }}:
           </span>
-          <span class="font-medium text-ellipsis overflow-hidden text-nowrap max-w-[50ch]">
+          <span class="max-w-[50ch] overflow-hidden text-ellipsis text-nowrap font-medium">
             {{ task.info.commitMessage }}
           </span>
           <FinalizedGradedMarker :task-id="task.info.taskId" />
@@ -45,7 +45,7 @@
       </div>
       <div class="flex-grow" />
       <div
-        class="text-sm text-muted-foreground flex flex-col justify-center items-end self-stretch"
+        class="flex flex-col items-end justify-center self-stretch text-sm text-muted-foreground"
       >
         <span>
           {{ formatTime(task.info.start) }}
