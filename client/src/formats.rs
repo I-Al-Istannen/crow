@@ -1,10 +1,10 @@
 use crate::context::{Test, TestDetail};
 use indexmap::IndexMap;
 use markdown::mdast::{Code, Text};
-use markdown::{mdast, ParseOptions};
+use markdown::{ParseOptions, mdast};
 use mdast::{Heading, Node, Root};
 use shared::{CompilerFailReason, CrashSignal, TestModifier};
-use snafu::{ensure, location, IntoError, Location, NoneError, ResultExt, Snafu};
+use snafu::{IntoError, Location, NoneError, ResultExt, Snafu, ensure, location};
 use std::fmt::{Display, Formatter};
 use std::path::{Path, PathBuf};
 
@@ -375,7 +375,7 @@ fn modifier_from_string(type_: &str, value: Option<String>) -> Result<TestModifi
             return Err(FormatError::MalformedModifier {
                 message: format!("Unknown modifier type `{type_}`"),
                 location: location!(),
-            })
+            });
         }
     };
 

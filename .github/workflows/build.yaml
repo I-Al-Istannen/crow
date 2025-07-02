@@ -23,7 +23,7 @@ jobs:
     - name: Set up attic
       run: |
         NIXPKGS_OVERRIDE="github:NixOS/nixpkgs/$(jq -r '.nodes.nixpkgs.locked.rev' flake.lock)"
-        nix profile install --override-input nixpkgs "$NIXPKGS_OVERRIDE" github:zhaofengli/attic $NIXPKGS_OVERRIDE#nix-fast-build
+        nix profile install github:zhaofengli/attic $NIXPKGS_OVERRIDE#nix-fast-build
         attic login mine https://attic.ialistannen.de ${{ secrets.ATTIC_TOKEN }}
 
         # Save original store paths

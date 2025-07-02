@@ -3,10 +3,10 @@ use crate::types::{FinishedTestSummary, TeamId, TestId};
 use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
 use shared::{
-    deserialize_system_time, serialize_system_time, ExecutionOutput, FinishedCompilerTask,
-    FinishedExecution, RunnerId, RunnerInfo, TestExecutionOutput,
+    ExecutionOutput, FinishedCompilerTask, FinishedExecution, RunnerId, RunnerInfo,
+    TestExecutionOutput, deserialize_system_time, serialize_system_time,
 };
-use snafu::{ensure, Location, Snafu};
+use snafu::{Location, Snafu, ensure};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};

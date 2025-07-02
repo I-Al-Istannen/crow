@@ -3,9 +3,9 @@ use crate::types::{TeamId, Test, TestId, TestSummary, TestWithTasteTesting};
 use jiff::Timestamp;
 use sha2::{Digest, Sha256};
 use shared::{TestExecutionOutput, TestExecutionOutputType};
-use snafu::{location, ResultExt};
-use sqlx::{query, query_as, Acquire, Sqlite, SqliteConnection};
-use tracing::{info_span, instrument, Instrument};
+use snafu::{ResultExt, location};
+use sqlx::{Acquire, Sqlite, SqliteConnection, query, query_as};
+use tracing::{Instrument, info_span, instrument};
 
 #[instrument(skip_all)]
 pub(super) async fn add_test(

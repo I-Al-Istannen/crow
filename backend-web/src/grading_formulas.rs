@@ -5,7 +5,7 @@ use evalexpr::{
     ContextWithMutableVariables, DefaultNumericTypes, HashMapContext, Node, Operator, Value,
 };
 use serde::Serialize;
-use snafu::{location, Report, ResultExt, Whatever};
+use snafu::{Report, ResultExt, Whatever, location};
 use std::borrow::Borrow;
 use std::collections::HashMap;
 

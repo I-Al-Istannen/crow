@@ -4,10 +4,10 @@
 #![allow(unsafe_code)]
 
 use crate::containers::{ContainerCreateError, TestRunError, WaitForContainerError};
-use crate::mode_executor::{run_executor, CliExecutorArgs};
-use crate::mode_shim::{run_shim, CliShimArgs};
-use clap::builder::styling::AnsiColor;
+use crate::mode_executor::{CliExecutorArgs, run_executor};
+use crate::mode_shim::{CliShimArgs, run_shim};
 use clap::builder::Styles;
+use clap::builder::styling::AnsiColor;
 use clap::{Parser, Subcommand};
 use snafu::{Location, Report, Snafu};
 use std::time::Duration;

@@ -4,11 +4,11 @@ use crate::{AnyError, Endpoints, ReqwestSnafu};
 use clap::Args;
 use reqwest::blocking::{Client, ClientBuilder};
 use shared::{RunnerInfo, RunnerUpdate};
-use snafu::{location, Report, ResultExt};
+use snafu::{Report, ResultExt, location};
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Receiver;
-use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 use tracing::{info, warn};
@@ -76,7 +76,7 @@ pub fn run_executor(args: CliExecutorArgs) -> Result<(), AnyError> {
             return Err(AnyError::Docker {
                 source: e,
                 location: location!(),
-            })
+            });
         }
     };
 

@@ -1,13 +1,13 @@
-use crate::auth::{validate_jwt, CrowJwt};
+use crate::auth::{CrowJwt, validate_jwt};
 use crate::db::UserForAuth;
 use crate::error::WebError;
 use crate::types::{AppState, JwtIssuer, TeamId, UserId, UserRole};
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
-use axum::{async_trait, RequestPartsExt};
-use axum_extra::headers::authorization::Bearer;
-use axum_extra::headers::Authorization;
+use axum::{RequestPartsExt, async_trait};
 use axum_extra::TypedHeader;
+use axum_extra::headers::Authorization;
+use axum_extra::headers::authorization::Bearer;
 use serde::{Deserialize, Serialize};
 use snafu::location;
 use std::fmt::Debug;

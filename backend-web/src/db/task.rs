@@ -1,21 +1,21 @@
+use crate::UserId;
 use crate::config::TestCategory;
 use crate::error::{Result, SqlxSnafu, WebError};
 use crate::types::{
     ExecutionExitStatus, FinalSubmittedTask, FinishedCompilerTaskSummary, FinishedTestSummary,
     TaskId, TeamId, TestId,
 };
-use crate::UserId;
 use jiff::Timestamp;
 use shared::{
     AbortedExecution, ExecutionOutput, FinishedCompilerTask, FinishedExecution, FinishedTaskInfo,
     FinishedTest, InternalError, TestExecutionOutput, TestExecutionOutputType,
 };
-use snafu::{location, ResultExt};
-use sqlx::{query, Acquire, Sqlite, SqliteConnection};
+use snafu::{ResultExt, location};
+use sqlx::{Acquire, Sqlite, SqliteConnection, query};
 use std::collections::HashMap;
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
-use tracing::{info_span, instrument, Instrument};
+use tracing::{Instrument, info_span, instrument};
 
 #[instrument(skip_all)]
 pub(super) async fn add_finished_task(

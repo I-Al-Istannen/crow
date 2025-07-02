@@ -1,7 +1,7 @@
-use crate::containers::CROW_SIGNAL_SHIM_MAGIC;
 use crate::AnyError;
+use crate::containers::CROW_SIGNAL_SHIM_MAGIC;
 use clap::Args;
-use snafu::{location, Report};
+use snafu::{Report, location};
 use std::os::unix::process::ExitStatusExt;
 
 #[derive(Args, Debug)]

@@ -13,7 +13,7 @@ use openidconnect::{
     OAuth2TokenResponse, PkceCodeChallenge, RedirectUrl, Scope, StandardErrorResponse,
     TokenResponse, UserInfoClaims, UserInfoError,
 };
-use snafu::{ensure, Location, OptionExt, ResultExt, Snafu};
+use snafu::{Location, OptionExt, ResultExt, Snafu, ensure};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};

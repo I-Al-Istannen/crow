@@ -11,8 +11,8 @@ use std::io::Read;
 use std::os::fd::AsRawFd;
 use std::path::Path;
 use std::process::{Child, ChildStderr, ChildStdout, ExitStatus};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 

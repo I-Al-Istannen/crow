@@ -128,7 +128,7 @@ async fn do_test_tasting(state: &AppState, test: &Test) -> Result<Option<TestExe
                 return Err(WebError::internal_error(
                     "No test result received".to_string(),
                     location!(),
-                ))
+                ));
             }
         };
 

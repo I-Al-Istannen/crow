@@ -1,14 +1,14 @@
 use crate::containers::{Built, LimitsConfig, TaskContainer};
 use crate::docker::{Docker, ImageId};
 use crate::mode_executor::CliExecutorArgs;
-use crate::{task_executor, AnyError, Endpoints, ReqwestSnafu, NO_TASK_BACKOFF};
+use crate::{AnyError, Endpoints, NO_TASK_BACKOFF, ReqwestSnafu, task_executor};
 use reqwest::blocking::Client;
 use shared::{RunnerInfo, RunnerWorkTasteTestDone, RunnerWorkTasteTestResponse};
 use snafu::{Report, ResultExt};
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 use tracing::{debug, info, warn};
 

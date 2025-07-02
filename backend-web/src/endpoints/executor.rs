@@ -5,14 +5,14 @@ use axum::body::Body;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum_extra::headers::authorization::Basic;
-use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
+use axum_extra::headers::Authorization;
+use axum_extra::headers::authorization::Basic;
 use shared::{
     CompilerTask, CompilerTest, FinishedCompilerTask, RunnerId, RunnerInfo, RunnerUpdate,
     RunnerWorkResponse, RunnerWorkTasteTestDone, RunnerWorkTasteTestResponse, WorkTasteTestTask,
 };
-use snafu::{ensure, location, IntoError, Location, NoneError, Report, Snafu};
+use snafu::{IntoError, Location, NoneError, Report, Snafu, ensure, location};
 use tokio_util::io::ReaderStream;
 use tracing::{debug, info, instrument, warn};
 

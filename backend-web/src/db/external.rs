@@ -1,8 +1,8 @@
 use crate::error::{Result, SqlxSnafu};
 use crate::types::{CreatedExternalRun, ExternalRunId, ExternalRunStatus, TaskId};
 use snafu::ResultExt;
-use sqlx::{query, query_as, SqliteConnection};
-use tracing::{info_span, Instrument};
+use sqlx::{SqliteConnection, query, query_as};
+use tracing::{Instrument, info_span};
 
 pub(super) async fn add_external_run(
     con: &mut SqliteConnection,

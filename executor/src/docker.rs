@@ -1,9 +1,9 @@
 use derive_more::Display;
-use file_guard::os::unix::FileGuardExt;
 use file_guard::Lock;
+use file_guard::os::unix::FileGuardExt;
 use shared::exit::HandleExitcode;
 use shared::remove_directory_force;
-use snafu::{location, IntoError, Location, NoneError, ResultExt, Snafu};
+use snafu::{IntoError, Location, NoneError, ResultExt, Snafu, location};
 use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -65,9 +65,7 @@ pub enum DockerError {
         #[snafu(implicit)]
         location: Location,
     },
-    #[snafu(display(
-        "Could not understand docker response {message}: `{response}` at {location}"
-    ))]
+    #[snafu(display("Could not understand docker response {message}: `{response}` at {location}"))]
     UnknownDockerResponse {
         message: &'static str,
         response: String,

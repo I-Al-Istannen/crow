@@ -1,14 +1,14 @@
 use crate::containers::LimitsConfig;
 use crate::docker::Docker;
-use crate::mode_executor::{backoff, start_update_listener, CliExecutorArgs};
-use crate::task_executor::{execute_task, ExecutingTask};
-use crate::{AnyError, Endpoints, ReqwestSnafu, TempFileSnafu, NO_TASK_BACKOFF};
+use crate::mode_executor::{CliExecutorArgs, backoff, start_update_listener};
+use crate::task_executor::{ExecutingTask, execute_task};
+use crate::{AnyError, Endpoints, NO_TASK_BACKOFF, ReqwestSnafu, TempFileSnafu};
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use reqwest::blocking::Client;
 use shared::{RunnerInfo, RunnerWorkResponse};
-use snafu::{location, Report, ResultExt};
-use std::sync::atomic::AtomicBool;
+use snafu::{Report, ResultExt, location};
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 use tracing::{debug, info, warn};
 

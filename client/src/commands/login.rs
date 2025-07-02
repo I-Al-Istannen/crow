@@ -1,9 +1,9 @@
-use crate::auth::{store_auth, validate_token, LoginResult};
+use crate::auth::{LoginResult, store_auth, validate_token};
 use crate::error::{AuthSnafu, Result};
 use crate::util::st;
 use console::style;
-use dialoguer::theme::ColorfulTheme;
 use dialoguer::Password;
+use dialoguer::theme::ColorfulTheme;
 use reqwest::blocking::Client;
 use snafu::ResultExt;
 use tracing::{error, info};

@@ -1,13 +1,13 @@
 use crate::context::{CliContext, CliContextError, Test, TestDetail};
 use crate::error::{ContextSnafu, CrowClientError, SyncTestsSnafu};
-use crate::formats::{from_markdown, to_markdown, FormatError};
+use crate::formats::{FormatError, from_markdown, to_markdown};
 use crate::util::{infer_test_metadata_from_path, st};
 use clap::Args;
 use console::style;
-use dialoguer::theme::ColorfulTheme;
 use dialoguer::Confirm;
+use dialoguer::theme::ColorfulTheme;
 use sha2::{Digest, Sha256};
-use snafu::{ensure, location, IntoError, Location, NoneError, Report, ResultExt, Snafu};
+use snafu::{IntoError, Location, NoneError, Report, ResultExt, Snafu, ensure, location};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;

@@ -1,6 +1,6 @@
 use crate::containers::{
-    execution_output_from_wait_error, Built, ContainerCreateError, IntegrateSourceError,
-    LimitsConfig, TaskContainer, TestRunError,
+    Built, ContainerCreateError, IntegrateSourceError, LimitsConfig, TaskContainer, TestRunError,
+    execution_output_from_wait_error,
 };
 use crate::docker::{Docker, ImageId};
 use rayon::ThreadPool;
@@ -8,11 +8,11 @@ use shared::{
     CompilerTask, CompilerTest, ExecutionOutput, FinishedCompilerTask, FinishedExecution,
     FinishedTaskInfo, FinishedTest, InternalError, RunnerUpdate, TestExecutionOutput,
 };
-use snafu::{location, Location, Report, ResultExt, Snafu};
+use snafu::{Location, Report, ResultExt, Snafu, location};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
-use std::sync::{mpsc, Arc};
+use std::sync::{Arc, mpsc};
 use std::time::{Duration, Instant, SystemTime};
 use tempfile::TempPath;
 use tracing::{error, info};
@@ -371,7 +371,7 @@ fn run_test_impl(
                     test.test_id,
                     e,
                 ),
-            })
+            });
         }
     };
 

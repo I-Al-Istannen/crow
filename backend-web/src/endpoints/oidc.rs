@@ -1,17 +1,17 @@
 use crate::auth::create_jwt;
 use crate::auth::oidc::{OidcError, OidcFlowId};
-use crate::endpoints::user::LoginResponse;
 use crate::endpoints::Json;
+use crate::endpoints::user::LoginResponse;
 use crate::error::WebError;
 use crate::error::{HttpError, Result};
 use crate::types::{AppState, UserRole};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::Redirect;
-use axum_extra::extract::cookie::{Cookie, Expiration, SameSite};
 use axum_extra::extract::CookieJar;
+use axum_extra::extract::cookie::{Cookie, Expiration, SameSite};
 use serde::Deserialize;
-use snafu::{location, Report};
+use snafu::{Report, location};
 use tracing::{info, warn};
 
 pub async fn login_oidc(

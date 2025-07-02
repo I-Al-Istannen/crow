@@ -2,14 +2,14 @@ use super::{Json, Path};
 use crate::auth::Claims;
 use crate::config::TestCategory;
 use crate::error::{Result, WebError};
-use crate::grading_formulas::{get_grading_points_for_task, GradingPoints};
+use crate::grading_formulas::{GradingPoints, get_grading_points_for_task};
 use crate::storage::GitError;
 use crate::types::{
     AppState, FinalSubmittedTask, FinishedCompilerTaskSummary, Repo, TaskId, TeamId, TeamInfo,
 };
 use axum::extract::State;
 use serde::{Deserialize, Serialize};
-use snafu::{location, Report};
+use snafu::{Report, location};
 use std::collections::{HashMap, HashSet};
 use tracing::{info, instrument};
 

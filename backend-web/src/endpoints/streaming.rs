@@ -8,7 +8,7 @@ use axum::response::Response;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::json;
-use snafu::{location, IntoError, Location, NoneError, Report, ResultExt, Snafu};
+use snafu::{IntoError, Location, NoneError, Report, ResultExt, Snafu, location};
 use std::time::Duration;
 use tokio::{select, time};
 use tracing::{debug, info, instrument};

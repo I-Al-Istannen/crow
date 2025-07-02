@@ -5,7 +5,7 @@ use axum::http::StatusCode;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use shared::indent;
-use snafu::{location, Location, Snafu};
+use snafu::{Location, Snafu, location};
 use snafu::{Report, ResultExt};
 use std::path::{Path, PathBuf};
 use std::process::Output;

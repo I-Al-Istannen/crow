@@ -17,15 +17,15 @@ use crate::types::{
     UserId, UserRole, WorkItem,
 };
 use jiff::Timestamp;
-use shared::{indent, FinishedCompilerTask, TestExecutionOutput};
-use snafu::{location, Report, ResultExt};
+use shared::{FinishedCompilerTask, TestExecutionOutput, indent};
+use snafu::{Report, ResultExt, location};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous};
-use sqlx::{query, Pool, Sqlite, SqlitePool};
+use sqlx::{Pool, Sqlite, SqlitePool, query};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
-use tracing::{info_span, instrument, Instrument};
+use tracing::{Instrument, info_span, instrument};
 
 #[derive(Clone)]
 pub struct Database {

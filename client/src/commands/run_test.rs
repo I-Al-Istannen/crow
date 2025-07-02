@@ -1,6 +1,6 @@
-use crate::commands::sync_tests::{get_local_tests, FullTest};
+use crate::commands::sync_tests::{FullTest, get_local_tests};
 use crate::error::{CrowClientError, RunTestSnafu, SyncTestsSnafu, TempdirSnafu};
-use crate::formats::{from_markdown, FormatError};
+use crate::formats::{FormatError, from_markdown};
 use crate::util::{infer_test_metadata_from_path, print_test_output};
 use clap::Args;
 use console::style;
@@ -8,7 +8,7 @@ use jiff::{Timestamp, Unit};
 use rayon::ThreadPoolBuilder;
 use shared::execute::execute_test;
 use shared::{CompilerTest, TestExecutionOutput};
-use snafu::{ensure, location, IntoError, Location, NoneError, Report, ResultExt, Snafu};
+use snafu::{IntoError, Location, NoneError, Report, ResultExt, Snafu, ensure, location};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::time::Duration;

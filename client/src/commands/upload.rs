@@ -1,6 +1,6 @@
 use crate::context::{CliContext, CliContextError, RemoteTests, SetTestResponse, TestCategory};
 use crate::error::{ContextSnafu, CrowClientError, UploadTestSnafu};
-use crate::formats::{details_from_markdown, FormatError};
+use crate::formats::{FormatError, details_from_markdown};
 use crate::util::{infer_test_metadata_from_path, print_test_output};
 use clap::Args;
 use console::style;
@@ -8,7 +8,7 @@ use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, FuzzySelect, Input, Select};
 use jiff::Timestamp;
 use shared::validate_test_id;
-use snafu::{location, IntoError, Location, NoneError, ResultExt, Snafu};
+use snafu::{IntoError, Location, NoneError, ResultExt, Snafu, location};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tracing::{error, info};

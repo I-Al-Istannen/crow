@@ -1,7 +1,7 @@
 use crate::auth::Claims;
 use crate::endpoints::Json;
 use crate::error::{Result, WebError};
-use crate::grading_formulas::{get_grading_points_for_task, GradingPoints};
+use crate::grading_formulas::{GradingPoints, get_grading_points_for_task};
 use crate::types::{
     AppState, FinishedCompilerTaskStatistics, FinishedCompilerTaskSummary, TaskId, TeamId, Test,
     TestId, WorkItem,
@@ -9,7 +9,7 @@ use crate::types::{
 use axum::extract::{Path, State};
 use serde::Serialize;
 use shared::TestModifier;
-use snafu::{location, Report};
+use snafu::{Report, location};
 use std::collections::HashMap;
 use std::time::SystemTime;
 use tracing::{error, info, instrument, warn};

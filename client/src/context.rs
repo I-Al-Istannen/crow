@@ -1,7 +1,7 @@
-use crate::auth::{display_login, BackendAuth};
+use crate::auth::{BackendAuth, display_login};
 use indicatif::ProgressBar;
-use jiff::tz::TimeZone;
 use jiff::Zoned;
+use jiff::tz::TimeZone;
 use reqwest::blocking::{Client, Response};
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{StatusCode, Url};
@@ -12,8 +12,8 @@ use snafu::{IntoError, Location, NoneError, ResultExt, Snafu};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
 #[derive(Debug, Snafu)]

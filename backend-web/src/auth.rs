@@ -4,7 +4,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use crate::error::{Result, WebError};
 use crate::types::{JwtIssuer, UserId, UserRole};
 pub use extractors::Claims;
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 use snafu::location;
 use tracing::{debug, info, instrument, warn};

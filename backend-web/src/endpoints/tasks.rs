@@ -7,9 +7,9 @@ use crate::types::{
 };
 use axum::extract::State;
 use axum::response::{IntoResponse, Response};
-use axum_extra::headers::authorization::Bearer;
-use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
+use axum_extra::headers::Authorization;
+use axum_extra::headers::authorization::Bearer;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use shared::{

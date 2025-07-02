@@ -3,7 +3,7 @@ use derive_more::{Display, From};
 use jiff::Timestamp;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
-use shared::{validate_test_id, TestExecutionOutput, TestModifier};
+use shared::{TestExecutionOutput, TestModifier, validate_test_id};
 
 #[derive(Debug, Clone, Hash, From, PartialEq, Eq, Display, Serialize, sqlx::Type)]
 #[sqlx(transparent)]

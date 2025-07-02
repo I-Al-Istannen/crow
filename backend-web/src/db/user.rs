@@ -1,9 +1,9 @@
 use crate::auth::oidc::OidcUser;
 use crate::error::{Result, SqlxSnafu, WebError};
 use crate::types::{FullUserForAdmin, OwnUser, TeamId, User, UserId, UserRole};
-use snafu::{location, ResultExt};
-use sqlx::{query, SqliteConnection};
-use tracing::{instrument, trace_span, Instrument};
+use snafu::{ResultExt, location};
+use sqlx::{SqliteConnection, query};
+use tracing::{Instrument, instrument, trace_span};
 
 #[instrument(skip_all)]
 pub(super) async fn get_user_for_login(

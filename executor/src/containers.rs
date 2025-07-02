@@ -4,15 +4,15 @@ use serde::Deserialize;
 use shared::execute::{CommandResult, RunWithTimeoutError};
 use shared::exit::CrowExitStatus;
 use shared::{
-    remove_directory_force, AbortedExecution, CompilerTest, ExecutionOutput, FinishedExecution,
-    InternalError, TestExecutionOutput,
+    AbortedExecution, CompilerTest, ExecutionOutput, FinishedExecution, InternalError,
+    TestExecutionOutput, remove_directory_force,
 };
-use snafu::{ensure, location, IntoError, Location, NoneError, Report, ResultExt, Snafu};
+use snafu::{IntoError, Location, NoneError, Report, ResultExt, Snafu, ensure, location};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStderr, ChildStdout, Command, ExitStatus, Stdio};
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use std::time::{Duration, Instant};
 use std::{fs, io};
 use tempfile::{TempDir, TempPath};
@@ -519,7 +519,7 @@ impl TaskContainer<Started> {
                     return Err(ExecutionOutput::Error(InternalError {
                         message: Report::from_error(e).to_string(),
                         runtime: start.elapsed(),
-                    }))
+                    }));
                 }
             };
 

@@ -2,10 +2,10 @@ use crate::error::{Result, SqlxSnafu};
 use crate::types::{TaskId, TeamId, WorkItem};
 use jiff::Timestamp;
 use snafu::ResultExt;
-use sqlx::{query, SqliteConnection};
+use sqlx::{SqliteConnection, query};
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
-use tracing::{info_span, instrument, Instrument};
+use tracing::{Instrument, info_span, instrument};
 
 #[instrument(skip_all)]
 pub(super) async fn queue_task(con: &mut SqliteConnection, task: WorkItem) -> Result<()> {
