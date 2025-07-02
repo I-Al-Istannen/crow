@@ -22,19 +22,50 @@
     </TableHeader>
     <TableBody>
       <template v-if="table.getRowModel().rows.length > 0">
-        <TableRow
+        <tr
           v-for="row in table.getRowModel().rows"
           :key="row.id"
           :data-state="row.getIsSelected() ? 'selected' : undefined"
+          class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
         >
-          <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id" class="py-0">
-            <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-          </TableCell>
-        </TableRow>
+          <td
+            v-for="cell in row.getVisibleCells()"
+            :key="cell.id"
+            class="p-2 py-0 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-0.5"
+          >
+            <span v-if="cell.column.id === 'testId'">{{ cell.getValue() }}</span>
+            <span
+              v-else-if="cell.column.id === 'status'"
+              :class="statusColor(toExecutionStatus(cell.row.original.output), 'text')"
+            >
+              {{ cell.getValue() }}
+            </span>
+            <span v-else-if="cell.column.id === 'outdated'" class="text-muted-foreground">
+              {{ cell.getValue() ? 'Outdated' : '-' }}
+            </span>
+            <span
+              v-else-if="cell.column.id === 'provisional'"
+              :class="{ 'text-muted-foreground': !cell.getValue() }"
+            >
+              {{ cell.getValue() ?? '-' }}
+            </span>
+            <span
+              v-else-if="cell.column.id === 'category'"
+              :class="{ 'text-muted-foreground': !cell.getValue() }"
+            >
+              {{ cell.getValue() ?? '-' }}
+            </span>
+            <span v-else-if="cell.column.id === 'details'">
+              <button @click="emit('testClicked', cell.row.original)" class="py-1 hover:underline">
+                Show details
+              </button>
+            </span>
+          </td>
+        </tr>
       </template>
       <template v-else>
         <TableRow>
-          <TableCell :colspan="columns.length" class="h-24 text-center"> No results.</TableCell>
+          <TableCell :colspan="columns.length" class="h-24 text-center">No results.</TableCell>
         </TableRow>
       </template>
     </TableBody>
@@ -63,8 +94,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { computed, h, toRefs } from 'vue'
-import { Button } from '@/components/ui/button'
+import { computed, h, onBeforeMount, onBeforeUpdate, onMounted, onUpdated, toRefs } from 'vue'
 import DataTableColumnHeader from '@/components/ui/data-table/DataTableColumnHeader.vue'
 import DataTableViewOptions from '@/components/ui/data-table/DataTableViewOptions.vue'
 import { Input } from '@/components/ui/input'
@@ -80,6 +110,19 @@ const { tests } = toRefs(props)
 const emit = defineEmits<{
   testClicked: [test: FinishedTest]
 }>()
+
+onBeforeMount(() => {
+  console.time('Table render')
+})
+onMounted(() => {
+  console.timeEnd('Table render')
+})
+onBeforeUpdate(() => {
+  console.time('Table update')
+})
+onUpdated(() => {
+  console.timeEnd('Table update')
+})
 
 const outdated = computed(() => new Set(props.outdated))
 
@@ -128,12 +171,6 @@ const columns: ColumnDef<FinishedTest, never>[] = [
       isMultiSorting: isMultiSorting,
     },
     filterFn: 'arrIncludesSome',
-    cell: (cell) =>
-      h(
-        'span',
-        { class: statusColor(toExecutionStatus(cell.row.original.output), 'text') },
-        cell.getValue(),
-      ),
   }),
   columnHelper.accessor((test) => outdated.value.has(test.testId), {
     header: (column) =>
@@ -146,8 +183,6 @@ const columns: ColumnDef<FinishedTest, never>[] = [
     meta: {
       isMultiSorting: isMultiSorting,
     },
-    cell: (val) =>
-      h('span', { class: 'text-muted-foreground' }, val.getValue<boolean>() ? 'Outdated' : '-'),
   }),
   columnHelper.accessor((test) => test.provisionalForCategory, {
     header: (column) =>
@@ -157,14 +192,6 @@ const columns: ColumnDef<FinishedTest, never>[] = [
       }),
     id: 'provisional',
     filterFn: arrIncludesHandleNullFilterFn,
-    cell: (val) =>
-      h(
-        'span',
-        {
-          class: val.getValue<string | undefined>() ? '' : 'text-muted-foreground',
-        },
-        val.getValue<string | undefined>() ?? '-',
-      ),
     meta: {
       isMultiSorting: isMultiSorting,
     },
@@ -177,31 +204,13 @@ const columns: ColumnDef<FinishedTest, never>[] = [
       }),
     id: 'category',
     filterFn: 'arrIncludesSome',
-    cell: (val) =>
-      h(
-        'span',
-        {
-          class: val.getValue<string | undefined>() ? '' : 'text-muted-foreground',
-        },
-        val.getValue<string | undefined>() ?? '-',
-      ),
     meta: {
       isMultiSorting: isMultiSorting,
     },
   }),
   columnHelper.display({
     header: 'Details',
-    cell: (val) =>
-      h(
-        Button,
-        {
-          variant: 'link',
-          onClick: () => {
-            emit('testClicked', val.row.original)
-          },
-        },
-        () => 'Show details',
-      ),
+    id: 'details',
   }),
 ]
 
