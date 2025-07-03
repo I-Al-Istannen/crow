@@ -4,7 +4,7 @@ resolver = "3"
 
 [workspace.package]
 edition = "2024"
-version = "0.1.12"
+version = "0.1.13"
 
 [workspace.lints]
 rust.unsafe_code = { level = "deny", priority = 1 }
