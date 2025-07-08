@@ -7,6 +7,7 @@ mod team;
 mod test;
 mod user;
 
+pub use self::admin::do_grading_rerun_single;
 pub use self::admin::rehash_tests;
 pub use self::admin::rerun_submissions;
 pub use self::admin::snapshot_state;

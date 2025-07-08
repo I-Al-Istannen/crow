@@ -7,7 +7,7 @@ use crate::types::{
     TestId, WorkItem,
 };
 use axum::extract::{Path, State};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use shared::TestModifier;
 use snafu::{Report, location};
 use std::collections::HashMap;
@@ -166,6 +166,98 @@ pub async fn rerun_submissions(
 }
 
 #[instrument(skip_all)]
+pub async fn do_grading_rerun_single(
+    State(state): State<AppState>,
+    claims: Claims,
+    Json(payload): Json<RerunSinglePayload>,
+) -> Result<Json<RerunSingleResponse>> {
+    info!(triggered_by = %claims.sub, "Rerunning submissions");
+
+    if !state
+        .test_config
+        .categories
+        .contains_key(&payload.category_name)
+    {
+        return Err(WebError::named_not_found(
+            format!("Category `{}`", payload.category_name),
+            location!(),
+        ));
+    }
+
+    // Update the local repository to be sure
+    state
+        .local_repos
+        .update_repo(&state.db.get_repo(&payload.team_id).await?)
+        .await?;
+
+    let mut final_task = None;
+    let mut final_task_category = None;
+    for category in state.test_config.sorted_categories() {
+        let meta = state.test_config.categories.get(category).unwrap();
+
+        if let Some(task) = state
+            .db
+            .get_final_submitted_task_for_team_and_category(
+                &payload.team_id,
+                category,
+                meta,
+                false, // we do not care, we want to recompute/rerun it
+            )
+            .await?
+        {
+            final_task = Some(task);
+            final_task_category = Some(category.to_string());
+        }
+
+        if category == payload.category_name {
+            // We either found the task by now, or we abort
+            break;
+        }
+    }
+
+    let Some(final_task) = final_task else {
+        return Err(WebError::named_not_found(
+            "No usable task found for team".to_string(),
+            location!(),
+        ));
+    };
+
+    let revision = final_task.summary().info().revision_id.clone();
+
+    info!(
+        team = %payload.team_id,
+        revision = %revision,
+        task = %final_task.summary().info().task_id,
+        triggered_by = %claims.sub,
+        "Rerunning submission for team"
+    );
+
+    let task_id = TaskId::from(Uuid::new_v4().to_string());
+    state
+        .db
+        .queue_task(WorkItem {
+            id: task_id.clone(),
+            team: payload.team_id.clone(),
+            revision: revision.clone(),
+            commit_message: format!("Grading rerun for category `{}`", payload.category_name),
+            insert_time: SystemTime::now(),
+        })
+        .await?;
+    state
+        .db
+        .finalize_submission(&payload.team_id, &task_id, &payload.category_name)
+        .await?;
+
+    Ok(Json(RerunSingleResponse {
+        new_category: payload.category_name,
+        new_task_id: task_id,
+        orig_category: final_task_category,
+        orig_task_id: final_task.summary().info().task_id.clone().into(),
+        revision_id: revision,
+    }))
+}
+
+#[instrument(skip_all)]
 pub async fn rehash_tests(State(state): State<AppState>, claims: Claims) -> Result<()> {
     info!(triggered_by = %claims.sub, "Rehashing tests");
 
@@ -321,4 +413,19 @@ impl From<FinishedCompilerTaskSummary> for FinalizedTask {
             statistics,
         }
     }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RerunSinglePayload {
+    pub category_name: String,
+    pub team_id: TeamId,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RerunSingleResponse {
+    pub orig_category: Option<String>,
+    pub orig_task_id: TaskId,
+    pub new_category: String,
+    pub new_task_id: TaskId,
+    pub revision_id: String,
 }

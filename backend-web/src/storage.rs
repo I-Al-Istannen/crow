@@ -508,7 +508,7 @@ async fn repo_updater(mut rx: Receiver<RepoUpdateRequest>, ssh_config: Option<Ss
                     .await;
 
                 if let Err(e) = res {
-                    debug!(
+                    info!(
                         error = ?e,
                         team = %repo.team,
                         path = %path.display(),

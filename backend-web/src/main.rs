@@ -3,9 +3,9 @@ use crate::auth::{Claims, Keys};
 use crate::config::{Config, TeamEntry};
 use crate::db::Database;
 use crate::endpoints::{
-    delete_test, executor_info, get_final_tasks, get_integration_status, get_n_recent_tasks,
-    get_queue, get_queued_task, get_recent_tasks, get_running_task_info, get_task,
-    get_tasks_for_team, get_team_info, get_team_repo, get_test, get_test_tasting_work,
+    delete_test, do_grading_rerun_single, executor_info, get_final_tasks, get_integration_status,
+    get_n_recent_tasks, get_queue, get_queued_task, get_recent_tasks, get_running_task_info,
+    get_task, get_tasks_for_team, get_team_info, get_team_repo, get_test, get_test_tasting_work,
     get_top_task_per_team, get_work, get_work_tar, head_running_task_info,
     integration_get_task_status, integration_request_revision, list_tests, list_users, login_oidc,
     login_oidc_callback, rehash_tests, request_revision, rerun_submissions, runner_done,
@@ -279,6 +279,10 @@ async fn main_server(
         .route(
             "/admin/rerun_submissions/:category",
             post(rerun_submissions).layer(authed_admin.clone()),
+        )
+        .route(
+            "/admin/rerun_submission",
+            post(do_grading_rerun_single).layer(authed_admin.clone()),
         )
         .route(
             "/admin/rehash_tests",
